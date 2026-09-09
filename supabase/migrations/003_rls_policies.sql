@@ -157,8 +157,6 @@ CREATE POLICY "trip_revenue_entries_insert" ON public.trip_revenue_entries
     FOR INSERT WITH CHECK (public.is_authenticated());
 CREATE POLICY "trip_revenue_entries_update" ON public.trip_revenue_entries
     FOR UPDATE USING (public.is_authenticated());
-CREATE POLICY "trip_revenue_entries_delete" ON public.trip_revenue_entries
-    FOR DELETE USING (public.is_authenticated());
 
 -- Trip Expenses
 CREATE POLICY "trip_expenses_select" ON public.trip_expenses
@@ -167,8 +165,6 @@ CREATE POLICY "trip_expenses_insert" ON public.trip_expenses
     FOR INSERT WITH CHECK (public.is_authenticated());
 CREATE POLICY "trip_expenses_update" ON public.trip_expenses
     FOR UPDATE USING (public.is_authenticated());
-CREATE POLICY "trip_expenses_delete" ON public.trip_expenses
-    FOR DELETE USING (public.is_authenticated());
 
 -- Maintenance Records
 CREATE POLICY "maintenance_records_select" ON public.maintenance_records

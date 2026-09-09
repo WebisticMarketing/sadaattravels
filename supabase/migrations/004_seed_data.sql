@@ -58,7 +58,8 @@ INSERT INTO public.permissions (code, name, description, module) VALUES
     ('fuel.sell_external', 'Sell Fuel (External)', 'Can sell fuel to external customers', 'fuel'),
     ('fuel.sell_internal', 'Supply Fuel (Internal)', 'Can supply fuel to Sadaat buses', 'fuel'),
     ('fuel.reverse', 'Reverse Fuel Records', 'Can reverse fuel transactions', 'fuel'),
-    ('fuel.stock', 'Manage Fuel Stock', 'Can manage fuel stock snapshots', 'fuel');
+    ('fuel.stock', 'Manage Fuel Stock', 'Can manage fuel stock snapshots', 'fuel'),
+    ('fuel.reconcile', 'Reconcile Fuel Stock', 'Can perform physical stock reconciliation', 'fuel');
 
 -- Adda
 INSERT INTO public.permissions (code, name, description, module) VALUES

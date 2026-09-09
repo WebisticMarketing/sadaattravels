@@ -29,9 +29,16 @@ CREATE INDEX idx_trips_bus_id ON public.trips(bus_id);
 CREATE INDEX idx_trips_date ON public.trips(trip_date);
 CREATE INDEX idx_trips_status ON public.trips(status);
 CREATE INDEX idx_trips_bus_date ON public.trips(bus_id, trip_date);
+
+-- Trip revenue entries
 CREATE INDEX idx_trip_revenue_entries_trip_id ON public.trip_revenue_entries(trip_id);
+CREATE INDEX idx_trip_revenue_entries_status ON public.trip_revenue_entries(status);
+CREATE INDEX idx_trip_revenue_entries_type ON public.trip_revenue_entries(entry_type);
+
+-- Trip expenses
 CREATE INDEX idx_trip_expenses_trip_id ON public.trip_expenses(trip_id);
 CREATE INDEX idx_trip_expenses_type ON public.trip_expenses(expense_type);
+CREATE INDEX idx_trip_expenses_status ON public.trip_expenses(status);
 
 -- ============================================================================
 -- MAINTENANCE & TYRES
@@ -39,14 +46,17 @@ CREATE INDEX idx_trip_expenses_type ON public.trip_expenses(expense_type);
 
 CREATE INDEX idx_maintenance_records_bus_id ON public.maintenance_records(bus_id);
 CREATE INDEX idx_maintenance_records_date ON public.maintenance_records(maintenance_date);
+CREATE INDEX idx_maintenance_records_status ON public.maintenance_records(status);
 CREATE INDEX idx_tyre_records_bus_id ON public.tyre_records(bus_id);
 CREATE INDEX idx_tyre_records_date ON public.tyre_records(purchase_date);
+CREATE INDEX idx_tyre_records_status ON public.tyre_records(status);
 
 -- ============================================================================
 -- FUEL / PETROL PUMP
 -- ============================================================================
 
 CREATE INDEX idx_fuel_purchases_date ON public.fuel_purchases(purchase_date);
+CREATE INDEX idx_fuel_purchases_status ON public.fuel_purchases(status);
 CREATE INDEX idx_fuel_sales_date ON public.fuel_sales(sale_date);
 CREATE INDEX idx_fuel_sales_type ON public.fuel_sales(sale_type);
 CREATE INDEX idx_fuel_sales_bus_id ON public.fuel_sales(bus_id);
@@ -78,6 +88,8 @@ CREATE INDEX idx_cargo_records_status ON public.cargo_records(status);
 -- ============================================================================
 
 CREATE INDEX idx_installments_type ON public.installments(installment_type);
+CREATE INDEX idx_installments_asset_type ON public.installments(asset_type);
+CREATE INDEX idx_installments_linked_bus ON public.installments(linked_bus_id);
 CREATE INDEX idx_installments_status ON public.installments(status);
 CREATE INDEX idx_installment_payments_installment_id ON public.installment_payments(installment_id);
 CREATE INDEX idx_installment_payments_date ON public.installment_payments(payment_date);

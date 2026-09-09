@@ -1,6 +1,6 @@
 # Sadaat Travels Management System — Database Design Document
 
-**Version:** 1.0  
+**Version:** 2.0 (Revised)  
 **Date:** 2026  
 **Database:** Supabase PostgreSQL
 
@@ -8,480 +8,507 @@
 
 ## Table of Contents
 
-1. [Overview](#overview)
+1. [Design Principles](#design-principles)
 2. [Table Descriptions](#table-descriptions)
 3. [Relationships](#relationships)
-4. [Financial Calculations & Source of Truth](#financial-calculations--source-of-truth)
-5. [Petrol Pump Model](#petrol-pump-model)
-6. [Audit Model](#audit-model)
-7. [User & Role Model](#user--role-model)
-8. [Indexes & Constraints](#indexes--constraints)
-9. [Design Decisions](#design-decisions)
+4. [Source of Truth Decisions](#source-of-truth-decisions)
+5. [Centralized Financial Model](#centralized-financial-model)
+6. [Petrol Pump Model](#petrol-pump-model)
+7. [Fuel Stock Reconciliation](#fuel-stock-reconciliation)
+8. [Audit Model](#audit-model)
+9. [User & Role Model](#user--role-model)
+10. [Indexes & Constraints](#indexes--constraints)
+11. [Design Decisions & Rationale](#design-decisions--rationale)
 
 ---
 
-## Overview
+## Design Principles
 
-The database is designed for a single business entity: **Sadaat Travels**, an intercity bus transportation company. There is no multi-tenant architecture.
-
-The schema supports:
-- Fleet management (buses, maintenance, tyres)
-- Trip operations (revenue, expenses, profit calculation)
-- Petrol pump operations (fuel inventory, internal/external sales)
-- Adda operations (income and expenses)
-- Cargo tracking
-- Installment/loan management
-- Personal expense tracking (separate from business)
-- Complete audit trail
-- Role-based access control
+1. **Single source of truth** for every financial value — no duplicate calculations
+2. **No summary fields** that could conflict with line-item totals
+3. **All money stored as NUMERIC** — never floating point
+4. **Financial records use record_status** for reversals — never hard-delete
+5. **Internal fuel transfers** do not create consolidated revenue/expense
+6. **Aggregations are independent** — revenue and expenses are summed separately before combining
+7. **Personal expenses** are strictly separate from business expenses
 
 ---
 
 ## Table Descriptions
 
 ### 1. `users`
-Extends Supabase `auth.users`. Stores application-specific user data.
+Application user data. Extends Supabase `auth.users`.
 
-| Column | Type | Description |
-|--------|------|-------------|
+| Column | Type | Notes |
+|--------|------|-------|
 | `id` | UUID (PK) | References `auth.users(id)` |
-| `email` | TEXT UNIQUE | User email |
-| `full_name` | TEXT | Display name |
-| `phone` | TEXT | Contact number |
-| `status` | ENUM | `active`, `inactive`, `suspended` |
-| `last_login_at` | TIMESTAMPTZ | Last successful login |
-| `created_at` | TIMESTAMPTZ | Record creation time |
-| `updated_at` | TIMESTAMPTZ | Last modification time |
+| `email` | TEXT UNIQUE | |
+| `full_name` | TEXT | |
+| `phone` | TEXT | Nullable |
+| `status` | user_status | `active`, `inactive`, `suspended` |
+| `last_login_at` | TIMESTAMPTZ | Nullable |
 
 ### 2. `roles`
-Defines system roles.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID (PK) | Auto-generated |
-| `name` | TEXT UNIQUE | `OWNER`, `MANAGER`, `STAFF` |
-| `description` | TEXT | Role description |
+System roles: OWNER, MANAGER, STAFF.
 
 ### 3. `permissions`
-Granular system permissions.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID (PK) | Auto-generated |
-| `code` | TEXT UNIQUE | e.g., `trips.create`, `fuel.sell_external` |
-| `name` | TEXT | Human-readable name |
-| `module` | TEXT | Module grouping: `buses`, `trips`, `fuel`, etc. |
+Granular permissions. Code format: `{module}.{action}`.
 
 ### 4. `user_roles`
-Many-to-many mapping between users and roles.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `user_id` | UUID (FK → users) | The user |
-| `role_id` | UUID (FK → roles) | The assigned role |
-| `assigned_at` | TIMESTAMPTZ | When assigned |
-| `assigned_by` | UUID (FK → users) | Who assigned it |
-
-**Unique constraint:** `(user_id, role_id)` — prevents duplicate assignments.
+Many-to-many: users ↔ roles.
 
 ### 5. `role_permissions`
-Many-to-many mapping between roles and permissions.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `role_id` | UUID (FK → roles) | The role |
-| `permission_id` | UUID (FK → permissions) | The granted permission |
-
-**Unique constraint:** `(role_id, permission_id)`
+Many-to-many: roles ↔ permissions.
 
 ### 6. `buses`
 Fleet of buses.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID (PK) | Auto-generated |
+| Column | Type | Notes |
+|--------|------|-------|
 | `registration_number` | TEXT UNIQUE | Vehicle registration |
-| `bus_name` | TEXT | Optional display name |
-| `bus_type` | TEXT | e.g., `AC`, `Non-AC`, `Sleeper` |
-| `capacity` | INTEGER | Total seats (CHECK > 0) |
-| `purchase_date` | DATE | When acquired |
-| `purchase_cost` | NUMERIC(12,2) | Acquisition cost |
+| `capacity` | INTEGER | CHECK > 0 |
+| `purchase_cost` | NUMERIC(12,2) | Nullable |
 | `status` | TEXT | `active`, `inactive`, `sold`, `maintenance` |
-| `created_by` / `updated_by` | UUID (FK → users) | Audit trail |
 
 ### 7. `trips`
-Individual bus trips.
+Trip metadata ONLY. No revenue/expense summary fields.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID (PK) | Auto-generated |
-| `bus_id` | UUID (FK → buses) | Which bus |
-| `trip_date` | DATE | Date of trip |
-| `route` | TEXT | e.g., `Lahore to Karachi` |
-| `departure_time` / `arrival_time` | TIME | Schedule |
-| `seats_booked` | INTEGER | Number of seats sold |
-| `price_per_seat` | NUMERIC(10,2) | Price per seat |
-| `individual_payments` | NUMERIC(12,2) | Special/individual payments |
-| `other_revenue` | NUMERIC(12,2) | Miscellaneous revenue |
-| `status` | ENUM | `active`, `reversed`, `cancelled` |
-| `reversed_by` / `reversed_at` / `reversal_reason` | — | Reversal audit trail |
+| Column | Type | Notes |
+|--------|------|-------|
+| `bus_id` | UUID (FK → buses) | |
+| `trip_date` | DATE | |
+| `route` | TEXT | |
+| `departure_time` / `arrival_time` | TIME | Nullable |
+| `status` | record_status | `active`, `reversed`, `cancelled` |
 
-**Financial formula (source of truth):**
-```
-Seats Revenue = seats_booked × price_per_seat
-Total Revenue = Seats Revenue + individual_payments + other_revenue
-```
+**⚠️ NO revenue or expense columns on this table.**
+All financial data comes from `trip_revenue_entries` and `trip_expenses`.
 
-### 8. `trip_revenue_entries`
-Detailed line items for trip revenue breakdown.
+### 8. `trip_revenue_entries` — SOLE SOURCE OF TRUTH for trip revenue
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `trip_id` | UUID (FK → trips) | Parent trip |
+| Column | Type | Notes |
+|--------|------|-------|
+| `trip_id` | UUID (FK → trips) | |
 | `entry_type` | TEXT | `seat_booking`, `individual_payment`, `other` |
-| `description` | TEXT | Details |
-| `amount` | NUMERIC(12,2) | Amount |
-| `quantity` | INTEGER | For seat bookings |
+| `quantity` | INTEGER | For seat bookings (nullable) |
+| `unit_price` | NUMERIC(10,2) | For seat bookings (nullable) |
+| `amount` | NUMERIC(12,2) | The stored total for this entry |
+| `status` | record_status | |
 
-### 9. `trip_expenses`
-Line items for trip expenses.
+**Trip Total Revenue = `SUM(amount) WHERE trip_id = X AND status != 'reversed'`**
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `trip_id` | UUID (FK → trips) | Parent trip |
+For seat bookings: `amount` = `quantity × unit_price` (enforced at application level).
+
+### 9. `trip_expenses` — SOLE SOURCE OF TRUTH for trip expenses
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `trip_id` | UUID (FK → trips) | |
 | `expense_type` | TEXT | `diesel`, `ta`, `tea`, `cleaning`, `police`, `toll_tax`, `number_money`, `mechanic`, `extra`, `other` |
-| `amount` | NUMERIC(12,2) | Amount |
-| `paid_to` | TEXT | Who was paid |
-| `receipt_number` | TEXT | Reference |
+| `amount` | NUMERIC(12,2) | |
+| `status` | record_status | |
 
-**Financial formula:**
-```
-Total Expenses = SUM(amount) for all expense entries of this trip
-Trip Profit = Total Revenue − Total Expenses
-```
+**Trip Total Expenses = `SUM(amount) WHERE trip_id = X AND status != 'reversed'`**
 
 ### 10. `maintenance_records`
-Bus maintenance history.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `bus_id` | UUID (FK → buses) | Which bus |
-| `maintenance_date` | DATE | When performed |
-| `maintenance_type` | TEXT | Category |
-| `description` | TEXT | Details |
-| `cost` | NUMERIC(12,2) | Cost |
-| `performed_by` | TEXT | Mechanic/shop |
-| `next_maintenance_date` | DATE | Scheduled next |
+| Column | Type | Notes |
+|--------|------|-------|
+| `bus_id` | UUID (FK → buses) | |
+| `maintenance_date` | DATE | |
+| `cost` | NUMERIC(12,2) | |
+| `status` | record_status | |
 
 ### 11. `tyre_records`
-Tyre purchase/replacement history.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `bus_id` | UUID (FK → buses) | Which bus |
-| `purchase_date` | DATE | When purchased |
-| `tyre_brand` / `tyre_size` | TEXT | Specifications |
-| `quantity` | INTEGER | Number of tyres |
-| `cost_per_tyre` | NUMERIC(10,2) | Unit cost |
-| `total_cost` | NUMERIC(12,2) | Total cost |
-| `supplier` | TEXT | Vendor |
-| `expected_life_km` | INTEGER | Expected lifespan |
+| Column | Type | Notes |
+|--------|------|-------|
+| `bus_id` | UUID (FK → buses) | |
+| `purchase_date` | DATE | |
+| `quantity` | INTEGER | CHECK > 0 |
+| `total_cost` | NUMERIC(12,2) | |
+| `status` | record_status | |
 
 ### 12. `fuel_purchases`
-Fuel bought INTO the petrol pump (stock increase).
+Fuel bought INTO the pump. Increases stock.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `purchase_date` | DATE | When purchased |
-| `supplier` | TEXT | Vendor |
-| `litres` | NUMERIC(10,3) | Quantity (CHECK > 0) |
-| `cost_per_litre` | NUMERIC(10,3) | Unit cost |
-| `total_cost` | NUMERIC(12,2) | Total cost |
-| `receipt_number` | TEXT | Reference |
+| Column | Type | Notes |
+|--------|------|-------|
+| `purchase_date` | DATE | |
+| `supplier` | TEXT | |
+| `litres` | NUMERIC(10,3) | CHECK > 0 |
+| `cost_per_litre` | NUMERIC(10,3) | |
+| `total_cost` | NUMERIC(12,2) | |
+| `status` | record_status | |
 
 ### 13. `fuel_sales`
-Fuel sold/issued FROM the petrol pump (stock decrease).
+Fuel sold/issued FROM the pump. Decreases stock.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `sale_date` | DATE | When sold |
-| `sale_type` | ENUM | `EXTERNAL_CUSTOMER` or `INTERNAL_BUS` |
-| `litres` | NUMERIC(10,3) | Quantity (CHECK > 0) |
+| Column | Type | Notes |
+|--------|------|-------|
+| `sale_date` | DATE | |
+| `sale_type` | fuel_sale_type | `EXTERNAL_CUSTOMER` or `INTERNAL_BUS` |
+| `litres` | NUMERIC(10,3) | CHECK > 0 |
 | `sale_price_per_litre` | NUMERIC(10,3) | Selling price |
 | `cost_price_per_litre` | NUMERIC(10,3) | Cost basis at time of sale |
-| `total_amount` | NUMERIC(12,2) | Total sale amount |
-| `bus_id` | UUID (FK → buses) | Required for INTERNAL_BUS |
-| `trip_id` | UUID (FK → trips) | Optional trip link |
+| `total_amount` | NUMERIC(12,2) | |
+| `bus_id` | UUID (FK → buses) | Required for INTERNAL_BUS, NULL for EXTERNAL |
+| `trip_id` | UUID (FK → trips) | Optional link to trip |
 | `customer_name` / `customer_phone` | TEXT | For EXTERNAL_CUSTOMER |
-| `status` | ENUM | `active`, `reversed`, `cancelled` |
+| `status` | record_status | |
 
-**CHECK constraint:** Internal sales MUST have `bus_id`; external sales MUST NOT have `bus_id`.
+**CHECK constraint:** `(sale_type='INTERNAL_BUS' AND bus_id IS NOT NULL) OR (sale_type='EXTERNAL_CUSTOMER' AND bus_id IS NULL)`
 
 ### 14. `fuel_stock_snapshots`
-Periodic stock level records.
+Physical stock reconciliation.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `snapshot_date` | DATE UNIQUE | Date of snapshot |
-| `opening_stock` | NUMERIC(12,3) | Stock at start of period |
+| Column | Type | Notes |
+|--------|------|-------|
+| `snapshot_date` | DATE UNIQUE | |
+| `snapshot_time` | TIMESTAMPTZ | |
+| `system_stock` | NUMERIC(12,3) | What system calculated |
+| `physical_stock` | NUMERIC(12,3) | What was actually measured |
+| `variance` | NUMERIC(12,3) | physical - system |
+| `adjustment_quantity` | NUMERIC(12,3) | Correction applied |
+| `adjustment_reason` | TEXT | |
+| `performed_by` | UUID (FK → users) | |
 
 ### 15. `adda_income`
-Income entries for the adda (bus terminal/stand).
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `income_date` | DATE | When received |
-| `income_type` | TEXT | `ticket_commission`, `parking`, `loading`, `other` |
-| `amount` | NUMERIC(12,2) | Amount |
-| `received_from` | TEXT | Source |
-| `status` | ENUM | `active`, `reversed`, `cancelled` |
+| Column | Type | Notes |
+|--------|------|-------|
+| `income_date` | DATE | |
+| `income_type` | TEXT | |
+| `amount` | NUMERIC(12,2) | |
+| `status` | record_status | |
 
 ### 16. `adda_expenses`
-Expense entries for the adda.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `expense_date` | DATE | When paid |
-| `expense_type` | TEXT | `staff_salary`, `utilities`, `maintenance`, `other` |
-| `amount` | NUMERIC(12,2) | Amount |
-| `paid_to` | TEXT | Recipient |
-| `status` | ENUM | `active`, `reversed`, `cancelled` |
+| Column | Type | Notes |
+|--------|------|-------|
+| `expense_date` | DATE | |
+| `expense_type` | TEXT | |
+| `amount` | NUMERIC(12,2) | |
+| `status` | record_status | |
 
 ### 17. `cargo_records`
-Cargo shipment records.
+Revenue and expenses stored separately. Profit is ALWAYS calculated.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `shipment_date` | DATE | When shipped |
-| `bus_id` | UUID (FK → buses, nullable) | Which bus carried it |
-| `sender_name` / `receiver_name` | TEXT | Parties |
-| `origin` / `destination` | TEXT | Route |
-| `description` | TEXT | What was shipped |
-| `weight_kg` | NUMERIC(8,2) | Weight |
-| `revenue` | NUMERIC(12,2) | Income from shipment |
-| `expenses` | NUMERIC(12,2) | Cost of shipment |
-| `status` | ENUM | `active`, `reversed`, `cancelled` |
+| Column | Type | Notes |
+|--------|------|-------|
+| `shipment_date` | DATE | |
+| `bus_id` | UUID (FK → buses) | Nullable |
+| `revenue` | NUMERIC(12,2) | CHECK >= 0 |
+| `expenses` | NUMERIC(12,2) | CHECK >= 0 |
+| `status` | record_status | |
 
-**Financial formula:**
-```
-Cargo Profit = revenue − expenses
-```
+**⚠️ NO profit column.** Cargo Profit = revenue - expenses (always calculated).
 
 ### 18. `installments`
-Loans given or taken.
+Supports bus loans, car loans, property financing, other loans.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `installment_type` | ENUM | `given` (we lent money) or `taken` (we borrowed) |
-| `person_name` | TEXT | Counterparty |
-| `total_amount` | NUMERIC(12,2) | Total loan amount |
-| `start_date` | DATE | When started |
-| `status` | ENUM | `active`, `reversed`, `cancelled` |
+| Column | Type | Notes |
+|--------|------|-------|
+| `installment_type` | installment_type | `given` or `taken` |
+| `title` | TEXT | e.g., 'Bus XYZ Loan' |
+| `person_name` | TEXT | Lender/borrower |
+| `asset_type` | installment_asset_type | `bus`, `car`, `property`, `other` |
+| `linked_bus_id` | UUID (FK → buses) | Nullable, for bus loans |
+| `total_amount` | NUMERIC(12,2) | Original loan amount |
+| `scheduled_amount` | NUMERIC(12,2) | Expected periodic payment |
+| `interest_rate` | NUMERIC(5,2) | Nullable |
+| `start_date` | DATE | |
+| `end_date` | DATE | Nullable |
+| `payment_frequency` | TEXT | `weekly`, `monthly`, `quarterly`, `yearly`, `once` |
+| `status` | record_status | |
 
 ### 19. `installment_payments`
-Individual payments against installments.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `installment_id` | UUID (FK → installments) | Parent installment |
-| `payment_date` | DATE | When paid |
-| `amount` | NUMERIC(12,2) | Payment amount (CHECK > 0) |
-| `payment_method` | TEXT | `cash`, `bank_transfer`, `cheque` |
-| `status` | ENUM | `active`, `reversed`, `cancelled` |
+| Column | Type | Notes |
+|--------|------|-------|
+| `installment_id` | UUID (FK → installments) | |
+| `payment_date` | DATE | |
+| `amount` | NUMERIC(12,2) | CHECK > 0 |
+| `payment_method` | TEXT | `cash`, `bank_transfer`, `cheque`, `other` |
+| `status` | record_status | |
 
-**Financial formula:**
-```
-Paid Amount = SUM(amount) WHERE status='active'
-Remaining Amount = total_amount − Paid Amount
-```
+**Paid Amount = `SUM(amount) WHERE installment_id = X AND status = 'active'`**  
+**Remaining = `total_amount - Paid Amount`**
 
 ### 20. `personal_expenses`
-Owner's personal (non-business) expenses.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `expense_date` | DATE | When spent |
-| `category` | TEXT | `household`, `vehicle`, `medical`, `education`, `other` |
-| `description` | TEXT | Details |
-| `amount` | NUMERIC(12,2) | Amount |
-| `paid_by` | TEXT | Who paid |
-| `status` | ENUM | `active`, `reversed`, `cancelled` |
-
-**IMPORTANT:** These are explicitly SEPARATE from business expenses and must NEVER be included in operating expense calculations.
+Strictly separate from business expenses.
 
 ### 21. `audit_logs`
-System-wide audit trail.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `user_id` | UUID (FK → users, nullable) | Who performed the action |
-| `action` | ENUM | `login`, `logout`, `create`, `update`, `delete`, `reverse`, `cancel`, `permission_change`, `user_change`, `financial_change` |
-| `table_name` | TEXT | Which table was affected |
-| `record_id` | UUID | Which record |
-| `old_values` | JSONB | Previous state |
-| `new_values` | JSONB | New state |
-| `ip_address` | TEXT | Client IP |
-| `user_agent` | TEXT | Browser/client info |
-| `metadata` | JSONB | Additional context |
-| `created_at` | TIMESTAMPTZ | When it happened |
+Append-only audit trail.
 
 ---
 
-## Relationships
+## Source of Truth Decisions
 
-```
-users ──< user_roles >── roles ──< role_permissions >── permissions
+### Trip Revenue
+| Question | Answer |
+|----------|--------|
+| Where is trip revenue stored? | `trip_revenue_entries` ONLY |
+| Is there a summary field on `trips`? | **NO** — removed to prevent conflicts |
+| How is trip total calculated? | `SUM(trip_revenue_entries.amount) WHERE status != 'reversed'` |
+| Can totals conflict? | **NO** — single source of truth |
 
-buses ──< trips ──< trip_revenue_entries
-              └──< trip_expenses
-       ──< maintenance_records
-       ──< tyre_records
-       ──< fuel_sales (INTERNAL_BUS only)
-       ──< cargo_records
+### Trip Expenses
+| Question | Answer |
+|----------|--------|
+| Where are trip expenses stored? | `trip_expenses` ONLY |
+| Is there a summary field on `trips`? | **NO** |
+| How is trip total calculated? | `SUM(trip_expenses.amount) WHERE status != 'reversed'` |
 
-fuel_purchases ── (standalone, increases stock)
-fuel_sales ── (standalone, decreases stock)
-fuel_stock_snapshots ── (standalone, periodic snapshots)
+### Cargo
+| Question | Answer |
+|----------|--------|
+| Where is cargo revenue stored? | `cargo_records.revenue` |
+| Where are cargo expenses stored? | `cargo_records.expenses` |
+| Is there a profit column? | **NO** — always calculated as `revenue - expenses` |
 
-installments ──< installment_payments
-
-adda_income ── (standalone)
-adda_expenses ── (standalone)
-personal_expenses ── (standalone)
-audit_logs ── (standalone, references users/table/record)
-```
+### Installments
+| Question | Answer |
+|----------|--------|
+| Where is total loan amount? | `installments.total_amount` |
+| Where are payments stored? | `installment_payments` |
+| How is paid amount calculated? | `SUM(installment_payments.amount) WHERE status = 'active'` |
+| How is remaining calculated? | `total_amount - SUM(payments)` |
 
 ---
 
-## Financial Calculations & Source of Truth
+## Centralized Financial Model
 
-### Trip Profit
-```sql
--- Source of truth: trips table + trip_expenses table
-SELECT
-    t.id,
-    (t.seats_booked * t.price_per_seat) + t.individual_payments + t.other_revenue AS total_revenue,
-    COALESCE(SUM(te.amount), 0) AS total_expenses,
-    ((t.seats_booked * t.price_per_seat) + t.individual_payments + t.other_revenue) - COALESCE(SUM(te.amount), 0) AS trip_profit
-FROM trips t
-LEFT JOIN trip_expenses te ON te.trip_id = t.id AND te.status != 'reversed'
-WHERE t.status = 'active'
-GROUP BY t.id;
+**ALL Dashboard and Report calculations MUST use these exact definitions.**
+There is only one correct way to calculate each value.
+
+### Trip-Level Calculations
+
+```
+Trip Revenue = SUM(trip_revenue_entries.amount)
+               WHERE trip_id = X
+               AND status != 'reversed'
+
+Trip Expenses = SUM(trip_expenses.amount)
+                WHERE trip_id = X
+                AND status != 'reversed'
+
+Trip Profit = Trip Revenue − Trip Expenses
 ```
 
-### Bus Net Profit
+### Bus-Level Calculations
+
+**CRITICAL: Revenue and expenses are aggregated INDEPENDENTLY to prevent double-counting from JOINs.**
+
 ```sql
--- Source of truth: trips + maintenance_records + tyre_records
-SELECT
-    b.id,
-    -- Revenue from all active trips
-    COALESCE(SUM(
-        (t.seats_booked * t.price_per_seat) + t.individual_payments + t.other_revenue
-    ), 0) AS bus_revenue,
-    -- Trip expenses
-    COALESCE(SUM(te.amount), 0) AS bus_trip_expenses,
-    -- Gross profit
-    COALESCE(SUM(
-        (t.seats_booked * t.price_per_seat) + t.individual_payments + t.other_revenue
-    ), 0) - COALESCE(SUM(te.amount), 0) AS bus_gross_profit,
-    -- Maintenance cost
-    COALESCE((SELECT SUM(mr.cost) FROM maintenance_records mr WHERE mr.bus_id = b.id), 0) AS maintenance_cost,
-    -- Tyre cost
-    COALESCE((SELECT SUM(tr.total_cost) FROM tyre_records tr WHERE tr.bus_id = b.id), 0) AS tyre_cost,
-    -- Net profit
-    (COALESCE(SUM(
-        (t.seats_booked * t.price_per_seat) + t.individual_payments + t.other_revenue
-    ), 0) - COALESCE(SUM(te.amount), 0))
-    - COALESCE((SELECT SUM(mr.cost) FROM maintenance_records mr WHERE mr.bus_id = b.id), 0)
-    - COALESCE((SELECT SUM(tr.total_cost) FROM tyre_records tr WHERE tr.bus_id = b.id), 0)
-    AS bus_net_profit
+-- Step 1: Aggregate trip revenue per bus (independent subquery)
+WITH bus_revenue AS (
+    SELECT t.bus_id,
+           COALESCE(SUM(tre.amount), 0) AS total_revenue
+    FROM trips t
+    JOIN trip_revenue_entries tre ON tre.trip_id = t.id
+    WHERE t.status != 'reversed'
+      AND tre.status != 'reversed'
+      AND t.trip_date BETWEEN :start AND :end
+    GROUP BY t.bus_id
+),
+
+-- Step 2: Aggregate trip expenses per bus (independent subquery)
+bus_expenses AS (
+    SELECT t.bus_id,
+           COALESCE(SUM(te.amount), 0) AS total_expenses
+    FROM trips t
+    JOIN trip_expenses te ON te.trip_id = t.id
+    WHERE t.status != 'reversed'
+      AND te.status != 'reversed'
+      AND t.trip_date BETWEEN :start AND :end
+    GROUP BY t.bus_id
+),
+
+-- Step 3: Aggregate maintenance per bus (independent subquery)
+bus_maintenance AS (
+    SELECT bus_id,
+           COALESCE(SUM(cost), 0) AS maintenance_cost
+    FROM maintenance_records
+    WHERE status != 'reversed'
+      AND maintenance_date BETWEEN :start AND :end
+    GROUP BY bus_id
+),
+
+-- Step 4: Aggregate tyre costs per bus (independent subquery)
+bus_tyres AS (
+    SELECT bus_id,
+           COALESCE(SUM(total_cost), 0) AS tyre_cost
+    FROM tyre_records
+    WHERE status != 'reversed'
+      AND purchase_date BETWEEN :start AND :end
+    GROUP BY bus_id
+)
+
+-- Step 5: Combine the independently-aggregated results
+SELECT b.id AS bus_id,
+       b.registration_number,
+       COALESCE(br.total_revenue, 0) AS bus_revenue,
+       COALESCE(be.total_expenses, 0) AS bus_trip_expenses,
+       COALESCE(br.total_revenue, 0) - COALESCE(be.total_expenses, 0) AS bus_gross_profit,
+       COALESCE(bm.maintenance_cost, 0) AS bus_maintenance_cost,
+       COALESCE(bt.tyre_cost, 0) AS bus_tyre_cost,
+       (COALESCE(br.total_revenue, 0) - COALESCE(be.total_expenses, 0))
+         - COALESCE(bm.maintenance_cost, 0)
+         - COALESCE(bt.tyre_cost, 0) AS bus_net_profit
 FROM buses b
-LEFT JOIN trips t ON t.bus_id = b.id AND t.status = 'active'
-LEFT JOIN trip_expenses te ON te.trip_id = t.id
-GROUP BY b.id;
+LEFT JOIN bus_revenue br ON br.bus_id = b.id
+LEFT JOIN bus_expenses be ON be.bus_id = b.id
+LEFT JOIN bus_maintenance bm ON bm.bus_id = b.id
+LEFT JOIN bus_tyres bt ON bt.bus_id = b.id;
 ```
 
-### Adda Profit
-```sql
-SELECT
-    COALESCE((SELECT SUM(amount) FROM adda_income WHERE status = 'active'), 0) -
-    COALESCE((SELECT SUM(amount) FROM adda_expenses WHERE status = 'active'), 0)
-    AS adda_profit;
+**Why independent subqueries?**
+If we JOIN trips → trip_expenses directly, a trip with 5 expense rows would cause the trip's revenue to be counted 5 times. Independent aggregation prevents this.
+
+### Adda Calculations
+
+```
+Adda Revenue = SUM(adda_income.amount) WHERE status != 'reversed'
+Adda Expenses = SUM(adda_expenses.amount) WHERE status != 'reversed'
+Adda Profit = Adda Revenue − Adda Expenses
 ```
 
-### Cargo Profit
-```sql
-SELECT
-    COALESCE(SUM(revenue), 0) - COALESCE(SUM(expenses), 0) AS cargo_profit
-FROM cargo_records
-WHERE status = 'active';
+### Petrol Pump Calculations
+
+```
+Pump Revenue = SUM(fuel_sales.total_amount)
+               WHERE sale_type = 'EXTERNAL_CUSTOMER'
+               AND status != 'reversed'
+
+Pump COGS = SUM(fuel_sales.cost_price_per_litre * fuel_sales.litres)
+            WHERE sale_type = 'EXTERNAL_CUSTOMER'
+            AND status != 'reversed'
+
+Pump Profit = Pump Revenue − Pump COGS
+
+Fuel Stock = SUM(fuel_purchases.litres WHERE status != 'reversed')
+             − SUM(fuel_sales.litres WHERE status != 'reversed')
+             + adjustments from fuel_stock_snapshots
 ```
 
-### Installment Balance
-```sql
-SELECT
-    i.id,
-    i.total_amount,
-    COALESCE(SUM(ip.amount) FILTER (WHERE ip.status = 'active'), 0) AS paid_amount,
-    i.total_amount - COALESCE(SUM(ip.amount) FILTER (WHERE ip.status = 'active'), 0) AS remaining_amount
-FROM installments i
-LEFT JOIN installment_payments ip ON ip.installment_id = i.id
-WHERE i.status = 'active'
-GROUP BY i.id;
+### Cargo Calculations
+
+```
+Cargo Revenue = SUM(cargo_records.revenue) WHERE status != 'reversed'
+Cargo Expenses = SUM(cargo_records.expenses) WHERE status != 'reversed'
+Cargo Profit = Cargo Revenue − Cargo Expenses
+```
+
+### Installment Calculations
+
+```
+For each installment:
+  Paid Amount = SUM(installment_payments.amount) WHERE status = 'active'
+  Remaining = total_amount − Paid Amount
+
+For consolidated reporting:
+  Total Installments Paid (taken) = SUM of payments on 'taken' installments
+    → This is a business expense (we are paying back loans)
+  Total Installments Received (given) = SUM of payments on 'given' installments
+    → This is a business income (we are collecting loans)
+```
+
+### Overall Consolidated Calculations
+
+```
+Overall Revenue =
+    Bus Revenue (sum of all trip revenue)
+    + Adda Revenue
+    + Cargo Revenue
+    + Petrol Pump Revenue (EXTERNAL_CUSTOMER only)
+    + Installments Received (payments on 'given' installments)
+
+Overall Expenses =
+    Bus Trip Expenses (sum of all trip expenses)
+    + Bus Maintenance Cost
+    + Bus Tyre Cost
+    + Adda Expenses
+    + Cargo Expenses
+    + Petrol Pump COGS (EXTERNAL_CUSTOMER only)
+    + Installments Paid (payments on 'taken' installments)
+
+Overall Profit = Overall Revenue − Overall Expenses
+
+⚠️ Personal expenses are NEVER included in Overall Expenses.
+⚠️ Internal fuel transfers (INTERNAL_BUS) do NOT appear in Overall Revenue or Expenses.
+   The fuel cost is already counted once as a trip expense (diesel).
 ```
 
 ---
 
 ## Petrol Pump Model
 
-### Design Philosophy
-
-The petrol pump is a **fuel inventory system** within Sadaat Travels. The critical challenge is preventing internal fuel transfers from inflating consolidated company revenue.
-
-### Stock Tracking
-
-```
-Current Stock = Opening Stock + SUM(fuel_purchases.litres) − SUM(fuel_sales.litres)
-```
-
-- `fuel_purchases`: Every purchase increases stock
-- `fuel_sales`: Every sale (both external and internal) decreases stock
-- `fuel_stock_snapshots`: Periodic physical stock counts for reconciliation
-
 ### Sale Types
 
-| Type | Description | Effect on Stock | Effect on Pump Revenue | Effect on Consolidated Revenue |
-|------|-------------|-----------------|----------------------|-------------------------------|
-| `EXTERNAL_CUSTOMER` | Sold to outside customers | Decreases | Increases (at sale price) | Increases |
-| `INTERNAL_BUS` | Supplied to Sadaat buses | Decreases | Does NOT count as pump revenue | Does NOT count |
+| Type | Effect on Stock | Pump Revenue | Consolidated Revenue | Consolidated Expense |
+|------|----------------|--------------|---------------------|---------------------|
+| `EXTERNAL_CUSTOMER` | Decreases | YES (sale price) | YES (sale price) | YES (COGS) |
+| `INTERNAL_BUS` | Decreases | NO | NO | NO (already in trip expense) |
 
-### Cost Basis Tracking
-
-Each `fuel_sale` records both:
-- `sale_price_per_litre`: What was charged
-- `cost_price_per_litre`: The cost basis at time of sale (weighted average of purchases)
-
-This enables accurate profit calculation:
-```
-Pump Revenue = SUM(sale_price × litres) WHERE sale_type = 'EXTERNAL_CUSTOMER' AND status = 'active'
-Pump COGS = SUM(cost_price × litres) WHERE status = 'active'
-Pump Profit = Pump Revenue − Pump COGS
-```
-
-### Internal Fuel Usage
+### Internal Fuel Flow
 
 When fuel is supplied to a Sadaat bus:
-1. A `fuel_sale` record is created with `sale_type = 'INTERNAL_BUS'` and `bus_id` set
-2. This decreases pump stock but does NOT count as pump revenue
-3. The bus's trip should record this as a diesel expense (via `trip_expenses`)
-4. This prevents double-counting: the fuel cost appears once as a trip expense
 
-### Consolidated Company View
+1. **Fuel sale recorded** with `sale_type = 'INTERNAL_BUS'`, `bus_id` set
+2. **Stock decreases** by the litres sold
+3. **NO pump revenue** is recorded (internal transfer)
+4. **NO consolidated revenue** is created
+5. The bus driver records the fuel as a **trip expense** (`expense_type = 'diesel'`) in `trip_expenses`
+6. This is the **ONE place** the fuel cost appears in consolidated expenses
 
-For the overall Sadaat Travels P&L:
-- External fuel sales = Revenue
-- Fuel purchases = Cost of fuel
-- Internal bus fuel = NOT revenue (internal transfer, already counted as trip expense)
+### Why this works
+
+- Stock is correctly reduced (fuel left the tank)
+- The business expense is recorded exactly once (as diesel in trip_expenses)
+- No double-counting in consolidated reports
+- Pump profit only reflects external sales
+
+### Cost Basis
+
+Each `fuel_sale` stores `cost_price_per_litre` — the weighted average cost at time of sale. The application must calculate this when recording each sale:
+
+```
+cost_price_per_litre = Total cost of all fuel in stock / Total litres in stock
+```
+
+This enables accurate pump profit calculation without needing to reconstruct historical purchase prices.
+
+---
+
+## Fuel Stock Reconciliation
+
+### Process
+
+1. **System stock** is calculated: `SUM(purchases) - SUM(sales) + adjustments`
+2. **Physical count** is performed at the pump
+3. **Variance** = physical_stock − system_stock
+4. If variance is significant, an **adjustment** is recorded
+5. The snapshot becomes the new baseline for stock calculations
+
+### Fields
+
+| Field | Purpose |
+|-------|---------|
+| `system_stock` | What the system calculated before counting |
+| `physical_stock` | What was actually measured |
+| `variance` | physical − system (negative = loss/leakage) |
+| `adjustment_quantity` | Amount added/removed to correct |
+| `adjustment_reason` | Why (e.g., "leakage", "measurement error", "theft") |
+| `performed_by` | Who did the count |
+
+### Stock Calculation After Reconciliation
+
+```
+Current Stock = Latest snapshot's physical_stock
+                + SUM(purchases.litres) after snapshot date
+                − SUM(sales.litres WHERE status='active') after snapshot date
+```
 
 ---
 
@@ -489,26 +516,25 @@ For the overall Sadaat Travels P&L:
 
 ### What Gets Audited
 
-| Action | When Logged |
-|--------|-------------|
-| `login` / `logout` | User authentication events |
-| `create` | New record created in any business table |
+| Action | When |
+|--------|------|
+| `login` / `logout` | Authentication events |
+| `create` | New record in any business table |
 | `update` | Record modified |
-| `reverse` / `cancel` | Financial record reversed or cancelled |
-| `permission_change` | User role or permission modified |
-| `user_change` | User account created/modified/deactivated |
+| `reverse` / `cancel` | Financial record reversed |
+| `permission_change` | User role/permission modified |
+| `user_change` | User account modified |
 | `financial_change` | Important financial data modified |
 
-### How It Works
+### Financial Record Reversal
 
-1. **Database triggers** (to be implemented in a later phase) will automatically log `create`, `update`, and `reverse` operations
-2. **Application code** will explicitly log `login`, `logout`, and custom events
-3. Audit logs store `old_values` and `new_values` as JSONB for full change tracking
-4. Audit logs are **append-only** — no UPDATE or DELETE policies
-
-### Retention
-
-Audit logs are never deleted. They provide a complete history of all system activity.
+When a financial record is reversed:
+- `status` changes to `'reversed'`
+- `reversed_by` is set to the user who reversed it
+- `reversed_at` is set to the timestamp
+- `reversal_reason` explains why
+- The record is **NOT deleted** — it remains in the database
+- All calculations exclude `status = 'reversed'` records
 
 ---
 
@@ -516,27 +542,18 @@ Audit logs are never deleted. They provide a complete history of all system acti
 
 ### Roles
 
-| Role | Description |
-|------|-------------|
-| `OWNER` | Full access. Can manage users, permissions, all business data. |
-| `MANAGER` | Day-to-day operations. Can manage trips, buses, fuel, cargo, reports. Cannot manage users. |
-| `STAFF` | Limited access. Can view and enter data. Cannot reverse/delete financial records. |
+| Role | Access |
+|------|--------|
+| `OWNER` | Full access including user management |
+| `MANAGER` | Day-to-day operations, no user management |
+| `STAFF` | View and enter data, no reverse/delete |
 
-### Permission Structure
+### Security
 
-Permissions follow the pattern: `{module}.{action}`
-
-Examples:
-- `trips.create` — Can create new trips
-- `fuel.sell_external` — Can sell fuel to external customers
-- `users.assign_roles` — Can assign roles to users
-
-### Security Enforcement
-
-- **RLS (Row Level Security)** is enabled on all tables
-- Helper functions (`has_role()`, `has_permission()`) check permissions in policies
-- All sensitive operations are enforced server-side by PostgreSQL
-- The frontend never solely controls access
+- RLS enabled on all tables
+- `has_role()` and `has_permission()` helper functions
+- All access enforced server-side by PostgreSQL
+- Frontend never solely controls access
 
 ---
 
@@ -544,54 +561,71 @@ Examples:
 
 ### Key Indexes
 
-| Table | Index | Purpose |
-|-------|-------|---------|
-| `trips` | `(bus_id, trip_date)` | Find trips for a bus in date range |
-| `trip_expenses` | `(trip_id)` | Sum expenses per trip |
-| `fuel_sales` | `(sale_date, sale_type)` | Fuel reporting by date and type |
-| `fuel_sales` | `(bus_id)` | Internal fuel usage per bus |
-| `audit_logs` | `(user_id, created_at)` | User activity timeline |
-| `audit_logs` | `(table_name, record_id)` | Change history for a record |
+- `(bus_id, trip_date)` on trips — bus activity by date
+- `(trip_id)` on trip_revenue_entries and trip_expenses — line items per trip
+- `(sale_date, sale_type)` on fuel_sales — fuel reporting
+- `(status)` on all financial tables — filtering active records
+- `(user_id, created_at)` on audit_logs — user activity timeline
 
 ### Key Constraints
 
-- **Money:** `NUMERIC(12,2)` — no floating point
-- **Fuel quantities:** `NUMERIC(10,3)` — 3 decimal places for litres
-- **CHECK constraints:** Positive amounts, valid sale types, internal sales require bus_id
-- **UNIQUE constraints:** Registration numbers, permission codes, role names
-- **Foreign keys:** With appropriate `ON DELETE` behavior (`RESTRICT` for financial records, `CASCADE` for line items)
+- Money: `NUMERIC(12,2)` — exact decimal, no floating point
+- Fuel: `NUMERIC(10,3)` — 3 decimal places for litres
+- CHECK: Positive amounts, valid sale types, internal sales require bus_id
+- UNIQUE: Registration numbers, permission codes, role names, snapshot dates
+- FK: With `ON DELETE RESTRICT` for financial records, `ON DELETE CASCADE` for line items
 
 ---
 
-## Design Decisions
+## Design Decisions & Rationale
 
-### 1. Why separate `trip_revenue_entries` AND summary columns on `trips`?
+### 1. Why no summary fields on trips?
 
-The `trips` table has `seats_booked`, `price_per_seat`, `individual_payments`, and `other_revenue` as summary fields. These are the **source of truth** for trip revenue calculations. The `trip_revenue_entries` table provides a detailed breakdown for auditing and reporting but does not drive calculations.
+**Problem:** If `trips` has `total_revenue` AND `trip_revenue_entries` exists, which is correct?
 
-### 2. Why store `cost_price_per_litre` on each fuel sale?
+**Solution:** Remove summary fields. Trip total is ALWAYS `SUM(trip_revenue_entries.amount)`.
 
-This captures the cost basis at the time of sale, enabling accurate profit calculation without needing to reconstruct historical purchase prices. The application should calculate a weighted average cost at the time of each sale.
+**Trade-off:** Slightly more complex queries, but zero possibility of conflicting totals.
 
-### 3. Why `fuel_stock_snapshots`?
+### 2. Why independent subqueries for bus calculations?
 
-Physical stock counts may differ from calculated stock due to evaporation, measurement errors, or theft. Snapshots allow reconciliation and provide a known-good starting point for stock calculations.
+**Problem:** `JOIN trips → trip_expenses` causes revenue to multiply by the number of expense rows.
 
-### 4. Why separate `personal_expenses`?
+**Solution:** Aggregate revenue and expenses in separate subqueries, then combine.
 
-Personal expenses must NEVER be included in business operating calculations. A separate table makes this distinction explicit and prevents accidental inclusion in reports.
+**Example:** Trip with revenue=5000 and 3 expense rows of 100 each.
+- Wrong (JOIN): Revenue appears 3 times = 15000
+- Correct (independent): Revenue = 5000, Expenses = 300
 
-### 5. Why `record_status` enum instead of hard deletes?
+### 3. Why no profit column on cargo?
 
-Financial records should never be permanently deleted. Using `active` / `reversed` / `cancelled` status preserves the audit trail while allowing logical removal of incorrect entries.
+**Problem:** If both `revenue`, `expenses`, and `profit` exist, they can conflict.
 
-### 6. Why no multi-tenant architecture?
+**Solution:** Store only `revenue` and `expenses`. Profit is always calculated.
 
-This system is built exclusively for Sadaat Travels. There is only one business entity. Adding tenant IDs would add unnecessary complexity.
+### 4. Why separate personal_expenses table?
 
-### 7. Money type choice
+**Problem:** A flag on a general expenses table could be accidentally ignored.
 
-`NUMERIC(12,2)` supports values up to 9,999,999,999,999.99 PKR with exact decimal precision. This is appropriate for Pakistani Rupee amounts. Floating-point types (`REAL`, `DOUBLE PRECISION`, `FLOAT`) are deliberately avoided to prevent rounding errors in financial calculations.
+**Solution:** Separate table makes the distinction explicit. Queries for business expenses never touch this table.
+
+### 5. Why fuel_stock_snapshots with reconciliation?
+
+**Problem:** Calculated stock can drift from physical stock (evaporation, leakage, theft).
+
+**Solution:** Periodic physical counts with documented variances and adjustments.
+
+### 6. Why record_status instead of hard deletes?
+
+**Problem:** Financial records should never be permanently deleted.
+
+**Solution:** `active` / `reversed` / `cancelled` status with full audit trail.
+
+### 7. Why store cost_price_per_litre on each fuel sale?
+
+**Problem:** Need to calculate pump profit without reconstructing historical prices.
+
+**Solution:** Store the weighted average cost at time of each sale.
 
 ---
 
@@ -599,18 +633,18 @@ This system is built exclusively for Sadaat Travels. There is only one business 
 
 | File | Description |
 |------|-------------|
-| `001_initial_schema.sql` | All tables, enums, triggers |
+| `001_initial_schema.sql` | All tables, enums, constraints, triggers |
 | `002_indexes.sql` | Performance indexes |
-| `003_rls_policies.sql` | Row Level Security policies + helper functions |
-| `004_seed_data.sql` | Initial roles, permissions, and role-permission assignments |
+| `003_rls_policies.sql` | Row Level Security + helper functions |
+| `004_seed_data.sql` | Initial roles, permissions, role-permission mappings |
 
 ---
 
-## Next Steps (Future Phases)
+## Next Steps
 
 1. Apply migrations to Supabase project
-2. Create Supabase Edge Functions for permission enforcement
-3. Implement automatic audit log triggers
-4. Build authentication flow
+2. Create first OWNER user
+3. Implement authentication flow
+4. Build automatic audit log triggers
 5. Build UI modules one by one
-6. Implement weighted average cost calculation for fuel
+6. Implement weighted average cost calculation for fuel sales

@@ -2,6 +2,13 @@
  * Database type definitions for Sadaat Travels Management System.
  * These types mirror the PostgreSQL schema and ensure type safety
  * when working with Supabase queries.
+ *
+ * IMPORTANT SOURCE OF TRUTH DECISIONS:
+ * - Trip revenue: trip_revenue_entries is the ONLY source of truth
+ * - Trip expenses: trip_expenses is the ONLY source of truth
+ * - Trip totals are ALWAYS calculated by summing line items
+ * - Cargo profit is ALWAYS calculated as revenue - expenses
+ * - Internal fuel transfers do NOT create consolidated revenue
  */
 
 // ============================================================================
@@ -12,6 +19,7 @@ export type UserStatus = 'active' | 'inactive' | 'suspended';
 export type RecordStatus = 'active' | 'reversed' | 'cancelled';
 export type FuelSaleType = 'EXTERNAL_CUSTOMER' | 'INTERNAL_BUS';
 export type InstallmentType = 'given' | 'taken';
+export type InstallmentAssetType = 'bus' | 'car' | 'property' | 'other';
 export type AuditAction =
   | 'login'
   | 'logout'
@@ -95,6 +103,11 @@ export interface Bus {
 // TRIPS
 // ============================================================================
 
+/**
+ * Trip record — metadata only.
+ * NO revenue/expense summary fields.
+ * All financial data comes from trip_revenue_entries and trip_expenses.
+ */
 export interface Trip {
   id: string;
   bus_id: string;
@@ -102,10 +115,6 @@ export interface Trip {
   route: string;
   departure_time: string | null;
   arrival_time: string | null;
-  seats_booked: number;
-  price_per_seat: number;
-  individual_payments: number;
-  other_revenue: number;
   status: RecordStatus;
   notes: string | null;
   created_by: string | null;
@@ -117,15 +126,28 @@ export interface Trip {
   reversal_reason: string | null;
 }
 
+/**
+ * Trip revenue entry — THE SOLE SOURCE OF TRUTH for trip revenue.
+ * Each entry is one line item.
+ * For seat bookings: quantity and unit_price are set, amount = quantity * unit_price
+ * Trip Total Revenue = SUM(amount) WHERE status != 'reversed'
+ */
 export interface TripRevenueEntry {
   id: string;
   trip_id: string;
   entry_type: 'seat_booking' | 'individual_payment' | 'other';
   description: string | null;
-  amount: number;
   quantity: number | null;
+  unit_price: number | null;
+  amount: number;
+  status: RecordStatus;
   created_by: string | null;
+  updated_by: string | null;
   created_at: string;
+  updated_at: string;
+  reversed_by: string | null;
+  reversed_at: string | null;
+  reversal_reason: string | null;
 }
 
 export type TripExpenseType =
@@ -140,6 +162,10 @@ export type TripExpenseType =
   | 'extra'
   | 'other';
 
+/**
+ * Trip expense entry — THE SOLE SOURCE OF TRUTH for trip expenses.
+ * Trip Total Expenses = SUM(amount) WHERE status != 'reversed'
+ */
 export interface TripExpense {
   id: string;
   trip_id: string;
@@ -148,8 +174,14 @@ export interface TripExpense {
   amount: number;
   paid_to: string | null;
   receipt_number: string | null;
+  status: RecordStatus;
   created_by: string | null;
+  updated_by: string | null;
   created_at: string;
+  updated_at: string;
+  reversed_by: string | null;
+  reversed_at: string | null;
+  reversal_reason: string | null;
 }
 
 // ============================================================================
@@ -166,10 +198,14 @@ export interface MaintenanceRecord {
   performed_by: string | null;
   next_maintenance_date: string | null;
   notes: string | null;
+  status: RecordStatus;
   created_by: string | null;
   updated_by: string | null;
   created_at: string;
   updated_at: string;
+  reversed_by: string | null;
+  reversed_at: string | null;
+  reversal_reason: string | null;
 }
 
 export interface TyreRecord {
@@ -184,10 +220,14 @@ export interface TyreRecord {
   supplier: string | null;
   expected_life_km: number | null;
   notes: string | null;
+  status: RecordStatus;
   created_by: string | null;
   updated_by: string | null;
   created_at: string;
   updated_at: string;
+  reversed_by: string | null;
+  reversed_at: string | null;
+  reversal_reason: string | null;
 }
 
 // ============================================================================
@@ -203,12 +243,30 @@ export interface FuelPurchase {
   total_cost: number;
   receipt_number: string | null;
   notes: string | null;
+  status: RecordStatus;
   created_by: string | null;
   updated_by: string | null;
   created_at: string;
   updated_at: string;
+  reversed_by: string | null;
+  reversed_at: string | null;
+  reversal_reason: string | null;
 }
 
+/**
+ * Fuel sale record.
+ *
+ * EXTERNAL_CUSTOMER: Sold to outside customers.
+ *   - bus_id is NULL
+ *   - Counts as Petrol Pump revenue
+ *   - Counts as consolidated company revenue
+ *
+ * INTERNAL_BUS: Supplied to Sadaat buses.
+ *   - bus_id is NOT NULL
+ *   - Does NOT count as Petrol Pump revenue
+ *   - Does NOT count as consolidated revenue
+ *   - Fuel cost is recorded once as bus's diesel expense via trip_expenses
+ */
 export interface FuelSale {
   id: string;
   sale_date: string;
@@ -233,12 +291,23 @@ export interface FuelSale {
   reversal_reason: string | null;
 }
 
+/**
+ * Fuel stock reconciliation snapshot.
+ *
+ * Records periodic physical stock counts and reconciles with system stock.
+ * After reconciliation, the system baseline is adjusted to match physical stock.
+ */
 export interface FuelStockSnapshot {
   id: string;
   snapshot_date: string;
-  opening_stock: number;
+  snapshot_time: string;
+  system_stock: number;
+  physical_stock: number;
+  variance: number;
+  adjustment_quantity: number;
+  adjustment_reason: string | null;
   notes: string | null;
-  created_by: string | null;
+  performed_by: string | null;
   created_at: string;
 }
 
@@ -286,6 +355,12 @@ export interface AddaExpense {
 // CARGO
 // ============================================================================
 
+/**
+ * Cargo record.
+ * Revenue and expenses are stored separately.
+ * Cargo Profit is ALWAYS calculated as: revenue - expenses
+ * There is NO separate profit column.
+ */
 export interface CargoRecord {
   id: string;
   shipment_date: string;
@@ -316,13 +391,28 @@ export interface CargoRecord {
 // INSTALLMENTS
 // ============================================================================
 
+/**
+ * Installment/loan record.
+ * Supports bus loans, car loans, property financing, other loans.
+ * Can track money GIVEN (lent) or TAKEN (borrowed).
+ *
+ * Paid Amount = SUM(installment_payments.amount) WHERE status='active'
+ * Remaining = total_amount - Paid Amount
+ */
 export interface Installment {
   id: string;
   installment_type: InstallmentType;
+  title: string;
   person_name: string;
   person_phone: string | null;
+  asset_type: InstallmentAssetType;
+  linked_bus_id: string | null;
   total_amount: number;
+  scheduled_amount: number | null;
+  interest_rate: number | null;
   start_date: string;
+  end_date: string | null;
+  payment_frequency: string;
   description: string | null;
   status: RecordStatus;
   notes: string | null;
@@ -357,6 +447,11 @@ export interface InstallmentPayment {
 // PERSONAL EXPENSES
 // ============================================================================
 
+/**
+ * Personal expense record.
+ * STRICTLY SEPARATE from business operating expenses.
+ * Must NEVER be included in any business expense calculation.
+ */
 export interface PersonalExpense {
   id: string;
   expense_date: string;
@@ -389,7 +484,7 @@ export interface AuditLog {
   new_values: Record<string, any> | null;
   ip_address: string | null;
   user_agent: string | null;
-  metadata: Record<string, any> | null;
+  meta: Record<string, any> | null;
   created_at: string;
 }
 
@@ -397,10 +492,6 @@ export interface AuditLog {
 // DATABASE SCHEMA TYPE (for Supabase client)
 // ============================================================================
 
-/**
- * Complete database schema type for use with Supabase client.
- * This enables type-safe queries throughout the application.
- */
 export interface Database {
   public: {
     Tables: {
@@ -441,13 +532,13 @@ export interface Database {
       };
       trip_revenue_entries: {
         Row: TripRevenueEntry;
-        Insert: Omit<TripRevenueEntry, 'id' | 'created_at'>;
-        Update: Partial<Omit<TripRevenueEntry, 'id' | 'created_at'>>;
+        Insert: Omit<TripRevenueEntry, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<TripRevenueEntry, 'id' | 'created_at' | 'updated_at'>>;
       };
       trip_expenses: {
         Row: TripExpense;
-        Insert: Omit<TripExpense, 'id' | 'created_at'>;
-        Update: Partial<Omit<TripExpense, 'id' | 'created_at'>>;
+        Insert: Omit<TripExpense, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<TripExpense, 'id' | 'created_at' | 'updated_at'>>;
       };
       maintenance_records: {
         Row: MaintenanceRecord;
@@ -507,7 +598,7 @@ export interface Database {
       audit_logs: {
         Row: AuditLog;
         Insert: Omit<AuditLog, 'id' | 'created_at'>;
-        Update: never; // Audit logs are append-only
+        Update: never;
       };
     };
   };
