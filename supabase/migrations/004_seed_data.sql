@@ -144,8 +144,6 @@ AND p.code IN (
     'cargo.view', 'cargo.create',
     -- Installments: view only
     'installments.view',
-    -- Personal expenses: view and create
-    'personal_expenses.view', 'personal_expenses.create',
     -- Reports: view only
     'reports.view'
 );
