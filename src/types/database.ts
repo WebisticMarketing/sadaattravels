@@ -295,7 +295,8 @@ export interface FuelSale {
  * Fuel stock reconciliation snapshot.
  *
  * Records periodic physical stock counts and reconciles with system stock.
- * After reconciliation, the system baseline is adjusted to match physical stock.
+ * The snapshot documents the variance but actual adjustments are recorded
+ * in fuel_stock_adjustments table for proper audit trail.
  */
 export interface FuelStockSnapshot {
   id: string;
@@ -309,6 +310,52 @@ export interface FuelStockSnapshot {
   notes: string | null;
   performed_by: string | null;
   created_at: string;
+}
+
+/**
+ * Fuel stock adjustment — auditable stock movement.
+ *
+ * Every adjustment (positive or negative) is tracked separately.
+ * Positive litres = stock increase
+ * Negative litres = stock decrease
+ *
+ * Stock calculation:
+ *   Current Stock = SUM(purchases.litres) - SUM(sales.litres) + SUM(adjustments.litres)
+ *   (all WHERE status != 'reversed')
+ */
+export interface FuelStockAdjustment {
+  id: string;
+  adjustment_date: string;
+  adjustment_time: string;
+  litres: number; // positive = increase, negative = decrease
+  reason: string;
+  reference_type: 'reconciliation' | 'leakage' | 'theft' | 'measurement_error' | 'other' | null;
+  reference_id: string | null; // can link to fuel_stock_snapshots.id
+  notes: string | null;
+  status: RecordStatus;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+  reversed_by: string | null;
+  reversed_at: string | null;
+  reversal_reason: string | null;
+}
+
+/**
+ * Link between INTERNAL_BUS fuel sale and its corresponding trip expense.
+ *
+ * Ensures internal fuel cost is recorded exactly once.
+ * One fuel sale links to one expense (and vice versa).
+ */
+export interface FuelSaleExpenseLink {
+  id: string;
+  fuel_sale_id: string;
+  trip_expense_id: string;
+  linked_at: string;
+  linked_by: string | null;
+  auto_created: boolean; // true if system created the expense
+  notes: string | null;
 }
 
 // ============================================================================
@@ -564,6 +611,16 @@ export interface Database {
         Row: FuelStockSnapshot;
         Insert: Omit<FuelStockSnapshot, 'id' | 'created_at'>;
         Update: Partial<Omit<FuelStockSnapshot, 'id' | 'created_at'>>;
+      };
+      fuel_stock_adjustments: {
+        Row: FuelStockAdjustment;
+        Insert: Omit<FuelStockAdjustment, 'id' | 'created_at' | 'updated_at' | 'adjustment_time'>;
+        Update: Partial<Omit<FuelStockAdjustment, 'id' | 'created_at' | 'updated_at' | 'adjustment_time'>>;
+      };
+      fuel_sale_expense_links: {
+        Row: FuelSaleExpenseLink;
+        Insert: Omit<FuelSaleExpenseLink, 'id' | 'linked_at'>;
+        Update: never; // Links are immutable once created
       };
       adda_income: {
         Row: AddaIncome;
