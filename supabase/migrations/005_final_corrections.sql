@@ -36,6 +36,9 @@ CREATE TABLE public.fuel_stock_adjustments (
     reversal_reason TEXT
 );
 
+CREATE TRIGGER update_fuel_stock_adjustments_updated_at BEFORE UPDATE ON public.fuel_stock_adjustments
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 CREATE INDEX idx_fuel_stock_adjustments_date ON public.fuel_stock_adjustments(adjustment_date);
 CREATE INDEX idx_fuel_stock_adjustments_status ON public.fuel_stock_adjustments(status);
 CREATE INDEX idx_fuel_stock_adjustments_reference ON public.fuel_stock_adjustments(reference_type, reference_id);
