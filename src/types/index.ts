@@ -112,3 +112,6 @@ export interface NavItem {
   /** If true, this item is visible but disabled (module not yet built). */
   disabled?: boolean;
 }
+
+// Re-export database types
+export * from './database';
