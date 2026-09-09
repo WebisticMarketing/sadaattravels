@@ -122,11 +122,29 @@ CREATE POLICY "role_permissions_select" ON public.role_permissions
     FOR SELECT USING (public.is_authenticated());
 
 -- Only owners can manage role assignments and permissions
-CREATE POLICY "user_roles_manage" ON public.user_roles
-    FOR ALL USING (public.has_role('OWNER'));
+-- INSERT: Owners can create role assignments
+CREATE POLICY "user_roles_insert" ON public.user_roles
+    FOR INSERT WITH CHECK (public.has_role('OWNER'));
 
-CREATE POLICY "role_permissions_manage" ON public.role_permissions
-    FOR ALL USING (public.has_role('OWNER'));
+-- UPDATE: Owners can modify role assignments
+CREATE POLICY "user_roles_update" ON public.user_roles
+    FOR UPDATE USING (public.has_role('OWNER'));
+
+-- DELETE: Owners can remove role assignments
+CREATE POLICY "user_roles_delete" ON public.user_roles
+    FOR DELETE USING (public.has_role('OWNER'));
+
+-- INSERT: Owners can create permission assignments
+CREATE POLICY "role_permissions_insert" ON public.role_permissions
+    FOR INSERT WITH CHECK (public.has_role('OWNER'));
+
+-- UPDATE: Owners can modify permission assignments
+CREATE POLICY "role_permissions_update" ON public.role_permissions
+    FOR UPDATE USING (public.has_role('OWNER'));
+
+-- DELETE: Owners can remove permission assignments
+CREATE POLICY "role_permissions_delete" ON public.role_permissions
+    FOR DELETE USING (public.has_role('OWNER'));
 
 -- ============================================================================
 -- BUSINESS DATA TABLES
@@ -255,6 +273,20 @@ CREATE POLICY "personal_expenses_insert" ON public.personal_expenses
 CREATE POLICY "personal_expenses_update" ON public.personal_expenses
     FOR UPDATE USING (public.has_role('OWNER') OR public.has_role('MANAGER'));
 
--- Audit Logs (read-only for all authenticated users)
+-- ============================================================================
+-- AUDIT LOGS
+-- ============================================================================
+-- IMPORTANT: Audit logs are WRITE-ONLY from the application perspective.
+-- 
+-- Audit log entries are created by:
+--   1. Database triggers (for data changes)
+--   2. Supabase Edge Functions using service_role key (for auth events)
+--
+-- The frontend (anon key) can ONLY read audit logs.
+-- There are NO INSERT/UPDATE/DELETE policies for the anon key.
+-- This ensures audit history cannot be tampered with by end users.
+--
+-- Read access: All authenticated users can view audit logs.
+
 CREATE POLICY "audit_logs_select" ON public.audit_logs
     FOR SELECT USING (public.is_authenticated());
