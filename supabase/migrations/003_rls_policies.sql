@@ -244,13 +244,16 @@ CREATE POLICY "installment_payments_insert" ON public.installment_payments
 CREATE POLICY "installment_payments_update" ON public.installment_payments
     FOR UPDATE USING (public.is_authenticated());
 
--- Personal Expenses
+-- Personal Expenses (OWNER and MANAGER only)
+-- BUSINESS RULE: Personal expenses are completely separate from business accounting.
+-- They are a private ledger for OWNER and MANAGER only. STAFF has NO access.
+-- Personal expenses must NEVER contribute to business financial calculations.
 CREATE POLICY "personal_expenses_select" ON public.personal_expenses
-    FOR SELECT USING (public.is_authenticated());
+    FOR SELECT USING (public.has_role('OWNER') OR public.has_role('MANAGER'));
 CREATE POLICY "personal_expenses_insert" ON public.personal_expenses
-    FOR INSERT WITH CHECK (public.is_authenticated());
+    FOR INSERT WITH CHECK (public.has_role('OWNER') OR public.has_role('MANAGER'));
 CREATE POLICY "personal_expenses_update" ON public.personal_expenses
-    FOR UPDATE USING (public.is_authenticated());
+    FOR UPDATE USING (public.has_role('OWNER') OR public.has_role('MANAGER'));
 
 -- Audit Logs (read-only for all authenticated users)
 CREATE POLICY "audit_logs_select" ON public.audit_logs
