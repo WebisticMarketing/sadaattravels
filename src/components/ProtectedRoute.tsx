@@ -1,0 +1,69 @@
+/**
+ * Protected route component.
+ *
+ * Redirects unauthenticated users to login.
+ * Shows loading state while restoring session.
+ */
+
+import { Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { Loading } from './ui/Loading';
+
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  requiredRole?: string;
+  requiredPermission?: string;
+}
+
+export function ProtectedRoute({
+  children,
+  requiredRole,
+  requiredPermission,
+}: ProtectedRouteProps) {
+  const { user, loading, isAuthenticated } = useAuth();
+  const location = useLocation();
+
+  // Show loading while restoring session
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loading size="lg" label="Restoring session..." />
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // Check role requirement
+  if (requiredRole && !user?.roles.includes(requiredRole)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600">
+            You don't have permission to access this page.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Check permission requirement
+  if (requiredPermission && !user?.permissions.includes(requiredPermission)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600">
+            You don't have permission to access this page.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}

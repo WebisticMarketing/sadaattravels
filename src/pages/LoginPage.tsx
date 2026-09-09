@@ -1,72 +1,104 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+/**
+ * Login page.
+ *
+ * Simple, professional login form using Supabase Auth.
+ */
+
+import { useState, FormEvent } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Alert } from '../components/ui/Alert';
 
-/**
- * Login page — placeholder.
- * Real authentication will be implemented in a later phase.
- * For now this just navigates to the app shell.
- */
 export default function LoginPage() {
   const navigate = useNavigate();
-  const [username, setUsername] = useState('');
+  const location = useLocation();
+  const { login, error, clearError, loading } = useAuth();
+
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Get the page the user was trying to access before being redirected to login
+  const from = (location.state as any)?.from?.pathname || '/app/dashboard';
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
+    clearError();
 
-    // Placeholder: real auth will be added later
-    // For now, any non-empty credentials navigate to the app
-    await new Promise((r) => setTimeout(r, 800));
-
-    if (!username || !password) {
-      setError('Please enter your credentials.');
-      setLoading(false);
-      return;
+    try {
+      await login({ email, password });
+      navigate(from, { replace: true });
+    } catch (err) {
+      // Error is handled by the hook
     }
-
-    setLoading(false);
-    navigate('/app/dashboard');
   };
 
   return (
-    <div>
-      <h2 className="text-xl font-semibold text-gray-900 mb-1">Sign In</h2>
-      <p className="text-sm text-gray-500 mb-6">Enter your credentials to access the system.</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        {/* Header */}
+        <div className="text-center">
+          <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-blue-600">
+            <span className="text-2xl font-bold text-white">ST</span>
+          </div>
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            Sadaat Travels
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Management System
+          </p>
+        </div>
 
-      {error && (
-        <Alert variant="danger" className="mb-4">
-          {error}
-        </Alert>
-      )}
+        {/* Login Form */}
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <div className="rounded-md shadow-sm space-y-4">
+            <Input
+              label="Email address"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              required
+              autoComplete="email"
+            />
+            <Input
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+              autoComplete="current-password"
+            />
+          </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          label="Username"
-          type="text"
-          placeholder="Enter your username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          autoComplete="username"
-        />
-        <Input
-          label="Password"
-          type="password"
-          placeholder="Enter your password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="current-password"
-        />
-        <Button type="submit" fullWidth loading={loading}>
-          Sign In
-        </Button>
-      </form>
+          {/* Error Alert */}
+          {error && (
+            <Alert variant="danger" title="Login failed">
+              {error.message}
+            </Alert>
+          )}
+
+          <div>
+            <Button
+              type="submit"
+              fullWidth
+              loading={loading}
+              disabled={!email || !password}
+            >
+              Sign in
+            </Button>
+          </div>
+        </form>
+
+        {/* Footer */}
+        <div className="text-center text-sm text-gray-500">
+          <p>
+            Contact your administrator if you need an account.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

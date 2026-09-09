@@ -1,11 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
-
-// Layouts
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppLayout } from './layouts/AppLayout';
 import { AuthLayout } from './layouts/AuthLayout';
-
-// Pages
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -16,12 +13,9 @@ import NotFoundPage from './pages/NotFoundPage';
  * Structure:
  *   /login              → AuthLayout → LoginPage
  *   /app/*              → AppLayout (authenticated shell)
- *     /app/dashboard    → DashboardPage
+ *     /app/dashboard    → DashboardPage (protected)
  *   /                   → Redirect to /app/dashboard
  *   *                   → NotFoundPage
- *
- * When authentication is implemented, a <ProtectedRoute> wrapper
- * will be added around the /app/* routes.
  */
 export default function App() {
   return (
@@ -37,7 +31,14 @@ export default function App() {
           </Route>
 
           {/* Application routes (authenticated area) */}
-          <Route path="/app" element={<AppLayout />}>
+          <Route
+            path="/app"
+            element={
+              <ProtectedRoute>
+                <AppLayout />
+              </ProtectedRoute>
+            }
+          >
             <Route path="dashboard" element={<DashboardPage />} />
 
             {/* 
