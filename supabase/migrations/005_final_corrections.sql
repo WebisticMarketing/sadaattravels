@@ -22,6 +22,7 @@ CREATE TABLE public.fuel_stock_adjustments (
     adjustment_date DATE NOT NULL,
     adjustment_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     litres NUMERIC(12, 3) NOT NULL CHECK (litres != 0), -- positive = increase, negative = decrease
+    cost_per_litre NUMERIC(10, 3) NOT NULL CHECK (cost_per_litre >= 0), -- weighted-average cost at time of adjustment
     reason TEXT NOT NULL,
     reference_type TEXT CHECK (reference_type IN ('reconciliation', 'leakage', 'theft', 'measurement_error', 'other')),
     reference_id UUID, -- can link to fuel_stock_snapshots.id for reconciliation
@@ -50,24 +51,22 @@ CREATE INDEX idx_fuel_stock_adjustments_reference ON public.fuel_stock_adjustmen
 -- When recording a fuel stock adjustment, the application MUST:
 -- 1. Acquire advisory lock: PERFORM pg_advisory_xact_lock(847291);
 -- 2. Calculate current weighted average cost per litre (as described above)
--- 3. Store this as the valuation basis for the adjustment
+-- 3. Store this in the cost_per_litre column
 --
--- Although fuel_stock_adjustments does not have a cost_per_litre column,
--- the application layer MUST track the cost basis used for each adjustment.
--- This can be done by:
--- - Storing the cost basis in the adjustment's 'notes' field (JSON format)
--- - Or maintaining a separate application-level ledger
+-- The cost_per_litre column stores the weighted-average inventory cost at the
+-- time the adjustment is posted. This is the authoritative source of truth for
+-- adjustment valuation.
 --
--- The cost basis is used to update the total inventory cost:
+-- The cost impact is calculated as:
+--   adjustment_cost_impact = litres × cost_per_litre
+--
+-- This is used to update the total inventory cost:
 -- - Positive adjustment (stock increase): inventory_cost += litres × cost_per_litre
 -- - Negative adjustment (stock decrease): inventory_cost += litres × cost_per_litre
 --   (litres is negative, so this reduces inventory_cost)
 --
 -- This ensures inventory valuation remains consistent with the weighted-average
 -- cost method, even when physical stock counts reveal discrepancies.
---
--- Example notes field format:
--- {"cost_per_litre": 285.50, "total_cost_impact": 2855.00}
 
 -- ============================================================================
 -- FUEL SALE EXPENSE LINK
@@ -101,17 +100,30 @@ CREATE INDEX idx_fuel_sale_expense_links_expense ON public.fuel_sale_expense_lin
 -- INTERNAL FUEL SALE VALIDATION CONSTRAINT
 -- ============================================================================
 --
--- For INTERNAL_BUS fuel sales, the sale_price_per_litre MUST equal cost_price_per_litre.
--- This prevents accidental use of external customer pricing for internal transfers.
+-- For INTERNAL_BUS fuel sales, the sale_price_per_litre MUST be 0.
+-- This ensures internal transfers are modeled as true internal transfers,
+-- not as sales at cost price.
 --
--- The trip diesel expense is calculated as: litres × cost_price_per_litre
--- NOT: litres × sale_price_per_litre
+-- Internal transfer model:
+-- - cost_price_per_litre = actual weighted-average inventory cost
+-- - sale_price_per_litre = 0 (no revenue from internal transfer)
+-- - total_amount = litres × cost_price_per_litre (cost basis for trip expense)
+-- - NO Petrol Pump revenue
+-- - NO consolidated revenue
+-- - Trip diesel expense = litres × cost_price_per_litre
 --
--- This constraint enforces that internal transfers use cost basis only.
+-- External customer model:
+-- - sale_price_per_litre = actual customer selling price
+-- - cost_price_per_litre = weighted-average inventory cost
+-- - total_amount = litres × sale_price_per_litre
+-- - Revenue = total_amount
+-- - COGS = litres × cost_price_per_litre
+--
+-- This constraint enforces that internal transfers have zero sale price.
 
 ALTER TABLE public.fuel_sales
-ADD CONSTRAINT chk_internal_fuel_uses_cost CHECK (
-    sale_type != 'INTERNAL_BUS' OR sale_price_per_litre = cost_price_per_litre
+ADD CONSTRAINT chk_internal_fuel_zero_price CHECK (
+    sale_type != 'INTERNAL_BUS' OR sale_price_per_litre = 0
 );
 
 -- ============================================================================
@@ -144,7 +156,7 @@ ADD CONSTRAINT chk_seat_booking_values CHECK (
 -- 1. Calculate current stock: SUM(purchases.litres) - SUM(sales.litres) + SUM(adjustments.litres)
 --    (all WHERE status != 'reversed')
 -- 2. Calculate current stock cost: SUM(purchases.total_cost) - SUM(sales.litres * sales.cost_price_per_litre)
---    + SUM(adjustments.litres * adjustment_cost_per_litre)
+--    + SUM(adjustments.litres * adjustments.cost_per_litre)
 --    (all WHERE status != 'reversed')
 -- 3. Calculate weighted average cost per litre: current_stock_cost / current_stock
 -- 4. Store this as cost_price_per_litre on the fuel_sale or fuel_stock_adjustment
@@ -153,6 +165,15 @@ ADD CONSTRAINT chk_seat_booking_values CHECK (
 --
 -- PostgreSQL does not support FOR UPDATE on aggregate queries. Instead, use an advisory lock
 -- to serialize all fuel inventory operations (sales, purchases, adjustments).
+--
+-- CRITICAL IMPLEMENTATION REQUIREMENT:
+-- This advisory lock pattern MUST be implemented as a genuinely atomic database transaction
+-- or RPC before the Petrol Pump module goes live. Documentation alone does not provide
+-- concurrency safety. The implementation must:
+-- - Execute within a single database transaction
+-- - Acquire the lock before any calculations
+-- - Perform all calculations and inserts atomically
+-- - Release the lock only on transaction commit/rollback
 --
 -- The application MUST use the following pattern for ALL fuel inventory operations:
 --
@@ -225,11 +246,10 @@ ADD CONSTRAINT chk_seat_booking_values CHECK (
 -- When fuel is supplied to a Sadaat bus (INTERNAL_BUS):
 --
 -- CRITICAL ACCOUNTING RULE:
--- Internal fuel transfers use COST BASIS, not selling price.
+-- Internal fuel transfers are TRUE INTERNAL TRANSFERS with zero revenue.
 -- The trip diesel expense must equal: litres × cost_price_per_litre
--- NOT: litres × sale_price_per_litre
 --
--- This prevents inflating trip expenses with external customer pricing.
+-- This models internal transfers correctly: no revenue, only cost movement.
 --
 -- WORKFLOW:
 --
@@ -239,8 +259,8 @@ ADD CONSTRAINT chk_seat_booking_values CHECK (
 --    - trip_id = the trip (if known)
 --    - litres = quantity supplied
 --    - cost_price_per_litre = weighted average cost (calculated with advisory lock)
---    - sale_price_per_litre = cost_price_per_litre (MUST equal cost for internal)
---    - total_amount = litres × cost_price_per_litre
+--    - sale_price_per_litre = 0 (MUST be zero for internal transfers)
+--    - total_amount = litres × cost_price_per_litre (cost basis for trip expense)
 --
 -- 2. Create trip expense (auto or manual):
 --    - trip_id = the trip
@@ -257,16 +277,16 @@ ADD CONSTRAINT chk_seat_booking_values CHECK (
 -- 4. Result:
 --    - Fuel stock decreases (fuel left the tank)
 --    - Trip expense increases (cost recorded once at actual cost)
---    - NO pump revenue (internal transfer)
+--    - NO pump revenue (internal transfer has zero sale price)
 --    - NO consolidated revenue (internal transfer)
 --    - Cost appears exactly once in consolidated expenses
 --
 -- APPLICATION VALIDATION (must be enforced):
 --
 -- For INTERNAL_BUS fuel sales:
--- - sale_price_per_litre MUST equal cost_price_per_litre
--- - Application should reject if sale_price_per_litre != cost_price_per_litre
--- - This prevents accidental use of external pricing for internal transfers
+-- - sale_price_per_litre MUST equal 0
+-- - Application should reject if sale_price_per_litre != 0
+-- - This ensures internal transfers are modeled as true internal transfers
 --
 -- For linked trip expenses:
 -- - trip_expense.amount MUST equal fuel_sale.litres × fuel_sale.cost_price_per_litre
