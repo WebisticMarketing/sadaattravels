@@ -14,6 +14,7 @@ export interface BusWithStats extends Bus {
   totalRevenue?: number;
   totalExpenses?: number;
   totalMaintenanceCost?: number;
+  totalTyreCost?: number;
 }
 
 /**
@@ -77,12 +78,22 @@ export function useBuses(includeStats = false) {
 
             const totalMaintenanceCost = maintenanceRecords?.reduce((sum, m) => sum + m.cost, 0) || 0;
 
+            // Fetch tyre costs
+            const { data: tyreRecords } = await supabase
+              .from('tyre_records')
+              .select('total_cost')
+              .eq('bus_id', bus.id)
+              .eq('status', 'active');
+
+            const totalTyreCost = tyreRecords?.reduce((sum, t) => sum + t.total_cost, 0) || 0;
+
             return {
               ...bus,
               totalTrips: trips?.length || 0,
               totalRevenue,
               totalExpenses,
               totalMaintenanceCost,
+              totalTyreCost,
             };
           })
         );

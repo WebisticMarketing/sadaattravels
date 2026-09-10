@@ -13,6 +13,18 @@ import TripDetailPage from './pages/TripDetailPage';
 import MaintenancePage from './pages/MaintenancePage';
 import MaintenanceFormPage from './pages/MaintenanceFormPage';
 import MaintenanceDetailPage from './pages/MaintenanceDetailPage';
+import TyresPage from './pages/TyresPage';
+import TyreFormPage from './pages/TyreFormPage';
+import TyreDetailPage from './pages/TyreDetailPage';
+import FuelPurchasesPage from './pages/FuelPurchasesPage';
+import FuelPurchaseFormPage from './pages/FuelPurchaseFormPage';
+import FuelSalesPage from './pages/FuelSalesPage';
+import FuelSaleFormPage from './pages/FuelSaleFormPage';
+import AddaPage from './pages/AddaPage';
+import AddaIncomeFormPage from './pages/AddaIncomeFormPage';
+import AddaExpenseFormPage from './pages/AddaExpenseFormPage';
+import CargoPage from './pages/CargoPage';
+import CargoFormPage from './pages/CargoFormPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 /**
@@ -59,10 +71,23 @@ export default function App() {
             <Route path="maintenance/new" element={<MaintenanceFormPage />} />
             <Route path="maintenance/:id" element={<MaintenanceDetailPage />} />
             <Route path="maintenance/:id/edit" element={<MaintenanceFormPage />} />
+            <Route path="tyres" element={<TyresPage />} />
+            <Route path="tyres/new" element={<TyreFormPage />} />
+            <Route path="tyres/:id" element={<TyreDetailPage />} />
+            <Route path="tyres/:id/edit" element={<TyreFormPage />} />
+            <Route path="petrol" element={<FuelSalesPage />} />
+            <Route path="petrol/purchases" element={<FuelPurchasesPage />} />
+            <Route path="petrol/purchases/new" element={<FuelPurchaseFormPage />} />
+            <Route path="petrol/sales" element={<FuelSalesPage />} />
+            <Route path="petrol/sales/new" element={<FuelSaleFormPage />} />
+            <Route path="adda" element={<AddaPage />} />
+            <Route path="adda/income/new" element={<AddaIncomeFormPage />} />
+            <Route path="adda/expenses/new" element={<AddaExpenseFormPage />} />
+            <Route path="cargo" element={<CargoPage />} />
+            <Route path="cargo/new" element={<CargoFormPage />} />
 
             {/* 
               Future module routes will be added here:
-              <Route path="adda" element={<AddaPage />} />
               ...
             */}
           </Route>
