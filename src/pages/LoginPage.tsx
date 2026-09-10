@@ -47,18 +47,32 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
-          <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-blue-600">
-            <span className="text-2xl font-bold text-white">ST</span>
+          <div className="mx-auto mb-6">
+            <img 
+              src="/logo.png" 
+              alt="Sadaat Travels" 
+              className="h-20 w-auto mx-auto"
+            />
           </div>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900">
             Sadaat Travels
+          </h1>
+          <p className="text-sm text-gray-600 mt-1">
+            Management System
+          </p>
+        </div>
+
+        {/* Welcome Message */}
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-900">
+            Welcome back
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Management System
+            Sign in to continue to your management system.
           </p>
         </div>
 
@@ -105,9 +119,12 @@ export default function LoginPage() {
         </form>
 
         {/* Footer */}
-        <div className="text-center text-sm text-gray-500">
+        <div className="text-center text-sm text-gray-500 space-y-4">
           <p>
             Contact your administrator if you need an account.
+          </p>
+          <p className="text-xs text-gray-400">
+            © {new Date().getFullYear()} Sadaat Travels. All rights reserved.
           </p>
         </div>
       </div>
