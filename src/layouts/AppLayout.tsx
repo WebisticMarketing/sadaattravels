@@ -13,6 +13,7 @@ import {
   CreditCard,
   BarChart3,
   Wallet,
+  Users,
   ScrollText,
   LogOut,
   Menu,
@@ -34,10 +35,11 @@ const navigation: NavItem[] = [
   { label: 'Adda', path: '/app/adda', icon: 'MapPin' },
   { label: 'Petrol Pump', path: '/app/petrol', icon: 'Fuel' },
   { label: 'Cargo', path: '/app/cargo', icon: 'Package' },
-  { label: 'Installments', path: '/app/installments', icon: 'CreditCard', disabled: true },
-  { label: 'Reports', path: '/app/reports', icon: 'BarChart3', disabled: true },
-  { label: 'Personal Expenses', path: '/app/expenses', icon: 'Wallet', disabled: true },
-  { label: 'Audit Logs', path: '/app/audit', icon: 'ScrollText', disabled: true },
+  { label: 'Installments', path: '/app/installments', icon: 'CreditCard' },
+  { label: 'Reports', path: '/app/reports', icon: 'BarChart3' },
+  { label: 'Personal Expenses', path: '/app/expenses', icon: 'Wallet' },
+  { label: 'Users & Permissions', path: '/app/users', icon: 'Users' },
+  { label: 'Audit Logs', path: '/app/audit', icon: 'ScrollText' },
 ];
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -52,6 +54,7 @@ const iconMap: Record<string, React.ReactNode> = {
   CreditCard: <CreditCard className="h-5 w-5" />,
   BarChart3: <BarChart3 className="h-5 w-5" />,
   Wallet: <Wallet className="h-5 w-5" />,
+  Users: <Users className="h-5 w-5" />,
   ScrollText: <ScrollText className="h-5 w-5" />,
 };
 

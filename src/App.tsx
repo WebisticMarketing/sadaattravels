@@ -25,6 +25,17 @@ import AddaIncomeFormPage from './pages/AddaIncomeFormPage';
 import AddaExpenseFormPage from './pages/AddaExpenseFormPage';
 import CargoPage from './pages/CargoPage';
 import CargoFormPage from './pages/CargoFormPage';
+import InstallmentsPage from './pages/InstallmentsPage';
+import InstallmentFormPage from './pages/InstallmentFormPage';
+import InstallmentDetailPage from './pages/InstallmentDetailPage';
+import PersonalExpensesPage from './pages/PersonalExpensesPage';
+import PersonalExpenseFormPage from './pages/PersonalExpenseFormPage';
+import PersonalExpenseDetailPage from './pages/PersonalExpenseDetailPage';
+import ReportsPage from './pages/ReportsPage';
+import UsersPage from './pages/UsersPage';
+import UserFormPage from './pages/UserFormPage';
+import UserDetailPage from './pages/UserDetailPage';
+import AuditLogsPage from './pages/AuditLogsPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 /**
@@ -85,6 +96,17 @@ export default function App() {
             <Route path="adda/expenses/new" element={<AddaExpenseFormPage />} />
             <Route path="cargo" element={<CargoPage />} />
             <Route path="cargo/new" element={<CargoFormPage />} />
+            <Route path="installments" element={<InstallmentsPage />} />
+            <Route path="installments/new" element={<InstallmentFormPage />} />
+            <Route path="installments/:id" element={<InstallmentDetailPage />} />
+            <Route path="expenses" element={<PersonalExpensesPage />} />
+            <Route path="expenses/new" element={<PersonalExpenseFormPage />} />
+            <Route path="expenses/:id" element={<PersonalExpenseDetailPage />} />
+            <Route path="reports" element={<ReportsPage />} />
+            <Route path="users" element={<UsersPage />} />
+            <Route path="users/new" element={<UserFormPage />} />
+            <Route path="users/:id" element={<UserDetailPage />} />
+            <Route path="audit" element={<AuditLogsPage />} />
 
             {/* 
               Future module routes will be added here:
