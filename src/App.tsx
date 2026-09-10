@@ -10,6 +10,9 @@ import BusesPage from './pages/BusesPage';
 import TripsPage from './pages/TripsPage';
 import TripFormPage from './pages/TripFormPage';
 import TripDetailPage from './pages/TripDetailPage';
+import MaintenancePage from './pages/MaintenancePage';
+import MaintenanceFormPage from './pages/MaintenanceFormPage';
+import MaintenanceDetailPage from './pages/MaintenanceDetailPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 /**
@@ -52,6 +55,10 @@ export default function App() {
             <Route path="trips" element={<TripsPage />} />
             <Route path="trips/new" element={<TripFormPage />} />
             <Route path="trips/:id" element={<TripDetailPage />} />
+            <Route path="maintenance" element={<MaintenancePage />} />
+            <Route path="maintenance/new" element={<MaintenanceFormPage />} />
+            <Route path="maintenance/:id" element={<MaintenanceDetailPage />} />
+            <Route path="maintenance/:id/edit" element={<MaintenanceFormPage />} />
 
             {/* 
               Future module routes will be added here:

@@ -106,7 +106,7 @@ export default function BusesPage() {
                 {/* Stats */}
                 {bus.totalTrips !== undefined && (
                   <div className="border-t border-gray-200 pt-3">
-                    <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="grid grid-cols-2 gap-2 text-center">
                       <div>
                         <p className="text-xs text-gray-500">Trips</p>
                         <p className="font-semibold text-gray-900">
@@ -120,9 +120,15 @@ export default function BusesPage() {
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500">Expenses</p>
+                        <p className="text-xs text-gray-500">Trip Expenses</p>
                         <p className="font-semibold text-red-600">
                           {formatCurrency(bus.totalExpenses || 0)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Maintenance</p>
+                        <p className="font-semibold text-amber-600">
+                          {formatCurrency(bus.totalMaintenanceCost || 0)}
                         </p>
                       </div>
                     </div>
