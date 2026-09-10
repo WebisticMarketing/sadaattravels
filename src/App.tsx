@@ -7,6 +7,9 @@ import LoginPage from './pages/LoginPage';
 import BootstrapPage from './pages/BootstrapPage';
 import DashboardPage from './pages/DashboardPage';
 import BusesPage from './pages/BusesPage';
+import TripsPage from './pages/TripsPage';
+import TripFormPage from './pages/TripFormPage';
+import TripDetailPage from './pages/TripDetailPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 /**
@@ -46,10 +49,12 @@ export default function App() {
           >
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="buses" element={<BusesPage />} />
+            <Route path="trips" element={<TripsPage />} />
+            <Route path="trips/new" element={<TripFormPage />} />
+            <Route path="trips/:id" element={<TripDetailPage />} />
 
             {/* 
               Future module routes will be added here:
-              <Route path="trips" element={<TripsPage />} />
               <Route path="adda" element={<AddaPage />} />
               ...
             */}

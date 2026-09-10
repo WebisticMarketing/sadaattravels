@@ -25,7 +25,7 @@ import type { NavItem } from '../types';
 const navigation: NavItem[] = [
   { label: 'Dashboard', path: '/app/dashboard', icon: 'LayoutDashboard' },
   { label: 'Buses', path: '/app/buses', icon: 'Bus' },
-  { label: 'Trips & Vouchers', path: '/app/trips', icon: 'Route', disabled: true },
+  { label: 'Trips & Vouchers', path: '/app/trips', icon: 'Route' },
   { label: 'Adda', path: '/app/adda', icon: 'MapPin', disabled: true },
   { label: 'Petrol Pump', path: '/app/petrol', icon: 'Fuel', disabled: true },
   { label: 'Cargo', path: '/app/cargo', icon: 'Package', disabled: true },
