@@ -80,6 +80,19 @@ export async function signIn(credentials: LoginCredentials): Promise<AuthUser> {
     throw new Error('Authentication succeeded but no user data returned.');
   }
 
+  // CRITICAL: Ensure the session is fully established before making database queries
+  // signInWithPassword() returns user data, but the JWT token might not be fully
+  // propagated to the client's internal state yet. This causes RLS policies to fail.
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  
+  if (sessionError || !sessionData.session) {
+    throw new Error('Authentication succeeded but session is not ready. Please try again.');
+  }
+
+  // Wait a brief moment for the session to be fully propagated
+  // This is necessary because Supabase's internal state might not be immediately ready
+  await new Promise(resolve => setTimeout(resolve, 100));
+
   // Resolve application profile
   const authUser = await resolveAuthUser(data.user.id, data.user.email!);
 
@@ -275,6 +288,9 @@ async function resolveAuthUser(
   supabaseUserId: string,
   email: string
 ): Promise<AuthUser> {
+  // Diagnostic: Log the start of profile resolution
+  console.log('[Auth] Resolving user profile for:', supabaseUserId);
+
   // Fetch application user profile
   const { data: profileData, error: profileError } = await supabase
     .from('users')
@@ -286,8 +302,11 @@ async function resolveAuthUser(
   // If there's an error, throw it - don't swallow it
   if (profileError) {
     logError(profileError, 'resolveAuthUser:profile');
+    console.error('[Auth] Profile query failed:', profileError.message, profileError.code);
     throw new Error(`Failed to fetch user profile: ${profileError.message}`);
   }
+
+  console.log('[Auth] Profile fetched successfully:', profileData ? 'found' : 'not found');
 
   const profile = profileData as UserProfile | null;
 
@@ -305,6 +324,7 @@ async function resolveAuthUser(
   }
 
   // Fetch user roles
+  console.log('[Auth] Fetching user roles...');
   const { data: userRolesData, error: rolesError } = await supabase
     .from('user_roles')
     .select(`
@@ -318,8 +338,11 @@ async function resolveAuthUser(
   // CRITICAL: Distinguish between "no roles" and "database error"
   if (rolesError) {
     logError(rolesError, 'resolveAuthUser:roles');
+    console.error('[Auth] Roles query failed:', rolesError.message, rolesError.code);
     throw new Error(`Failed to fetch user roles: ${rolesError.message}`);
   }
+
+  console.log('[Auth] Roles fetched:', userRolesData?.length || 0, 'roles');
 
   const userRoles = (userRolesData || []) as unknown as Array<{ role: { id: string; name: string } | null }>;
   const roles = userRoles
@@ -333,6 +356,7 @@ async function resolveAuthUser(
       .map((ur) => ur.role?.id)
       .filter((id): id is string => Boolean(id));
 
+    console.log('[Auth] Fetching permissions for role IDs:', roleIds);
     const { data: rolePermsData, error: permsError } = await supabase
       .from('role_permissions')
       .select(`
@@ -345,8 +369,11 @@ async function resolveAuthUser(
     // CRITICAL: Distinguish between "no permissions" and "database error"
     if (permsError) {
       logError(permsError, 'resolveAuthUser:permissions');
+      console.error('[Auth] Permissions query failed:', permsError.message, permsError.code);
       throw new Error(`Failed to fetch user permissions: ${permsError.message}`);
     }
+
+    console.log('[Auth] Permissions fetched:', rolePermsData?.length || 0, 'permission rows');
 
     const rolePerms = (rolePermsData || []) as unknown as Array<{ permission: { code: string } | null }>;
     permissions = [
