@@ -2,17 +2,12 @@ import { Outlet } from 'react-router-dom';
 
 /**
  * Layout for unauthenticated pages (login, etc.)
- * Centred card on a branded background.
+ * Simple centered layout - the page itself handles the card design.
  */
 export function AuthLayout() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-white to-gray-50 px-4">
-      <div className="w-full max-w-md">
-        {/* Auth content */}
-        <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
-          <Outlet />
-        </div>
-      </div>
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 px-4 py-8">
+      <Outlet />
     </div>
   );
 }
