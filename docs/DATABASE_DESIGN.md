@@ -20,7 +20,7 @@ This document describes the complete database schema for Sadaat Travels, a bus t
 **Users & Authentication:**
 - `users` - User accounts (extends Supabase auth.users)
 - `roles` - System roles (OWNER, MANAGER, STAFF)
-- `permissions` - Granular permissions (49 total)
+- `permissions` - Granular permissions (48 total)
 - `user_roles` - User-to-role assignments
 - `role_permissions` - Role-to-permission mappings
 
@@ -579,7 +579,7 @@ Each log entry includes:
 
 ### Permissions
 
-49 granular permissions organized by module:
+48 granular permissions organized by module:
 - Users (5 permissions)
 - Buses (4 permissions)
 - Trips (6 permissions)

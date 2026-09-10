@@ -39,7 +39,7 @@
 - ✅ MANAGER role seeded (line 11 in 004)
 - ✅ STAFF role seeded (line 12 in 004)
 - ✅ STAFF permissions do NOT include any `personal_expenses.*` (lines 130-148 in 004)
-- ✅ 49 permissions seeded across all modules
+- ✅ 48 permissions seeded across all modules
 
 ### 6. TypeScript Types Verified
 - ✅ `fuel_stock_adjustments` type defined
@@ -151,7 +151,7 @@ JOIN public.roles r ON r.id = rp.role_id
 WHERE r.name = 'OWNER';
 ```
 
-**Expected result:** 49 (OWNER has all permissions)
+**Expected result:** 48 (OWNER has all permissions)
 
 ### Verification Query 7: Test RLS - STAFF Cannot Access Personal Expenses
 

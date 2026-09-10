@@ -16,7 +16,7 @@
    - Deletes the STAFF role itself
 
 2. **Grant MANAGER Full Access**
-   - MANAGER now has ALL 49 permissions (same as OWNER)
+   - MANAGER now has ALL 48 permissions (same as OWNER)
    - Includes previously restricted permissions:
      - `users.view`, `users.create`, `users.update`, `users.delete`, `users.assign_roles`
      - `audit.view`
@@ -198,13 +198,13 @@ CREATE POLICY "role_permissions_delete" ON public.role_permissions
 --    SELECT COUNT(*) FROM public.role_permissions rp
 --    JOIN public.roles r ON r.id = rp.role_id
 --    WHERE r.name = 'MANAGER';
---    Expected: 49 (same as OWNER)
+--    Expected: 48 (same as OWNER)
 --
 -- 3. OWNER still has all permissions:
 --    SELECT COUNT(*) FROM public.role_permissions rp
 --    JOIN public.roles r ON r.id = rp.role_id
 --    WHERE r.name = 'OWNER';
---    Expected: 49
+--    Expected: 48
 --
 -- 4. Only OWNER and MANAGER roles exist:
 --    SELECT name FROM public.roles ORDER BY name;
@@ -230,7 +230,7 @@ FROM public.role_permissions rp
 JOIN public.roles r ON r.id = rp.role_id
 WHERE r.name = 'MANAGER';
 ```
-**Expected:** 49
+**Expected:** 48
 
 ### 3. Verify OWNER still has all permissions
 ```sql

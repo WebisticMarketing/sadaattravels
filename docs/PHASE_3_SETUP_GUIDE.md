@@ -88,7 +88,7 @@ After applying all migrations, verify the setup:
 - Tables: 23+ tables created
 - Enums: 6 enums created
 - Roles: 3 roles (OWNER, MANAGER, STAFF)
-- Permissions: 49+ permissions
+- Permissions: 48+ permissions
 - RLS: Enabled on all tables
 - Functions: 4 helper functions
 - Indexes: 60+ indexes
@@ -260,7 +260,7 @@ Complete this checklist to confirm Phase 3 is fully working:
 - [ ] 23+ tables created
 - [ ] 6 enums created
 - [ ] 3 roles seeded (OWNER, MANAGER, STAFF)
-- [ ] 49+ permissions seeded
+- [ ] 48+ permissions seeded
 - [ ] RLS enabled on all tables
 - [ ] 4 helper functions created
 - [ ] 60+ indexes created

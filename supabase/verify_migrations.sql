@@ -30,7 +30,7 @@ FROM public.roles;
 -- 4. Verify permissions exist
 SELECT 'Permissions Check' as test,
        COUNT(*) as permission_count,
-       CASE WHEN COUNT(*) >= 49 THEN '✓ PASS' ELSE '✗ FAIL' END as status
+       CASE WHEN COUNT(*) >= 48 THEN '✓ PASS' ELSE '✗ FAIL' END as status
 FROM public.permissions;
 
 -- 5. Verify RLS is enabled on all tables

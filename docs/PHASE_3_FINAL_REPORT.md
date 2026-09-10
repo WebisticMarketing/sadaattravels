@@ -191,7 +191,7 @@ CSS size: 27.83 KB (gzip: 6.02 KB)
 │  PostgreSQL Database                                     │
 │  ├─ users table (application profiles)                  │
 │  ├─ roles table (OWNER, MANAGER, STAFF)                 │
-│  ├─ permissions table (49 permissions)                  │
+│  ├─ permissions table (48 permissions)                  │
 │  ├─ user_roles (many-to-many)                           │
 │  ├─ role_permissions (many-to-many)                     │
 │  └─ audit_logs (login/logout events)                    │

@@ -254,7 +254,7 @@ No changes needed. Already had proper reversal tracking.
 
 - `fuel.reconcile` — Can perform physical stock reconciliation
 
-**Total permissions:** 49 (was 48)
+**Total permissions:** 48
 
 ---
 
