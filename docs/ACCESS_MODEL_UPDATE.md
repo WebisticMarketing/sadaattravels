@@ -239,7 +239,7 @@ FROM public.role_permissions rp
 JOIN public.roles r ON r.id = rp.role_id
 WHERE r.name = 'OWNER';
 ```
-**Expected:** 49
+**Expected:** 48
 
 ### 4. Verify only OWNER and MANAGER exist
 ```sql
