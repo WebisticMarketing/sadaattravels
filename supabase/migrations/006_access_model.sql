@@ -15,14 +15,24 @@
 -- SAFETY CHECK: Verify no STAFF users exist
 -- ============================================================================
 
--- This query will raise an error if any STAFF users exist
--- Run this separately first to verify:
--- SELECT COUNT(*) FROM public.user_roles ur
--- JOIN public.roles r ON r.id = ur.role_id
--- WHERE r.name = 'STAFF';
--- Expected result: 0
+-- This is a REAL safety check that will STOP execution if any STAFF users exist.
+-- The migration will FAIL with an exception if STAFF users are found.
 
--- If the count is > 0, STOP and report before proceeding.
+DO $$
+DECLARE
+    staff_count INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO staff_count
+    FROM public.user_roles ur
+    JOIN public.roles r ON r.id = ur.role_id
+    WHERE r.name = 'STAFF';
+    
+    IF staff_count > 0 THEN
+        RAISE EXCEPTION 'Cannot proceed: % STAFF user(s) exist. Please reassign or remove STAFF users before running this migration.', staff_count;
+    END IF;
+    
+    RAISE NOTICE 'Safety check passed: No STAFF users found. Proceeding with migration.';
+END $$;
 
 -- ============================================================================
 -- STEP 1: Remove STAFF role permissions
@@ -118,6 +128,26 @@ CREATE POLICY "role_permissions_update" ON public.role_permissions
 
 CREATE POLICY "role_permissions_delete" ON public.role_permissions
     FOR DELETE USING (public.has_role('OWNER') OR public.has_role('MANAGER'));
+
+-- ============================================================================
+-- OWNER PROTECTION RULE
+-- ============================================================================
+
+-- IMPORTANT SAFETY RULE:
+-- The application must NOT allow the final/only OWNER account to be deleted or demoted.
+-- This protection must be enforced in application logic AND database logic.
+--
+-- Database-level protection (to be implemented in application layer):
+-- Before deleting a user or removing their OWNER role, verify:
+--   SELECT COUNT(*) FROM public.user_roles ur
+--   JOIN public.roles r ON r.id = ur.role_id
+--   WHERE r.name = 'OWNER';
+--
+-- If count = 1, the operation MUST be blocked with an error:
+-- "Cannot remove the last OWNER account. At least one OWNER must exist."
+--
+-- This prevents accidental lockout from the system.
+-- Both OWNER and MANAGER have full access, but OWNER role must always have at least one member.
 
 -- ============================================================================
 -- VERIFICATION
