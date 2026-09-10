@@ -123,9 +123,9 @@ async function resetPassword() {
     console.log(`   Created: ${updatedUser.created_at}`);
     console.log(`   Last Sign In: ${updatedUser.last_sign_in_at || 'Never'}`);
     console.log('');
-    console.log('🎉 You can now log in with:');
-    console.log(`   Email: ${TARGET_USER_EMAIL}`);
-    console.log(`   Password: ${NEW_PASSWORD}`);
+    console.log('🎉 Password reset successful!');
+    console.log(`   You can now log in with email: ${TARGET_USER_EMAIL}`);
+    console.log('   Use the password you configured in your environment.');
     console.log('');
     console.log('⚠️  SECURITY REMINDER:');
     console.log('   - Delete this script if it was a one-time operation');
