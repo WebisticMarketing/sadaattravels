@@ -265,6 +265,11 @@ export function onAuthStateChange(
 
 /**
  * Resolve the application user profile from Supabase auth user.
+ * 
+ * IMPORTANT: This function now properly distinguishes between:
+ * 1. Successful profile resolution
+ * 2. Genuinely no profile (user authenticated but not in public.users)
+ * 3. Database/RLS errors (should be treated as errors, not "no profile")
  */
 async function resolveAuthUser(
   supabaseUserId: string,
@@ -277,8 +282,11 @@ async function resolveAuthUser(
     .eq('id', supabaseUserId)
     .maybeSingle();
 
+  // CRITICAL: Distinguish between "no profile" and "database error"
+  // If there's an error, throw it - don't swallow it
   if (profileError) {
     logError(profileError, 'resolveAuthUser:profile');
+    throw new Error(`Failed to fetch user profile: ${profileError.message}`);
   }
 
   const profile = profileData as UserProfile | null;
@@ -307,8 +315,10 @@ async function resolveAuthUser(
     `)
     .eq('user_id', supabaseUserId);
 
+  // CRITICAL: Distinguish between "no roles" and "database error"
   if (rolesError) {
     logError(rolesError, 'resolveAuthUser:roles');
+    throw new Error(`Failed to fetch user roles: ${rolesError.message}`);
   }
 
   const userRoles = (userRolesData || []) as unknown as Array<{ role: { id: string; name: string } | null }>;
@@ -332,8 +342,10 @@ async function resolveAuthUser(
       `)
       .in('role_id', roleIds);
 
+    // CRITICAL: Distinguish between "no permissions" and "database error"
     if (permsError) {
       logError(permsError, 'resolveAuthUser:permissions');
+      throw new Error(`Failed to fetch user permissions: ${permsError.message}`);
     }
 
     const rolePerms = (rolePermsData || []) as unknown as Array<{ permission: { code: string } | null }>;
