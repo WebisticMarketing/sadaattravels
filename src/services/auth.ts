@@ -273,6 +273,76 @@ async function resolveAuthUser(
 }
 
 // ============================================================================
+// Bootstrap Support
+// ============================================================================
+
+/**
+ * Check if the current authenticated user needs bootstrap (has no application profile).
+ */
+export function needsBootstrap(): boolean {
+  return _currentUser !== null && _currentUser.profile === null;
+}
+
+/**
+ * Bootstrap the first OWNER account.
+ * This function can ONLY be called when no OWNER exists in the system.
+ * 
+ * @param fullName - Full name for the OWNER
+ * @param phone - Optional phone number
+ * @returns Success message or throws error
+ */
+export async function bootstrapFirstOwner(
+  fullName: string,
+  phone?: string
+): Promise<string> {
+  if (!_currentUser) {
+    throw new Error('Must be authenticated to bootstrap.');
+  }
+
+  if (_currentUser.profile) {
+    throw new Error('User already has a profile. Bootstrap not needed.');
+  }
+
+  // Call the bootstrap function
+  const { data, error } = await supabase.rpc('bootstrap_first_owner', {
+    p_user_id: _currentUser.id,
+    p_email: _currentUser.email,
+    p_full_name: fullName,
+    p_phone: phone || null,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  // Refresh the user profile
+  const refreshedUser = await resolveAuthUser(_currentUser.id, _currentUser.email);
+  _currentUser = refreshedUser;
+  notifyListeners();
+
+  return data as string;
+}
+
+/**
+ * Check if any OWNER exists in the system.
+ * Used to determine if bootstrap is available.
+ */
+export async function checkOwnerExists(): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('user_roles')
+    .select('role:roles(name)')
+    .eq('role.name', 'OWNER')
+    .limit(1);
+
+  if (error) {
+    logError(error, 'checkOwnerExists');
+    return false;
+  }
+
+  return (data?.length ?? 0) > 0;
+}
+
+// ============================================================================
 // Role & Permission Helpers
 // ============================================================================
 

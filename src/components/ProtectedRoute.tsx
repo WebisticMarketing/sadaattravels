@@ -20,7 +20,7 @@ export function ProtectedRoute({
   requiredRole,
   requiredPermission,
 }: ProtectedRouteProps) {
-  const { user, loading, isAuthenticated } = useAuth();
+  const { user, loading, isAuthenticated, needsBootstrap } = useAuth();
   const location = useLocation();
 
   // Show loading while restoring session
@@ -35,6 +35,11 @@ export function ProtectedRoute({
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // Redirect to bootstrap if authenticated but no profile
+  if (needsBootstrap) {
+    return <Navigate to="/bootstrap" replace />;
   }
 
   // Check role requirement

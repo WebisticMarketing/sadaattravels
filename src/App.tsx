@@ -4,6 +4,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppLayout } from './layouts/AppLayout';
 import { AuthLayout } from './layouts/AuthLayout';
 import LoginPage from './pages/LoginPage';
+import BootstrapPage from './pages/BootstrapPage';
 import DashboardPage from './pages/DashboardPage';
 import NotFoundPage from './pages/NotFoundPage';
 
@@ -29,6 +30,9 @@ export default function App() {
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<LoginPage />} />
           </Route>
+
+          {/* Bootstrap route (authenticated but no profile) */}
+          <Route path="/bootstrap" element={<BootstrapPage />} />
 
           {/* Application routes (authenticated area) */}
           <Route

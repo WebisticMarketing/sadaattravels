@@ -11,6 +11,9 @@ import {
   restoreSession,
   getCurrentUser,
   onAuthStateChange,
+  needsBootstrap,
+  bootstrapFirstOwner,
+  checkOwnerExists,
   type AuthUser,
   type LoginCredentials,
   type AuthError,
@@ -111,6 +114,9 @@ export function useAuth() {
     clearError,
     isAuthenticated: !!user,
     hasProfile: !!user?.profile,
+    needsBootstrap: needsBootstrap(),
+    bootstrapFirstOwner,
+    checkOwnerExists,
   };
 }
 
