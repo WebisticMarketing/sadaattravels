@@ -6,6 +6,7 @@ import { AuthLayout } from './layouts/AuthLayout';
 import LoginPage from './pages/LoginPage';
 import BootstrapPage from './pages/BootstrapPage';
 import DashboardPage from './pages/DashboardPage';
+import BusesPage from './pages/BusesPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 /**
@@ -44,10 +45,10 @@ export default function App() {
             }
           >
             <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="buses" element={<BusesPage />} />
 
             {/* 
               Future module routes will be added here:
-              <Route path="buses" element={<BusesPage />} />
               <Route path="trips" element={<TripsPage />} />
               <Route path="adda" element={<AddaPage />} />
               ...
