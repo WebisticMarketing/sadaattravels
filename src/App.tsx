@@ -4,7 +4,6 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppLayout } from './layouts/AppLayout';
 import { AuthLayout } from './layouts/AuthLayout';
 import LoginPage from './pages/LoginPage';
-import BootstrapPage from './pages/BootstrapPage';
 import DashboardPage from './pages/DashboardPage';
 import BusesPage from './pages/BusesPage';
 import TripsPage from './pages/TripsPage';
@@ -66,9 +65,6 @@ export default function App() {
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
           </Route>
-
-          {/* Bootstrap route (authenticated but no profile) */}
-          <Route path="/bootstrap" element={<BootstrapPage />} />
 
           {/* Application routes (authenticated area) */}
           <Route

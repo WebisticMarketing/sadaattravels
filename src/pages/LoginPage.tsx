@@ -4,7 +4,7 @@
  * Professional single-card login form using Supabase Auth.
  */
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, FormEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/ui/Button';
@@ -15,7 +15,7 @@ import { Eye, EyeOff, Shield } from 'lucide-react';
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, error, clearError, loading, needsBootstrap } = useAuth();
+  const { login, error, clearError, loading } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,25 +24,13 @@ export default function LoginPage() {
   // Get the page the user was trying to access before being redirected to login
   const from = (location.state as any)?.from?.pathname || '/app/dashboard';
 
-  // If already authenticated and needs bootstrap, redirect
-  useEffect(() => {
-    if (needsBootstrap) {
-      navigate('/bootstrap', { replace: true });
-    }
-  }, [needsBootstrap, navigate]);
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     clearError();
 
     try {
       await login({ email, password });
-      // After login, check if bootstrap is needed
-      if (needsBootstrap) {
-        navigate('/bootstrap', { replace: true });
-      } else {
-        navigate(from, { replace: true });
-      }
+      navigate(from, { replace: true });
     } catch (err) {
       // Error is handled by the hook
     }

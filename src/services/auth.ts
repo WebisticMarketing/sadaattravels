@@ -363,78 +363,11 @@ async function resolveAuthUser(
 }
 
 // ============================================================================
-// Bootstrap Support
+// Bootstrap Support (REMOVED - No longer needed in production)
 // ============================================================================
-
-/**
- * Check if the current authenticated user needs bootstrap (has no application profile).
- */
-export function needsBootstrap(): boolean {
-  return _currentUser !== null && _currentUser.profile === null;
-}
-
-/**
- * Bootstrap the first OWNER account.
- * 
- * This function can ONLY be called when no OWNER exists in the system.
- * It creates the application user profile and assigns the OWNER role.
- * 
- * SECURITY: The database function derives user ID and email from auth.uid()
- * and auth.users, not from client input. Only fullName and phone are passed.
- * 
- * @param fullName - Full name for the OWNER
- * @param phone - Optional phone number
- * @returns Success message or throws error
- */
-export async function bootstrapFirstOwner(
-  fullName: string,
-  phone?: string
-): Promise<string> {
-  if (!_currentUser) {
-    throw new Error('Must be authenticated to bootstrap.');
-  }
-
-  if (_currentUser.profile) {
-    throw new Error('User already has a profile. Bootstrap not needed.');
-  }
-
-  // Call the bootstrap function - ONLY pass fullName and phone
-  // The database function will derive user ID and email from auth.uid() and auth.users
-  const { data, error } = await supabase.rpc('bootstrap_first_owner', {
-    p_full_name: fullName,
-    p_phone: phone || null,
-  });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  // Refresh the user profile
-  const refreshedUser = await resolveAuthUser(_currentUser.id, _currentUser.email);
-  _currentUser = refreshedUser;
-  notifyListeners();
-
-  return data as string;
-}
-
-/**
- * Check if any OWNER exists in the system.
- * Used to determine if bootstrap is available.
- */
-export async function checkOwnerExists(): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('user_roles')
-    .select('role:roles(name)')
-    .eq('role.name', 'OWNER')
-    .limit(1);
-
-  if (error) {
-    logError(error, 'checkOwnerExists');
-    return false;
-  }
-
-  return (data?.length ?? 0) > 0;
-}
+// Bootstrap functionality has been removed from the production application.
+// The bootstrap_first_owner database function remains in the database for
+// emergency/initialization purposes only, but is not exposed through the UI.
 
 // ============================================================================
 // Role & Permission Helpers
