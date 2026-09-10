@@ -18,6 +18,7 @@ import {
   LogOut,
   Menu,
   X,
+  User,
 } from 'lucide-react';
 import type { NavItem } from '../types';
 
@@ -33,13 +34,13 @@ const navigation: NavItem[] = [
   { label: 'Tyres', path: '/app/tyres', icon: 'CircleDot' },
   { label: 'Petrol Pump', path: '/app/petrol', icon: 'Fuel' },
   { label: 'Adda', path: '/app/adda', icon: 'MapPin' },
-  { label: 'Petrol Pump', path: '/app/petrol', icon: 'Fuel' },
   { label: 'Cargo', path: '/app/cargo', icon: 'Package' },
   { label: 'Installments', path: '/app/installments', icon: 'CreditCard' },
   { label: 'Reports', path: '/app/reports', icon: 'BarChart3' },
   { label: 'Personal Expenses', path: '/app/expenses', icon: 'Wallet' },
   { label: 'Users & Permissions', path: '/app/users', icon: 'Users' },
   { label: 'Audit Logs', path: '/app/audit', icon: 'ScrollText' },
+  { label: 'Account', path: '/app/account', icon: 'User' },
 ];
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -56,6 +57,7 @@ const iconMap: Record<string, React.ReactNode> = {
   Wallet: <Wallet className="h-5 w-5" />,
   Users: <Users className="h-5 w-5" />,
   ScrollText: <ScrollText className="h-5 w-5" />,
+  User: <User className="h-5 w-5" />,
 };
 
 export function AppLayout() {

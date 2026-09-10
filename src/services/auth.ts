@@ -122,6 +122,96 @@ export async function signOut(): Promise<void> {
   notifyListeners();
 }
 
+// ============================================================================
+// Password Management
+// ============================================================================
+
+/**
+ * Change password for the current authenticated user.
+ * Requires verification of current password for security.
+ */
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<void> {
+  if (!_currentUser) {
+    throw new Error('No authenticated user');
+  }
+
+  // Verify current password by attempting to sign in
+  const { error: verifyError } = await supabase.auth.signInWithPassword({
+    email: _currentUser.email,
+    password: currentPassword,
+  });
+
+  if (verifyError) {
+    throw new Error('Current password is incorrect');
+  }
+
+  // Update to new password
+  const { error: updateError } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (updateError) {
+    throw mapAuthError(updateError);
+  }
+
+  // Log password change audit event
+  await logAuditEvent('password_change', {
+    user_id: _currentUser.id,
+    email: _currentUser.email,
+  });
+}
+
+/**
+ * Request password reset email.
+ * Sends a recovery email with a reset link.
+ */
+export async function requestPasswordReset(email: string): Promise<void> {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`,
+  });
+
+  if (error) {
+    // Don't reveal if email exists or not for security
+    // Just log the error internally
+    logError(error, 'requestPasswordReset');
+    throw new Error('If an account exists with this email, a reset link has been sent');
+  }
+
+  // Log password reset request audit event
+  // Note: We don't have the user_id here since we can't query by email
+  // The audit log will record the email in metadata
+  await logAuditEvent('password_reset_requested', {
+    email: email,
+  });
+}
+
+/**
+ * Reset password using recovery token.
+ * Called after user clicks the reset link in their email.
+ */
+export async function resetPassword(newPassword: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (error) {
+    throw mapAuthError(error);
+  }
+
+  // Get current user for audit logging
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    // Log password reset completion audit event
+    await logAuditEvent('password_reset_completed', {
+      user_id: user.id,
+      email: user.email,
+    });
+  }
+}
+
 /**
  * Restore session from Supabase (e.g., after page refresh).
  */
@@ -443,7 +533,7 @@ async function updateLastLogin(userId: string): Promise<void> {
  * Log an authentication audit event.
  */
 async function logAuditEvent(
-  action: 'login' | 'logout',
+  action: import('../types/database').AuditAction,
   metadata: Record<string, any>
 ): Promise<void> {
   const { error } = await supabase.from('audit_logs').insert({
