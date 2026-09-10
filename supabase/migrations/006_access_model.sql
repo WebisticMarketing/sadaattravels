@@ -130,24 +130,137 @@ CREATE POLICY "role_permissions_delete" ON public.role_permissions
     FOR DELETE USING (public.has_role('OWNER') OR public.has_role('MANAGER'));
 
 -- ============================================================================
--- OWNER PROTECTION RULE
+-- OWNER PROTECTION - DATABASE-LEVEL ENFORCEMENT
 -- ============================================================================
 
 -- IMPORTANT SAFETY RULE:
--- The application must NOT allow the final/only OWNER account to be deleted or demoted.
--- This protection must be enforced in application logic AND database logic.
---
--- Database-level protection (to be implemented in application layer):
--- Before deleting a user or removing their OWNER role, verify:
---   SELECT COUNT(*) FROM public.user_roles ur
---   JOIN public.roles r ON r.id = ur.role_id
---   WHERE r.name = 'OWNER';
---
--- If count = 1, the operation MUST be blocked with an error:
--- "Cannot remove the last OWNER account. At least one OWNER must exist."
---
--- This prevents accidental lockout from the system.
--- Both OWNER and MANAGER have full access, but OWNER role must always have at least one member.
+-- The database MUST prevent any operation that would leave the system with zero OWNER users.
+-- This is enforced at the PostgreSQL level using triggers.
+
+-- Function to check if removing an OWNER role would leave zero OWNERs
+CREATE OR REPLACE FUNCTION public.check_last_owner_protection()
+RETURNS TRIGGER AS $$
+DECLARE
+    owner_count INTEGER;
+    is_owner_role BOOLEAN;
+BEGIN
+    -- Check if the role being modified is OWNER
+    SELECT EXISTS(
+        SELECT 1 FROM public.roles WHERE id = OLD.role_id AND name = 'OWNER'
+    ) INTO is_owner_role;
+    
+    -- If this is not an OWNER role, allow the operation
+    IF NOT is_owner_role THEN
+        RETURN OLD;
+    END IF;
+    
+    -- Count current OWNER users
+    SELECT COUNT(*) INTO owner_count
+    FROM public.user_roles ur
+    JOIN public.roles r ON r.id = ur.role_id
+    WHERE r.name = 'OWNER';
+    
+    -- If this is the last OWNER, block the operation
+    IF owner_count <= 1 THEN
+        RAISE EXCEPTION 'Cannot remove the last OWNER account. At least one OWNER must exist to prevent system lockout.';
+    END IF;
+    
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to check if updating an OWNER role assignment would demote the last OWNER
+CREATE OR REPLACE FUNCTION public.check_owner_role_change_protection()
+RETURNS TRIGGER AS $$
+DECLARE
+    old_is_owner BOOLEAN;
+    new_is_owner BOOLEAN;
+    owner_count INTEGER;
+BEGIN
+    -- Check if old role was OWNER
+    SELECT EXISTS(
+        SELECT 1 FROM public.roles WHERE id = OLD.role_id AND name = 'OWNER'
+    ) INTO old_is_owner;
+    
+    -- Check if new role is OWNER
+    SELECT EXISTS(
+        SELECT 1 FROM public.roles WHERE id = NEW.role_id AND name = 'OWNER'
+    ) INTO new_is_owner;
+    
+    -- If role is not changing from OWNER to non-OWNER, allow
+    IF NOT (old_is_owner AND NOT new_is_owner) THEN
+        RETURN NEW;
+    END IF;
+    
+    -- Count current OWNER users
+    SELECT COUNT(*) INTO owner_count
+    FROM public.user_roles ur
+    JOIN public.roles r ON r.id = ur.role_id
+    WHERE r.name = 'OWNER';
+    
+    -- If this is the last OWNER being demoted, block
+    IF owner_count <= 1 THEN
+        RAISE EXCEPTION 'Cannot demote the last OWNER account. At least one OWNER must exist to prevent system lockout.';
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to check if deleting a user would remove the last OWNER
+CREATE OR REPLACE FUNCTION public.check_user_delete_protection()
+RETURNS TRIGGER AS $$
+DECLARE
+    is_owner BOOLEAN;
+    owner_count INTEGER;
+BEGIN
+    -- Check if the user being deleted is an OWNER
+    SELECT EXISTS(
+        SELECT 1 
+        FROM public.user_roles ur
+        JOIN public.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = OLD.id AND r.name = 'OWNER'
+    ) INTO is_owner;
+    
+    -- If not an OWNER, allow deletion
+    IF NOT is_owner THEN
+        RETURN OLD;
+    END IF;
+    
+    -- Count current OWNER users
+    SELECT COUNT(*) INTO owner_count
+    FROM public.user_roles ur
+    JOIN public.roles r ON r.id = ur.role_id
+    WHERE r.name = 'OWNER';
+    
+    -- If this is the last OWNER, block deletion
+    IF owner_count <= 1 THEN
+        RAISE EXCEPTION 'Cannot delete the last OWNER account. At least one OWNER must exist to prevent system lockout.';
+    END IF;
+    
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create triggers for user_roles table
+DROP TRIGGER IF EXISTS trigger_check_last_owner_delete ON public.user_roles;
+CREATE TRIGGER trigger_check_last_owner_delete
+    BEFORE DELETE ON public.user_roles
+    FOR EACH ROW
+    EXECUTE FUNCTION public.check_last_owner_protection();
+
+DROP TRIGGER IF EXISTS trigger_check_owner_role_change ON public.user_roles;
+CREATE TRIGGER trigger_check_owner_role_change
+    BEFORE UPDATE ON public.user_roles
+    FOR EACH ROW
+    EXECUTE FUNCTION public.check_owner_role_change_protection();
+
+-- Create trigger for users table
+DROP TRIGGER IF EXISTS trigger_check_last_owner_user_delete ON public.users;
+CREATE TRIGGER trigger_check_last_owner_user_delete
+    BEFORE DELETE ON public.users
+    FOR EACH ROW
+    EXECUTE FUNCTION public.check_user_delete_protection();
 
 -- ============================================================================
 -- VERIFICATION
