@@ -33,7 +33,10 @@ export type AuditAction =
   | 'cancel'
   | 'permission_change'
   | 'user_change'
-  | 'financial_change';
+  | 'financial_change'
+  | 'password_change'
+  | 'password_reset_requested'
+  | 'password_reset_completed';
 
 // ============================================================================
 // USERS & AUTH

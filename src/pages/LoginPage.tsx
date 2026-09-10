@@ -119,6 +119,16 @@ export default function LoginPage() {
             </button>
           </div>
 
+          {/* Forgot Password Link */}
+          <div className="text-right">
+            <a
+              href="/forgot-password"
+              className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
+            >
+              Forgot password?
+            </a>
+          </div>
+
           {/* Error Alert */}
           {error && (
             <Alert variant="danger" title="Login failed">

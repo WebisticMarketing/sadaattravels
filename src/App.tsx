@@ -36,6 +36,10 @@ import UsersPage from './pages/UsersPage';
 import UserFormPage from './pages/UserFormPage';
 import UserDetailPage from './pages/UserDetailPage';
 import AuditLogsPage from './pages/AuditLogsPage';
+import AccountPage from './pages/AccountPage';
+import AccountSecurityPage from './pages/AccountSecurityPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 /**
@@ -59,6 +63,8 @@ export default function App() {
           {/* Auth routes */}
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
           </Route>
 
           {/* Bootstrap route (authenticated but no profile) */}
@@ -107,6 +113,8 @@ export default function App() {
             <Route path="users/new" element={<UserFormPage />} />
             <Route path="users/:id" element={<UserDetailPage />} />
             <Route path="audit" element={<AuditLogsPage />} />
+            <Route path="account" element={<AccountPage />} />
+            <Route path="account/security" element={<AccountSecurityPage />} />
 
             {/* 
               Future module routes will be added here:
