@@ -20,7 +20,7 @@ export function ProtectedRoute({
   requiredRole,
   requiredPermission,
 }: ProtectedRouteProps) {
-  const { user, loading, isAuthenticated, needsBootstrap } = useAuth();
+  const { user, loading, isAuthenticated } = useAuth();
   const location = useLocation();
 
   // Show loading while restoring session
@@ -37,22 +37,15 @@ export function ProtectedRoute({
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Redirect to bootstrap if authenticated but no profile
-  if (needsBootstrap) {
-    return <Navigate to="/bootstrap" replace />;
-  }
-
-  // Block access if user has profile but no OWNER/MANAGER role
-  if (user?.profile && (!user.roles || user.roles.length === 0)) {
+  // Block access if user has no profile or no authorized role
+  // This covers: no profile, no roles, or unauthorized roles
+  if (!user?.profile || !user.roles || user.roles.length === 0) {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="text-center max-w-md">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
           <p className="text-gray-600 mb-4">
-            Your account has not been assigned a role. Please contact an administrator.
-          </p>
-          <p className="text-sm text-gray-500">
-            Only users with OWNER or MANAGER roles can access the application.
+            Your account is not authorized to access this system. Please contact the system administrator.
           </p>
         </div>
       </div>
