@@ -60,3 +60,6 @@ export function useDebounce<T>(value: T, delay: number = 300): T {
 
 // Re-export auth hooks
 export { useAuth, useHasRole, useHasPermission, useHasAnyRole, useHasAllPermissions } from './useAuth';
+
+// Re-export role helper functions
+export { isOwner, isManager, hasFullAccess } from '../services/auth';

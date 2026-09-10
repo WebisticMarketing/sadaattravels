@@ -20,6 +20,9 @@ export type RecordStatus = 'active' | 'reversed' | 'cancelled';
 export type FuelSaleType = 'EXTERNAL_CUSTOMER' | 'INTERNAL_BUS';
 export type InstallmentType = 'given' | 'taken';
 export type InstallmentAssetType = 'bus' | 'car' | 'property' | 'other';
+
+// Active roles in the system (STAFF role has been removed)
+export type ActiveRole = 'OWNER' | 'MANAGER';
 export type AuditAction =
   | 'login'
   | 'logout'

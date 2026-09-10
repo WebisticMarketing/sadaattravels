@@ -278,9 +278,34 @@ async function resolveAuthUser(
 
 /**
  * Check if the current user has a specific role.
+ * 
+ * Active roles: OWNER, MANAGER
+ * Note: STAFF role has been removed from the system.
  */
 export function hasRole(role: string): boolean {
   return _currentUser?.roles.includes(role) ?? false;
+}
+
+/**
+ * Check if the current user is an OWNER.
+ */
+export function isOwner(): boolean {
+  return hasRole('OWNER');
+}
+
+/**
+ * Check if the current user is a MANAGER.
+ */
+export function isManager(): boolean {
+  return hasRole('MANAGER');
+}
+
+/**
+ * Check if the current user has full access (OWNER or MANAGER).
+ * Both roles have identical permissions in the current system.
+ */
+export function hasFullAccess(): boolean {
+  return isOwner() || isManager();
 }
 
 /**
