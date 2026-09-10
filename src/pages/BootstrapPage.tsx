@@ -200,19 +200,20 @@ export default function BootstrapPage() {
 
           <div className="space-y-4 text-sm">
             <div>
-              <p className="font-semibold text-gray-900 mb-2">Step 1: Get your User ID</p>
+              <p className="font-semibold text-gray-900 mb-2">Step 1: Login to Supabase Dashboard</p>
               <p className="text-gray-600">
-                Your Supabase Auth User ID: <code className="bg-gray-100 px-2 py-1 rounded">{user?.id}</code>
+                Go to your Supabase project → SQL Editor
               </p>
             </div>
 
             <div>
-              <p className="font-semibold text-gray-900 mb-2">Step 2: Run SQL in Supabase Dashboard</p>
+              <p className="font-semibold text-gray-900 mb-2">Step 2: Run SQL as Authenticated User</p>
+              <p className="text-gray-600 mb-2">
+                The bootstrap function will automatically use your authenticated user ID and email.
+              </p>
               <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-xs">
-{`-- Replace with your actual User ID and details
+{`-- The function derives your user ID and email from auth.uid()
 SELECT public.bootstrap_first_owner(
-  '${user?.id}'::uuid,
-  '${user?.email}',
   'Your Full Name',
   '+92 300 1234567'  -- or NULL
 );`}
@@ -223,11 +224,11 @@ SELECT public.bootstrap_first_owner(
               <p className="font-semibold text-gray-900 mb-2">Step 3: Verify</p>
               <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-xs">
 {`-- Check that OWNER was created
-SELECT u.email, r.name as role
+SELECT u.email, u.full_name, r.name as role
 FROM public.users u
 JOIN public.user_roles ur ON ur.user_id = u.id
 JOIN public.roles r ON r.id = ur.role_id
-WHERE u.email = '${user?.email}';`}
+WHERE r.name = 'OWNER';`}
               </pre>
             </div>
           </div>

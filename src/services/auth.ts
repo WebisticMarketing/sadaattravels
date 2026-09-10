@@ -285,7 +285,12 @@ export function needsBootstrap(): boolean {
 
 /**
  * Bootstrap the first OWNER account.
+ * 
  * This function can ONLY be called when no OWNER exists in the system.
+ * It creates the application user profile and assigns the OWNER role.
+ * 
+ * SECURITY: The database function derives user ID and email from auth.uid()
+ * and auth.users, not from client input. Only fullName and phone are passed.
  * 
  * @param fullName - Full name for the OWNER
  * @param phone - Optional phone number
@@ -303,10 +308,9 @@ export async function bootstrapFirstOwner(
     throw new Error('User already has a profile. Bootstrap not needed.');
   }
 
-  // Call the bootstrap function
+  // Call the bootstrap function - ONLY pass fullName and phone
+  // The database function will derive user ID and email from auth.uid() and auth.users
   const { data, error } = await supabase.rpc('bootstrap_first_owner', {
-    p_user_id: _currentUser.id,
-    p_email: _currentUser.email,
     p_full_name: fullName,
     p_phone: phone || null,
   });
