@@ -167,7 +167,7 @@ BEGIN
     
     RETURN OLD;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Function to check if updating an OWNER role assignment would demote the last OWNER
 CREATE OR REPLACE FUNCTION public.check_owner_role_change_protection()
@@ -205,7 +205,7 @@ BEGIN
     
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Function to check if deleting a user would remove the last OWNER
 CREATE OR REPLACE FUNCTION public.check_user_delete_protection()
@@ -240,7 +240,7 @@ BEGIN
     
     RETURN OLD;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Create triggers for user_roles table
 DROP TRIGGER IF EXISTS trigger_check_last_owner_delete ON public.user_roles;
