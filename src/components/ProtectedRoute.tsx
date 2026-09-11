@@ -1,13 +1,18 @@
 /**
  * Protected route component.
- *
- * Redirects unauthenticated users to login.
- * Shows loading state while restoring session.
+ * 
+ * Handles the following states:
+ * - Loading/restoring: Shows loading spinner
+ * - Authenticated + authorized: Shows protected content
+ * - Authenticated + unauthorized: Shows "Access Denied"
+ * - Authenticated + temporary error: Shows "System Error" with Retry
+ * - Unauthenticated: Redirects to /login
  */
 
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Loading } from './ui/Loading';
+import { Button } from './ui/Button';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -20,11 +25,11 @@ export function ProtectedRoute({
   requiredRole,
   requiredPermission,
 }: ProtectedRouteProps) {
-  const { user, loading, isAuthenticated, error } = useAuth();
+  const { user, loading, restoring, isAuthenticated, error, retry } = useAuth();
   const location = useLocation();
 
   // Show loading while restoring session
-  if (loading) {
+  if (loading || restoring) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loading size="lg" label="Restoring session..." />
@@ -42,12 +47,12 @@ export function ProtectedRoute({
           <p className="text-gray-600 mb-4">
             An error occurred while loading your account. Please try again or contact support if the problem persists.
           </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          <Button
+            onClick={retry}
+            variant="primary"
           >
             Retry
-          </button>
+          </Button>
         </div>
       </div>
     );

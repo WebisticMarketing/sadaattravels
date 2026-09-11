@@ -8,13 +8,16 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   signIn,
   signOut,
-  restoreSession,
   getCurrentUser,
   onAuthStateChange,
   type AuthUser,
   type LoginCredentials,
   type AuthError,
 } from '../services/auth';
+import {
+  restoreSession,
+  initializeAuthListener,
+} from '../services/authService';
 
 /**
  * Hook for accessing authentication state and operations.
@@ -23,6 +26,12 @@ export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(getCurrentUser());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<AuthError | null>(null);
+  const [restoring, setRestoring] = useState(false);
+
+  // Initialize auth listener once on mount
+  useEffect(() => {
+    initializeAuthListener();
+  }, []);
 
   // Restore session on mount
   useEffect(() => {
@@ -30,10 +39,12 @@ export function useAuth() {
 
     async function restore() {
       try {
+        setRestoring(true);
         const restoredUser = await restoreSession();
         if (mounted) {
           setUser(restoredUser);
           setLoading(false);
+          setRestoring(false);
         }
       } catch (err) {
         if (mounted) {
@@ -42,6 +53,7 @@ export function useAuth() {
             message: 'Failed to restore session.',
           });
           setLoading(false);
+          setRestoring(false);
         }
       }
     }
@@ -102,12 +114,33 @@ export function useAuth() {
     setError(null);
   }, []);
 
+  const retry = useCallback(async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      setRestoring(true);
+      const restoredUser = await restoreSession();
+      setUser(restoredUser);
+      setLoading(false);
+      setRestoring(false);
+    } catch (err) {
+      setError({
+        code: 'SESSION_RESTORE_FAILED',
+        message: 'Failed to restore session.',
+      });
+      setLoading(false);
+      setRestoring(false);
+    }
+  }, []);
+
   return {
     user,
     loading,
+    restoring,
     error,
     login,
     logout,
+    retry,
     clearError,
     isAuthenticated: !!user,
     hasProfile: !!user?.profile,
