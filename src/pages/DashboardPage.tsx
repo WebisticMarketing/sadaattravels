@@ -1,17 +1,20 @@
+import { useState } from 'react';
 import { useDashboardMetrics } from '../hooks/useDashboard';
-import { Card } from '../components/ui/Card';
-import { Loading } from '../components/ui/Loading';
-import { Alert } from '../components/ui/Alert';
+import { 
+  Loading, 
+  Alert, 
+  PageHeader, 
+  MonthYearFilter,
+  SummaryCard,
+  PrintButton
+} from '../components/ui';
 import { formatCurrency } from '../lib/utils';
-import { Bus, Fuel, TrendingUp, TrendingDown, Calendar, Route } from 'lucide-react';
+import { Bus, Fuel, TrendingUp, TrendingDown, Route } from 'lucide-react';
 
-/**
- * Dashboard - Main overview page
- * 
- * Shows today's and this month's business metrics
- * Mobile-friendly, simple, and fast
- */
 export default function DashboardPage() {
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  
   const { metrics, loading, error } = useDashboardMetrics();
 
   if (loading) {
@@ -38,152 +41,117 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Business overview for Sadaat Travels
-        </p>
-      </div>
+      {/* Header with filters */}
+      <PageHeader 
+        title="Dashboard" 
+        description="Business overview for Sadaat Travels"
+      >
+        <MonthYearFilter
+          month={selectedMonth}
+          year={selectedYear}
+          onMonthChange={setSelectedMonth}
+          onYearChange={setSelectedYear}
+        />
+        <PrintButton />
+      </PageHeader>
 
       {/* Today's Summary */}
       <div>
-        <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-gray-900">
-          <Calendar className="h-5 w-5" />
-          Today
-        </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <MetricCard
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Today</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <SummaryCard
             label="Trips"
-            value={metrics.today.trips.toString()}
-            icon={<Route className="h-5 w-5 text-blue-600" />}
+            value={metrics.today.trips}
+            icon={<Route className="h-6 w-6" />}
           />
-          <MetricCard
+          <SummaryCard
             label="Revenue"
             value={formatCurrency(metrics.today.revenue)}
-            icon={<TrendingUp className="h-5 w-5 text-green-600" />}
+            icon={<TrendingUp className="h-6 w-6" />}
+            variant="success"
           />
-          <MetricCard
+          <SummaryCard
             label="Expenses"
             value={formatCurrency(metrics.today.expenses)}
-            icon={<TrendingDown className="h-5 w-5 text-red-600" />}
+            icon={<TrendingDown className="h-6 w-6" />}
+            variant="danger"
           />
-          <MetricCard
+          <SummaryCard
             label="Profit"
             value={formatCurrency(metrics.today.profit)}
-            valueColor={metrics.today.profit >= 0 ? 'text-green-600' : 'text-red-600'}
-            icon={<TrendingUp className="h-5 w-5 text-green-600" />}
+            icon={<TrendingUp className="h-6 w-6" />}
+            variant={metrics.today.profit >= 0 ? 'success' : 'danger'}
           />
         </div>
       </div>
 
       {/* This Month's Summary */}
       <div>
-        <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-gray-900">
-          <Calendar className="h-5 w-5" />
-          This Month
-        </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <MetricCard
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">This Month</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <SummaryCard
             label="Trips"
-            value={metrics.thisMonth.trips.toString()}
-            icon={<Route className="h-5 w-5 text-blue-600" />}
+            value={metrics.thisMonth.trips}
+            icon={<Route className="h-6 w-6" />}
           />
-          <MetricCard
+          <SummaryCard
             label="Revenue"
             value={formatCurrency(metrics.thisMonth.revenue)}
-            icon={<TrendingUp className="h-5 w-5 text-green-600" />}
+            icon={<TrendingUp className="h-6 w-6" />}
+            variant="success"
           />
-          <MetricCard
+          <SummaryCard
             label="Expenses"
             value={formatCurrency(metrics.thisMonth.expenses)}
-            icon={<TrendingDown className="h-5 w-5 text-red-600" />}
+            icon={<TrendingDown className="h-6 w-6" />}
+            variant="danger"
           />
-          <MetricCard
+          <SummaryCard
             label="Profit"
             value={formatCurrency(metrics.thisMonth.profit)}
-            valueColor={metrics.thisMonth.profit >= 0 ? 'text-green-600' : 'text-red-600'}
-            icon={<TrendingUp className="h-5 w-5 text-green-600" />}
+            icon={<TrendingUp className="h-6 w-6" />}
+            variant={metrics.thisMonth.profit >= 0 ? 'success' : 'danger'}
           />
         </div>
       </div>
 
-      {/* Quick Stats */}
+      {/* Fleet Summary */}
       <div>
-        <h2 className="mb-3 text-lg font-semibold text-gray-900">Quick Stats</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
-                <Bus className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Buses</p>
-                <p className="text-xl font-bold text-gray-900">
-                  {metrics.buses.active} / {metrics.buses.total}
-                </p>
-                <p className="text-xs text-gray-500">Active / Total</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100">
-                <Fuel className="h-5 w-5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Fuel Stock</p>
-                <p className="text-xl font-bold text-gray-900">
-                  {metrics.fuel.currentStock.toFixed(1)} L
-                </p>
-                <p className="text-xs text-gray-500">Current stock</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
-                <TrendingUp className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Month Profit</p>
-                <p className={`text-xl font-bold ${metrics.thisMonth.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(metrics.thisMonth.profit)}
-                </p>
-                <p className="text-xs text-gray-500">This month</p>
-              </div>
-            </div>
-          </Card>
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Fleet Summary</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <SummaryCard
+            label="Active Buses"
+            value={metrics.buses.active}
+            icon={<Bus className="h-6 w-6" />}
+          />
+          <SummaryCard
+            label="Total Buses"
+            value={metrics.buses.total}
+            icon={<Bus className="h-6 w-6" />}
+          />
         </div>
       </div>
+
+      {/* Fuel Summary */}
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Fuel Summary</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <SummaryCard
+            label="Current Stock"
+            value={`${metrics.fuel.currentStock.toFixed(0)} L`}
+            icon={<Fuel className="h-6 w-6" />}
+          />
+        </div>
+      </div>
+
+      {/* Empty state message if no data */}
+      {metrics.today.trips === 0 && metrics.thisMonth.trips === 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+          <p className="text-sm text-blue-700">
+            No trip data available. Start by creating trips in the Trips & Vouchers section.
+          </p>
+        </div>
+      )}
     </div>
-  );
-}
-
-/**
- * Metric card component
- */
-interface MetricCardProps {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-  valueColor?: string;
-}
-
-function MetricCard({ label, value, icon, valueColor = 'text-gray-900' }: MetricCardProps) {
-  return (
-    <Card className="p-4">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
-          {icon}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm text-gray-500">{label}</p>
-          <p className={`truncate text-xl font-bold ${valueColor}`}>{value}</p>
-        </div>
-      </div>
-    </Card>
   );
 }
