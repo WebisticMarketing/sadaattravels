@@ -3,6 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { usePersonalExpenses } from '../hooks/usePersonalExpenses';
 import { formatCurrency, formatDate } from '../lib/utils';
 import { Plus, Filter, Wallet } from 'lucide-react';
+import { PageHeader } from '../components/ui/PageHeader';
+import { SearchInput } from '../components/ui/SearchInput';
+import { SummaryCard } from '../components/ui/SummaryCard';
+import { PrintButton } from '../components/ui/PrintButton';
+import { Button } from '../components/ui/Button';
 
 export default function PersonalExpensesPage() {
   const navigate = useNavigate();
@@ -11,6 +16,7 @@ export default function PersonalExpensesPage() {
     startDate: '',
     endDate: '',
     category: '',
+    search: '',
   });
 
   const { expenses, loading, error } = usePersonalExpenses({
@@ -19,29 +25,37 @@ export default function PersonalExpensesPage() {
     category: filters.category || undefined,
   });
 
-  const totalAmount = expenses.reduce((sum, e) => sum + e.amount, 0);
+  // Filter expenses by search
+  const filteredExpenses = expenses.filter(expense => {
+    if (!filters.search) return true;
+    const searchLower = filters.search.toLowerCase();
+    return (
+      expense.category.toLowerCase().includes(searchLower) ||
+      expense.description.toLowerCase().includes(searchLower) ||
+      expense.paid_by?.toLowerCase().includes(searchLower)
+    );
+  });
 
+  const totalAmount = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+  
   // Get unique categories for filter
   const categories = Array.from(new Set(expenses.map(e => e.category))).sort();
-
+  
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Personal Expenses</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Track personal expenses (separate from business)
-          </p>
+      <PageHeader 
+        title="Personal Expenses" 
+        description="Track personal expenses (separate from business)"
+      >
+        <div className="flex gap-2">
+          <PrintButton />
+          <Button onClick={() => navigate('/app/expenses/new')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Expense
+          </Button>
         </div>
-        <button
-          onClick={() => navigate('/app/expenses/new')}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4" />
-          Add Expense
-        </button>
-      </div>
+      </PageHeader>
 
       {/* Info Banner */}
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
@@ -61,48 +75,44 @@ export default function PersonalExpensesPage() {
 
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
-              <Wallet className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Total Expenses</p>
-              <p className="text-xl font-bold text-gray-900">{expenses.length}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100">
-              <Wallet className="h-5 w-5 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Total Amount</p>
-              <p className="text-xl font-bold text-amber-600">
-                {formatCurrency(totalAmount)}
-              </p>
-            </div>
-          </div>
-        </div>
+        <SummaryCard
+          label="Total Expenses"
+          value={filteredExpenses.length}
+          icon={<Wallet className="h-6 w-6" />}
+        />
+        <SummaryCard
+          label="Total Amount"
+          value={formatCurrency(totalAmount)}
+          icon={<Wallet className="h-6 w-6" />}
+          variant="warning"
+        />
       </div>
 
       {/* Filters */}
       <div className="rounded-lg border border-gray-200 bg-white p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-gray-900">Filters</h3>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setShowFilters(!showFilters)}
-            className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
           >
-            <Filter className="h-4 w-4" />
+            <Filter className="mr-1 h-4 w-4" />
             {showFilters ? 'Hide' : 'Show'}
-          </button>
+          </Button>
+        </div>
+
+        {/* Search */}
+        <div className="mb-3">
+          <SearchInput
+            value={filters.search}
+            onChange={(value) => setFilters({ ...filters, search: value })}
+            placeholder="Search by category, description, or paid by..."
+          />
         </div>
 
         {showFilters && (
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-3">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">
                 Start Date
@@ -145,7 +155,6 @@ export default function PersonalExpensesPage() {
           </div>
         )}
       </div>
-
       {/* Expenses List */}
       {loading ? (
         <div className="flex min-h-[400px] items-center justify-center">
@@ -158,16 +167,16 @@ export default function PersonalExpensesPage() {
         <div className="rounded-lg border border-red-200 bg-red-50 p-4">
           <p className="text-sm text-red-800">{error}</p>
         </div>
-      ) : expenses.length === 0 ? (
+      ) : filteredExpenses.length === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
           <Wallet className="mx-auto h-12 w-12 text-gray-300" />
           <h3 className="mt-4 text-lg font-medium text-gray-900">No personal expenses</h3>
           <p className="mt-2 text-sm text-gray-500">
-            {showFilters
+            {showFilters || filters.search
               ? 'Try adjusting your filters'
               : 'Get started by adding your first personal expense'}
           </p>
-          {!showFilters && (
+          {!showFilters && !filters.search && (
             <button
               onClick={() => navigate('/app/expenses/new')}
               className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
@@ -179,7 +188,7 @@ export default function PersonalExpensesPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {expenses.map((expense) => (
+          {filteredExpenses.map((expense) => (
             <div
               key={expense.id}
               onClick={() => navigate(`/app/expenses/${expense.id}`)}

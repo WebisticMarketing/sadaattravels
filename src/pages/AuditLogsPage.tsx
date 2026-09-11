@@ -3,6 +3,10 @@ import { useAuditLogs, useAuditActionTypes, useAuditTableNames } from '../hooks/
 import { formatDate, formatTime } from '../lib/utils';
 import { Badge } from '../components/ui/Badge';
 import { Filter, ScrollText } from 'lucide-react';
+import { PageHeader } from '../components/ui/PageHeader';
+import { SummaryCard } from '../components/ui/SummaryCard';
+import { PrintButton } from '../components/ui/PrintButton';
+import { Button } from '../components/ui/Button';
 
 export default function AuditLogsPage() {
   const [filters, setFilters] = useState({
@@ -46,67 +50,49 @@ export default function AuditLogsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Audit Logs</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          View system activity and changes
-        </p>
-      </div>
+      <PageHeader 
+        title="Audit Logs" 
+        description="View system activity and changes"
+      >
+        <PrintButton />
+      </PageHeader>
 
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
-              <ScrollText className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Total Logs</p>
-              <p className="text-xl font-bold text-gray-900">{logs.length}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
-              <ScrollText className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Action Types</p>
-              <p className="text-xl font-bold text-gray-900">{actions.length}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
-              <ScrollText className="h-5 w-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Tables Tracked</p>
-              <p className="text-xl font-bold text-gray-900">{tables.length}</p>
-            </div>
-          </div>
-        </div>
+        <SummaryCard
+          label="Total Logs"
+          value={logs.length}
+          icon={<ScrollText className="h-6 w-6" />}
+        />
+        <SummaryCard
+          label="Action Types"
+          value={actions.length}
+          icon={<ScrollText className="h-6 w-6" />}
+          variant="success"
+        />
+        <SummaryCard
+          label="Tables Tracked"
+          value={tables.length}
+          icon={<ScrollText className="h-6 w-6" />}
+        />
       </div>
 
       {/* Filters */}
       <div className="rounded-lg border border-gray-200 bg-white p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-gray-900">Filters</h3>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setShowFilters(!showFilters)}
-            className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
           >
-            <Filter className="h-4 w-4" />
+            <Filter className="mr-1 h-4 w-4" />
             {showFilters ? 'Hide' : 'Show'}
-          </button>
+          </Button>
         </div>
 
         {showFilters && (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">
                 Action

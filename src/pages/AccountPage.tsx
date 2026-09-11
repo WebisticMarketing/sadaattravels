@@ -2,6 +2,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { User, Mail, Phone, Shield, Calendar } from 'lucide-react';
+import { PageHeader } from '../components/ui/PageHeader';
 
 export default function AccountPage() {
   const { user } = useAuth();
@@ -13,12 +14,10 @@ export default function AccountPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Account</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Manage your account settings and security
-        </p>
-      </div>
+      <PageHeader 
+        title="Account" 
+        description="Manage your account settings and security"
+      />
 
       {/* Profile Information */}
       <Card>
