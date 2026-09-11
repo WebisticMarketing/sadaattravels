@@ -3,6 +3,9 @@ import { useUsers, useRoles } from '../hooks/useUsers';
 import { Badge } from '../components/ui/Badge';
 import { formatDate } from '../lib/utils';
 import { Plus, Users as UsersIcon } from 'lucide-react';
+import { PageHeader } from '../components/ui/PageHeader';
+import { SummaryCard } from '../components/ui/SummaryCard';
+import { Button } from '../components/ui/Button';
 
 export default function UsersPage() {
   const navigate = useNavigate();
@@ -31,61 +34,34 @@ export default function UsersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Users & Permissions</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Manage system users and their roles
-          </p>
-        </div>
-        <button
-          onClick={() => navigate('/app/users/new')}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4" />
+      <PageHeader 
+        title="Users & Permissions" 
+        description="Manage system users and their roles"
+      >
+        <Button onClick={() => navigate('/app/users/new')}>
+          <Plus className="mr-2 h-4 w-4" />
           Add User
-        </button>
-      </div>
+        </Button>
+      </PageHeader>
 
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
-              <UsersIcon className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Total Users</p>
-              <p className="text-xl font-bold text-gray-900">{users.length}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
-              <UsersIcon className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Active Users</p>
-              <p className="text-xl font-bold text-gray-900">
-                {users.filter(u => u.status === 'active').length}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
-              <UsersIcon className="h-5 w-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Roles Available</p>
-              <p className="text-xl font-bold text-gray-900">{roles.length}</p>
-            </div>
-          </div>
-        </div>
+        <SummaryCard
+          label="Total Users"
+          value={users.length}
+          icon={<UsersIcon className="h-6 w-6" />}
+        />
+        <SummaryCard
+          label="Active Users"
+          value={users.filter(u => u.status === 'active').length}
+          icon={<UsersIcon className="h-6 w-6" />}
+          variant="success"
+        />
+        <SummaryCard
+          label="Roles Available"
+          value={roles.length}
+          icon={<UsersIcon className="h-6 w-6" />}
+        />
       </div>
 
       {/* Users List */}

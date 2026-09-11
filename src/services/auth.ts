@@ -80,18 +80,10 @@ export async function signIn(credentials: LoginCredentials): Promise<AuthUser> {
     throw new Error('Authentication succeeded but no user data returned.');
   }
 
-  // CRITICAL: Ensure the session is fully established before making database queries
-  // signInWithPassword() returns user data, but the JWT token might not be fully
-  // propagated to the client's internal state yet. This causes RLS policies to fail.
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-  
-  if (sessionError || !sessionData.session) {
-    throw new Error('Authentication succeeded but session is not ready. Please try again.');
-  }
-
-  // Wait a brief moment for the session to be fully propagated
-  // This is necessary because Supabase's internal state might not be immediately ready
-  await new Promise(resolve => setTimeout(resolve, 100));
+  // Supabase's signInWithPassword() guarantees the session is established before resolving.
+  // The returned session contains the JWT token which is automatically attached to all
+  // subsequent database queries by the Supabase client. No additional delay or session
+  // verification is needed.
 
   // Resolve application profile
   const authUser = await resolveAuthUser(data.user.id, data.user.email!);

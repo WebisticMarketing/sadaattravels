@@ -11,3 +11,13 @@ export { Loading, Skeleton, TableSkeleton } from './Loading';
 export { EmptyState } from './EmptyState';
 export { ErrorBoundary } from './ErrorBoundary';
 export { ErrorDisplay } from './ErrorDisplay';
+
+// New shared components
+export { PageHeader } from './PageHeader';
+export { DateFilter } from './DateFilter';
+export { MonthYearFilter } from './MonthYearFilter';
+export { SearchInput } from './SearchInput';
+export { ConfirmDialog } from './ConfirmDialog';
+export { PrintButton } from './PrintButton';
+export { CurrencyDisplay } from './CurrencyDisplay';
+export { SummaryCard } from './SummaryCard';

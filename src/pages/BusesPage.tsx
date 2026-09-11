@@ -9,6 +9,9 @@ import { Loading } from '../components/ui/Loading';
 import { Alert } from '../components/ui/Alert';
 import { Badge } from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/EmptyState';
+import { PageHeader } from '../components/ui/PageHeader';
+import { SearchInput } from '../components/ui/SearchInput';
+import { SummaryCard } from '../components/ui/SummaryCard';
 import { formatCurrency } from '../lib/utils';
 import { Bus as BusIcon, Plus, Edit2 } from 'lucide-react';
 import { createBus, updateBus } from '../hooks/useBuses';
@@ -18,6 +21,21 @@ export default function BusesPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedBus, setSelectedBus] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+
+  // Filter buses
+  const filteredBuses = buses.filter(bus => {
+    const matchesSearch = !searchQuery || 
+      bus.registration_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (bus.bus_name && bus.bus_name.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesStatus = !statusFilter || bus.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  // Calculate summary stats
+  const activeBuses = filteredBuses.filter(b => b.status === 'active').length;
+  const totalBuses = filteredBuses.length;
 
   if (loading) {
     return (
@@ -40,18 +58,51 @@ export default function BusesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Buses</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Manage your bus fleet
-          </p>
-        </div>
+      <PageHeader 
+        title="Buses" 
+        description="Manage your bus fleet"
+      >
         <Button onClick={() => setShowAddModal(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Add Bus
         </Button>
+      </PageHeader>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <SummaryCard
+          label="Active Buses"
+          value={activeBuses}
+          icon={<BusIcon className="h-6 w-6" />}
+        />
+        <SummaryCard
+          label="Total Buses"
+          value={totalBuses}
+          icon={<BusIcon className="h-6 w-6" />}
+        />
       </div>
+
+      {/* Filters */}
+      <Card className="p-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search by registration or name..."
+          />
+          <Select
+            label="Status"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            options={[
+              { value: '', label: 'All statuses' },
+              { value: 'active', label: 'Active' },
+              { value: 'inactive', label: 'Inactive' },
+              { value: 'maintenance', label: 'Maintenance' },
+            ]}
+          />
+        </div>
+      </Card>
 
       {/* Bus List */}
       {buses.length === 0 ? (

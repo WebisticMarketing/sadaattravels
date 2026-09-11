@@ -4,6 +4,11 @@ import { useTyres } from '../hooks/useTyres';
 import { useBuses } from '../hooks/useBuses';
 import { formatCurrency, formatDate } from '../lib/utils';
 import { Plus, Filter, CircleDot } from 'lucide-react';
+import { PageHeader } from '../components/ui/PageHeader';
+import { SearchInput } from '../components/ui/SearchInput';
+import { SummaryCard } from '../components/ui/SummaryCard';
+import { PrintButton } from '../components/ui/PrintButton';
+import { Button } from '../components/ui/Button';
 
 export default function TyresPage() {
   const navigate = useNavigate();
@@ -14,96 +19,116 @@ export default function TyresPage() {
     status: '',
     startDate: '',
     endDate: '',
+    search: '',
   });
 
-  const { tyres, loading, error } = useTyres({
+  const { tyres } = useTyres({
     busId: filters.busId || undefined,
     status: filters.status || undefined,
     startDate: filters.startDate || undefined,
     endDate: filters.endDate || undefined,
   });
 
-  const totalCost = tyres
+  // Filter tyres by search
+  const filteredTyres = tyres.filter(tyre => {
+    if (!filters.search) return true;
+    const searchLower = filters.search.toLowerCase();
+    return (
+      tyre.tyre_brand?.toLowerCase().includes(searchLower) ||
+      tyre.tyre_size?.toLowerCase().includes(searchLower)
+    );
+  });
+
+  const totalCost = filteredTyres
     .filter(t => t.status === 'active')
     .reduce((sum, t) => sum + t.total_cost, 0);
 
-  const activeCount = tyres.filter(t => t.status === 'active').length;
+  const activeCount = filteredTyres.filter(t => t.status === 'active').length;
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tyres</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Track tyre purchases and replacements
-          </p>
+      <PageHeader 
+        title="Tyres" 
+        description="Track tyre purchases and replacements"
+      >
+        <div className="flex gap-2">
+          <PrintButton />
+          <Button onClick={() => navigate('/app/tyres/new')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Tyre Record
+          </Button>
         </div>
-        <button
-          onClick={() => navigate('/app/tyres/new')}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4" />
-          Add Tyre Record
-        </button>
-      </div>
+      </PageHeader>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
-              <CircleDot className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Total Records</p>
-              <p className="text-xl font-bold text-gray-900">{tyres.length}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
-              <CircleDot className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Active Records</p>
-              <p className="text-xl font-bold text-gray-900">{activeCount}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-gray-200 bg-white p-4 sm:col-span-2 lg:col-span-1">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100">
-              <CircleDot className="h-5 w-5 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Total Cost</p>
-              <p className="text-xl font-bold text-amber-600">
-                {formatCurrency(totalCost)}
-              </p>
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <SummaryCard
+          label="Total Records"
+          value={filteredTyres.length}
+          icon={<CircleDot className="h-6 w-6" />}
+        />
+        <SummaryCard
+          label="Active Records"
+          value={activeCount}
+          icon={<CircleDot className="h-6 w-6" />}
+          variant="success"
+        />
+        <SummaryCard
+          label="Total Cost"
+          value={formatCurrency(totalCost)}
+          icon={<CircleDot className="h-6 w-6" />}
+          variant="warning"
+        />
       </div>
 
       {/* Filters */}
       <div className="rounded-lg border border-gray-200 bg-white p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-gray-900">Filters</h3>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setShowFilters(!showFilters)}
-            className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
           >
-            <Filter className="h-4 w-4" />
+            <Filter className="mr-1 h-4 w-4" />
             {showFilters ? 'Hide' : 'Show'}
-          </button>
+          </Button>
+        </div>
+
+        {/* Search */}
+        <div className="mb-3">
+          <SearchInput
+            value={filters.search}
+            onChange={(value) => setFilters({ ...filters, search: value })}
+            placeholder="Search by brand, size, or bus..."
+          />
         </div>
 
         {showFilters && (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={filters.startDate}
+                onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                End Date
+              </label>
+              <input
+                type="date"
+                value={filters.endDate}
+                onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">
                 Bus
@@ -114,14 +139,13 @@ export default function TyresPage() {
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               >
                 <option value="">All buses</option>
-                {buses.map((bus) => (
-                  <option key={bus.id} value={bus.id}>
-                    {bus.registration_number}
+                {buses.map(b => (
+                  <option key={b.id} value={b.id}>
+                    {b.registration_number}
                   </option>
                 ))}
               </select>
             </div>
-
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">
                 Status
@@ -137,56 +161,19 @@ export default function TyresPage() {
                 <option value="cancelled">Cancelled</option>
               </select>
             </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                Start Date
-              </label>
-              <input
-                type="date"
-                value={filters.startDate}
-                onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                End Date
-              </label>
-              <input
-                type="date"
-                value={filters.endDate}
-                onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
           </div>
         )}
       </div>
 
-      {/* Tyre Records List */}
-      {loading ? (
-        <div className="flex min-h-[400px] items-center justify-center">
-          <div className="text-center">
-            <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
-            <p className="mt-2 text-sm text-gray-500">Loading tyre records...</p>
-          </div>
-        </div>
-      ) : error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-          <p className="text-sm text-red-800">{error}</p>
-        </div>
-      ) : tyres.length === 0 ? (
+      {/* Tyres List */}
+      {filteredTyres.length === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
           <CircleDot className="mx-auto h-12 w-12 text-gray-300" />
           <h3 className="mt-4 text-lg font-medium text-gray-900">No tyre records</h3>
           <p className="mt-2 text-sm text-gray-500">
-            {showFilters
-              ? 'Try adjusting your filters'
-              : 'Get started by adding your first tyre record'}
+            {showFilters || filters.search ? 'Try adjusting your filters' : 'Get started by adding your first tyre record'}
           </p>
-          {!showFilters && (
+          {!showFilters && !filters.search && (
             <button
               onClick={() => navigate('/app/tyres/new')}
               className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
@@ -198,7 +185,7 @@ export default function TyresPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {tyres.map((tyre) => (
+          {filteredTyres.map((tyre) => (
             <div
               key={tyre.id}
               onClick={() => navigate(`/app/tyres/${tyre.id}`)}

@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useInstallments } from '../hooks/useInstallments';
 import { formatCurrency, formatDate } from '../lib/utils';
 import { Plus, Filter, CreditCard } from 'lucide-react';
+import { PageHeader } from '../components/ui/PageHeader';
+import { SearchInput } from '../components/ui/SearchInput';
+import { PrintButton } from '../components/ui/PrintButton';
+import { Button } from '../components/ui/Button';
 
 export default function InstallmentsPage() {
   const navigate = useNavigate();
@@ -10,6 +14,7 @@ export default function InstallmentsPage() {
   const [filters, setFilters] = useState({
     type: '' as '' | 'taken' | 'given',
     status: '',
+    search: '',
   });
 
   const { installments, loading, error } = useInstallments({
@@ -17,8 +22,19 @@ export default function InstallmentsPage() {
     status: filters.status || undefined,
   });
 
-  const takenInstallments = installments.filter(i => i.installment_type === 'taken');
-  const givenInstallments = installments.filter(i => i.installment_type === 'given');
+  // Filter installments by search
+  const filteredInstallments = installments.filter(installment => {
+    if (!filters.search) return true;
+    const searchLower = filters.search.toLowerCase();
+    return (
+      installment.person_name.toLowerCase().includes(searchLower) ||
+      installment.person_phone?.toLowerCase().includes(searchLower) ||
+      installment.description?.toLowerCase().includes(searchLower)
+    );
+  });
+
+  const takenInstallments = filteredInstallments.filter(i => i.installment_type === 'taken');
+  const givenInstallments = filteredInstallments.filter(i => i.installment_type === 'given');
   
   const totalTaken = takenInstallments.reduce((sum, i) => sum + i.total_amount, 0);
   const totalTakenPaid = takenInstallments.reduce((sum, i) => sum + i.paid_amount, 0);
@@ -31,21 +47,18 @@ export default function InstallmentsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Installments & Loans</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Track loans taken and given
-          </p>
+      <PageHeader 
+        title="Installments & Loans" 
+        description="Track loans taken and given"
+      >
+        <div className="flex gap-2">
+          <PrintButton />
+          <Button onClick={() => navigate('/app/installments/new')}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Installment
+          </Button>
         </div>
-        <button
-          onClick={() => navigate('/app/installments/new')}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4" />
-          New Installment
-        </button>
-      </div>
+      </PageHeader>
 
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -126,19 +139,29 @@ export default function InstallmentsPage() {
 
       {/* Filters */}
       <div className="rounded-lg border border-gray-200 bg-white p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-gray-900">Filters</h3>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setShowFilters(!showFilters)}
-            className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
           >
-            <Filter className="h-4 w-4" />
+            <Filter className="mr-1 h-4 w-4" />
             {showFilters ? 'Hide' : 'Show'}
-          </button>
+          </Button>
+        </div>
+
+        {/* Search */}
+        <div className="mb-3">
+          <SearchInput
+            value={filters.search}
+            onChange={(value) => setFilters({ ...filters, search: value })}
+            placeholder="Search by person name, phone, or description..."
+          />
         </div>
 
         {showFilters && (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">
                 Type
@@ -185,16 +208,16 @@ export default function InstallmentsPage() {
         <div className="rounded-lg border border-red-200 bg-red-50 p-4">
           <p className="text-sm text-red-800">{error}</p>
         </div>
-      ) : installments.length === 0 ? (
+      ) : filteredInstallments.length === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
           <CreditCard className="mx-auto h-12 w-12 text-gray-300" />
           <h3 className="mt-4 text-lg font-medium text-gray-900">No installments</h3>
           <p className="mt-2 text-sm text-gray-500">
-            {showFilters
+            {showFilters || filters.search
               ? 'Try adjusting your filters'
               : 'Get started by adding your first installment'}
           </p>
-          {!showFilters && (
+          {!showFilters && !filters.search && (
             <button
               onClick={() => navigate('/app/installments/new')}
               className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
@@ -206,7 +229,7 @@ export default function InstallmentsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {installments.map((installment) => (
+          {filteredInstallments.map((installment) => (
             <div
               key={installment.id}
               onClick={() => navigate(`/app/installments/${installment.id}`)}

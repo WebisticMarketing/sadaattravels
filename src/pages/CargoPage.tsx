@@ -4,6 +4,11 @@ import { useCargo } from '../hooks/useCargo';
 import { useBuses } from '../hooks/useBuses';
 import { formatCurrency, formatDate } from '../lib/utils';
 import { Plus, Filter, Package } from 'lucide-react';
+import { PageHeader } from '../components/ui/PageHeader';
+import { SearchInput } from '../components/ui/SearchInput';
+import { SummaryCard } from '../components/ui/SummaryCard';
+import { PrintButton } from '../components/ui/PrintButton';
+import { Button } from '../components/ui/Button';
 
 export default function CargoPage() {
   const navigate = useNavigate();
@@ -15,6 +20,7 @@ export default function CargoPage() {
     busId: '',
     origin: '',
     destination: '',
+    search: '',
   });
 
   const { cargo, loading, error } = useCargo({
@@ -25,89 +31,84 @@ export default function CargoPage() {
     destination: filters.destination || undefined,
   });
 
-  const totalRevenue = cargo.reduce((sum, c) => sum + c.revenue, 0);
-  const totalExpenses = cargo.reduce((sum, c) => sum + c.expenses, 0);
+  // Filter cargo by search
+  const filteredCargo = cargo.filter(record => {
+    if (!filters.search) return true;
+    const searchLower = filters.search.toLowerCase();
+    return (
+      record.description.toLowerCase().includes(searchLower) ||
+      record.sender_name.toLowerCase().includes(searchLower) ||
+      record.receiver_name.toLowerCase().includes(searchLower)
+    );
+  });
+
+  const totalRevenue = filteredCargo.reduce((sum, c) => sum + c.revenue, 0);
+  const totalExpenses = filteredCargo.reduce((sum, c) => sum + c.expenses, 0);
   const totalProfit = totalRevenue - totalExpenses;
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Cargo</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Track cargo shipments and profitability
-          </p>
+      <PageHeader 
+        title="Cargo" 
+        description="Track cargo shipments and profitability"
+      >
+        <div className="flex gap-2">
+          <PrintButton />
+          <Button onClick={() => navigate('/app/cargo/new')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Shipment
+          </Button>
         </div>
-        <button
-          onClick={() => navigate('/app/cargo/new')}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4" />
-          Add Shipment
-        </button>
-      </div>
+      </PageHeader>
 
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
-              <Package className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Total Revenue</p>
-              <p className="text-xl font-bold text-green-600">
-                {formatCurrency(totalRevenue)}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100">
-              <Package className="h-5 w-5 text-red-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Total Expenses</p>
-              <p className="text-xl font-bold text-red-600">
-                {formatCurrency(totalExpenses)}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
-              <Package className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Total Profit</p>
-              <p className={`text-xl font-bold ${totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatCurrency(totalProfit)}
-              </p>
-            </div>
-          </div>
-        </div>
+        <SummaryCard
+          label="Total Revenue"
+          value={formatCurrency(totalRevenue)}
+          icon={<Package className="h-6 w-6" />}
+          variant="success"
+        />
+        <SummaryCard
+          label="Total Expenses"
+          value={formatCurrency(totalExpenses)}
+          icon={<Package className="h-6 w-6" />}
+          variant="danger"
+        />
+        <SummaryCard
+          label="Total Profit"
+          value={formatCurrency(totalProfit)}
+          icon={<Package className="h-6 w-6" />}
+          variant={totalProfit >= 0 ? 'success' : 'danger'}
+        />
       </div>
 
       {/* Filters */}
       <div className="rounded-lg border border-gray-200 bg-white p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-gray-900">Filters</h3>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setShowFilters(!showFilters)}
-            className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
           >
-            <Filter className="h-4 w-4" />
+            <Filter className="mr-1 h-4 w-4" />
             {showFilters ? 'Hide' : 'Show'}
-          </button>
+          </Button>
+        </div>
+
+        {/* Search */}
+        <div className="mb-3">
+          <SearchInput
+            value={filters.search}
+            onChange={(value) => setFilters({ ...filters, search: value })}
+            placeholder="Search by description, sender, or receiver..."
+          />
         </div>
 
         {showFilters && (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">
                 Start Date
@@ -191,16 +192,16 @@ export default function CargoPage() {
         <div className="rounded-lg border border-red-200 bg-red-50 p-4">
           <p className="text-sm text-red-800">{error}</p>
         </div>
-      ) : cargo.length === 0 ? (
+      ) : filteredCargo.length === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
           <Package className="mx-auto h-12 w-12 text-gray-300" />
           <h3 className="mt-4 text-lg font-medium text-gray-900">No cargo records</h3>
           <p className="mt-2 text-sm text-gray-500">
-            {showFilters
+            {showFilters || filters.search
               ? 'Try adjusting your filters'
               : 'Get started by adding your first cargo shipment'}
           </p>
-          {!showFilters && (
+          {!showFilters && !filters.search && (
             <button
               onClick={() => navigate('/app/cargo/new')}
               className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
@@ -212,7 +213,7 @@ export default function CargoPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {cargo.map((record) => (
+          {filteredCargo.map((record) => (
             <div
               key={record.id}
               onClick={() => navigate(`/app/cargo/${record.id}`)}

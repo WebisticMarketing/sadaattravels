@@ -4,6 +4,10 @@ import { useAddaIncome } from '../hooks/useAddaIncome';
 import { useAddaExpenses } from '../hooks/useAddaExpenses';
 import { formatCurrency, formatDate } from '../lib/utils';
 import { Plus, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { PageHeader } from '../components/ui/PageHeader';
+import { SummaryCard } from '../components/ui/SummaryCard';
+import { PrintButton } from '../components/ui/PrintButton';
+import { Button } from '../components/ui/Button';
 
 export default function AddaPage() {
   const navigate = useNavigate();
@@ -30,65 +34,39 @@ export default function AddaPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Adda</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Track adda income and expenses
-          </p>
+      <PageHeader 
+        title="Adda" 
+        description="Track adda income and expenses"
+      >
+        <div className="flex gap-2">
+          <PrintButton />
+          <Button onClick={() => navigate(activeTab === 'income' ? '/app/adda/income/new' : '/app/adda/expenses/new')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add {activeTab === 'income' ? 'Income' : 'Expense'}
+          </Button>
         </div>
-        <button
-          onClick={() => navigate(activeTab === 'income' ? '/app/adda/income/new' : '/app/adda/expenses/new')}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4" />
-          Add {activeTab === 'income' ? 'Income' : 'Expense'}
-        </button>
-      </div>
+      </PageHeader>
 
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
-              <TrendingUp className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Total Income</p>
-              <p className="text-xl font-bold text-green-600">
-                {formatCurrency(totalIncome)}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100">
-              <TrendingDown className="h-5 w-5 text-red-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Total Expenses</p>
-              <p className="text-xl font-bold text-red-600">
-                {formatCurrency(totalExpenses)}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
-              <DollarSign className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Net Profit</p>
-              <p className={`text-xl font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatCurrency(profit)}
-              </p>
-            </div>
-          </div>
-        </div>
+        <SummaryCard
+          label="Total Income"
+          value={formatCurrency(totalIncome)}
+          icon={<TrendingUp className="h-6 w-6" />}
+          variant="success"
+        />
+        <SummaryCard
+          label="Total Expenses"
+          value={formatCurrency(totalExpenses)}
+          icon={<TrendingDown className="h-6 w-6" />}
+          variant="danger"
+        />
+        <SummaryCard
+          label="Net Profit"
+          value={formatCurrency(profit)}
+          icon={<DollarSign className="h-6 w-6" />}
+          variant={profit >= 0 ? 'success' : 'danger'}
+        />
       </div>
 
       {/* Filters */}

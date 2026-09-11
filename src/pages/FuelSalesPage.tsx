@@ -4,6 +4,11 @@ import { useFuelSales } from '../hooks/useFuelSales';
 import { useBuses } from '../hooks/useBuses';
 import { formatCurrency, formatDate } from '../lib/utils';
 import { Plus, Filter, Fuel } from 'lucide-react';
+import { PageHeader } from '../components/ui/PageHeader';
+import { SearchInput } from '../components/ui/SearchInput';
+import { SummaryCard } from '../components/ui/SummaryCard';
+import { PrintButton } from '../components/ui/PrintButton';
+import { Button } from '../components/ui/Button';
 
 export default function FuelSalesPage() {
   const navigate = useNavigate();
@@ -14,6 +19,7 @@ export default function FuelSalesPage() {
     endDate: '',
     saleType: '' as '' | 'EXTERNAL_CUSTOMER' | 'INTERNAL_BUS',
     busId: '',
+    search: '',
   });
 
   const { sales, loading, error } = useFuelSales({
@@ -23,88 +29,84 @@ export default function FuelSalesPage() {
     busId: filters.busId || undefined,
   });
 
-  const externalSales = sales.filter(s => s.sale_type === 'EXTERNAL_CUSTOMER');
+  // Filter sales by search
+  const filteredSales = sales.filter(sale => {
+    if (!filters.search) return true;
+    const searchLower = filters.search.toLowerCase();
+    return (
+      sale.customer_name?.toLowerCase().includes(searchLower) ||
+      sale.buses?.registration_number.toLowerCase().includes(searchLower) ||
+      sale.receipt_number?.toLowerCase().includes(searchLower)
+    );
+  });
+
+  const externalSales = filteredSales.filter(s => s.sale_type === 'EXTERNAL_CUSTOMER');
   
   const externalRevenue = externalSales.reduce((sum, s) => sum + s.total_amount, 0);
-  const totalLitres = sales.reduce((sum, s) => sum + s.litres, 0);
+  const totalLitres = filteredSales.reduce((sum, s) => sum + s.litres, 0);
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Fuel Sales</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Record fuel sales to customers and buses
-          </p>
+      <PageHeader 
+        title="Fuel Sales" 
+        description="Record fuel sales to customers and buses"
+      >
+        <div className="flex gap-2">
+          <PrintButton />
+          <Button onClick={() => navigate('/app/petrol/sales/new')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Sale
+          </Button>
         </div>
-        <button
-          onClick={() => navigate('/app/petrol/sales/new')}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4" />
-          Add Sale
-        </button>
-      </div>
+      </PageHeader>
 
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
-              <Fuel className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Total Sales</p>
-              <p className="text-xl font-bold text-gray-900">{sales.length}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
-              <Fuel className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">External Revenue</p>
-              <p className="text-xl font-bold text-green-600">
-                {formatCurrency(externalRevenue)}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100">
-              <Fuel className="h-5 w-5 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Total Litres</p>
-              <p className="text-xl font-bold text-gray-900">
-                {totalLitres.toFixed(2)} L
-              </p>
-            </div>
-          </div>
-        </div>
+        <SummaryCard
+          label="Total Sales"
+          value={filteredSales.length}
+          icon={<Fuel className="h-6 w-6" />}
+        />
+        <SummaryCard
+          label="External Revenue"
+          value={formatCurrency(externalRevenue)}
+          icon={<Fuel className="h-6 w-6" />}
+          variant="success"
+        />
+        <SummaryCard
+          label="Total Litres"
+          value={`${totalLitres.toFixed(0)} L`}
+          icon={<Fuel className="h-6 w-6" />}
+          variant="warning"
+        />
       </div>
 
       {/* Filters */}
       <div className="rounded-lg border border-gray-200 bg-white p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-gray-900">Filters</h3>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setShowFilters(!showFilters)}
-            className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
           >
-            <Filter className="h-4 w-4" />
+            <Filter className="mr-1 h-4 w-4" />
             {showFilters ? 'Hide' : 'Show'}
-          </button>
+          </Button>
+        </div>
+
+        {/* Search */}
+        <div className="mb-3">
+          <SearchInput
+            value={filters.search}
+            onChange={(value) => setFilters({ ...filters, search: value })}
+            placeholder="Search by customer, bus, or receipt..."
+          />
         </div>
 
         {showFilters && (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">
                 Start Date
@@ -177,16 +179,16 @@ export default function FuelSalesPage() {
         <div className="rounded-lg border border-red-200 bg-red-50 p-4">
           <p className="text-sm text-red-800">{error}</p>
         </div>
-      ) : sales.length === 0 ? (
+      ) : filteredSales.length === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
           <Fuel className="mx-auto h-12 w-12 text-gray-300" />
           <h3 className="mt-4 text-lg font-medium text-gray-900">No fuel sales</h3>
           <p className="mt-2 text-sm text-gray-500">
-            {showFilters
+            {showFilters || filters.search
               ? 'Try adjusting your filters'
               : 'Get started by adding your first fuel sale'}
           </p>
-          {!showFilters && (
+          {!showFilters && !filters.search && (
             <button
               onClick={() => navigate('/app/petrol/sales/new')}
               className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
@@ -198,7 +200,7 @@ export default function FuelSalesPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {sales.map((sale) => (
+          {filteredSales.map((sale) => (
             <div
               key={sale.id}
               onClick={() => navigate(`/app/petrol/sales/${sale.id}`)}

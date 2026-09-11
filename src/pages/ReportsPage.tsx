@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useOverallSummary, useBusProfitability } from '../hooks/useReports';
 import { formatCurrency, formatDate } from '../lib/utils';
 import { TrendingUp, TrendingDown, DollarSign, Bus } from 'lucide-react';
+import { PageHeader } from '../components/ui/PageHeader';
+import { PrintButton } from '../components/ui/PrintButton';
 
 export default function ReportsPage() {
   // Default to current month
@@ -27,12 +29,12 @@ export default function ReportsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Business performance and profitability reports
-        </p>
-      </div>
+      <PageHeader 
+        title="Reports" 
+        description="Business performance and profitability reports"
+      >
+        <PrintButton />
+      </PageHeader>
 
       {/* Date Range Filter */}
       <div className="rounded-lg border border-gray-200 bg-white p-4">
