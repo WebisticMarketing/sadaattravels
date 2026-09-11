@@ -124,3 +124,6 @@
 .print-only {
   display: none;
 }
+
+/* Import professional print styles */
+@import './styles/print.css';
