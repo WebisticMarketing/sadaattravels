@@ -127,19 +127,33 @@ export async function createBus(
   busType: string | null,
   capacity: number
 ): Promise<Bus> {
+  // Get current user
+  const { data: { user } } = await supabase.auth.getUser();
+  
   const { data, error } = await supabase
     .from('buses')
     .insert({
-      registration_number: registrationNumber,
-      bus_name: busName,
-      bus_type: busType,
+      registration_number: registrationNumber.trim(),
+      bus_name: busName?.trim() || null,
+      bus_type: busType || null,
       capacity,
       status: 'active',
+      created_by: user?.id || null,
+      updated_by: user?.id || null,
     })
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    // Provide better error messages
+    if (error.code === '23505') {
+      throw new Error('A bus with this registration number already exists.');
+    }
+    if (error.code === '23503') {
+      throw new Error('Invalid user reference.');
+    }
+    throw new Error(`Failed to create bus: ${error.message}`);
+  }
   return data;
 }
 
@@ -150,9 +164,15 @@ export async function updateBus(
   id: string,
   updates: Partial<Pick<Bus, 'bus_name' | 'bus_type' | 'capacity' | 'status'>>
 ): Promise<Bus> {
+  // Get current user
+  const { data: { user } } = await supabase.auth.getUser();
+  
   const { data, error } = await supabase
     .from('buses')
-    .update(updates)
+    .update({
+      ...updates,
+      updated_by: user?.id || null,
+    })
     .eq('id', id)
     .select()
     .single();

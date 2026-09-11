@@ -5,8 +5,7 @@ import {
   Alert, 
   PageHeader, 
   MonthYearFilter,
-  SummaryCard,
-  PrintButton
+  SummaryCard
 } from '../components/ui';
 import { formatCurrency } from '../lib/utils';
 import { Bus, Fuel, TrendingUp, TrendingDown, Route } from 'lucide-react';
@@ -52,7 +51,6 @@ export default function DashboardPage() {
           onMonthChange={setSelectedMonth}
           onYearChange={setSelectedYear}
         />
-        <PrintButton />
       </PageHeader>
 
       {/* Today's Summary */}

@@ -146,9 +146,9 @@ export function AppLayout() {
       </aside>
 
       {/* Main content area */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col min-h-0">
         {/* Top bar */}
-        <header className="flex h-16 items-center gap-4 border-b border-gray-200 bg-white px-4 lg:px-6">
+        <header className="flex h-16 flex-shrink-0 items-center gap-4 border-b border-gray-200 bg-white px-4 lg:px-6">
           <button
             className="lg:hidden rounded-lg p-2 text-gray-500 hover:bg-gray-100"
             onClick={() => setSidebarOpen(true)}

@@ -259,23 +259,42 @@ function AddBusModal({ onClose, onSuccess }: AddBusModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Validation
+    if (!registrationNumber.trim()) {
+      setError('Registration number is required.');
+      return;
+    }
+
+    if (!capacity) {
+      setError('Capacity is required.');
+      return;
+    }
+
+    const capacityNum = parseInt(capacity);
+    if (isNaN(capacityNum) || capacityNum <= 0) {
+      setError('Capacity must be a positive number.');
+      return;
+    }
+
+    if (capacityNum > 100) {
+      setError('Capacity seems too large. Please verify.');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      if (!registrationNumber || !capacity) {
-        throw new Error('Registration number and capacity are required');
-      }
-
       await createBus(
-        registrationNumber,
-        busName || null,
+        registrationNumber.trim(),
+        busName?.trim() || null,
         busType || null,
-        parseInt(capacity)
+        capacityNum
       );
 
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add bus');
+      setError(err instanceof Error ? err.message : 'Unable to create the bus right now. Please try again.');
       setLoading(false);
     }
   };
