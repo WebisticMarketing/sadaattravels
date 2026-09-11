@@ -10,6 +10,10 @@ import { Loading } from '../components/ui/Loading';
 import { Alert } from '../components/ui/Alert';
 import { Badge } from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/EmptyState';
+import { PageHeader } from '../components/ui/PageHeader';
+import { SearchInput } from '../components/ui/SearchInput';
+import { SummaryCard } from '../components/ui/SummaryCard';
+import { PrintButton } from '../components/ui/PrintButton';
 import { formatCurrency, formatDate } from '../lib/utils';
 import { Plus, Filter, Wrench, Calendar, Bus } from 'lucide-react';
 
@@ -22,6 +26,7 @@ export default function MaintenancePage() {
     busId: '',
     maintenanceType: '',
     status: '',
+    search: '',
   });
 
   const { records, loading, error } = useMaintenance({
@@ -52,7 +57,18 @@ export default function MaintenancePage() {
     );
   }
 
-  const activeRecords = records.filter(r => r.status === 'active');
+  // Filter records by search
+  const filteredRecords = records.filter(record => {
+    if (!filters.search) return true;
+    const searchLower = filters.search.toLowerCase();
+    return (
+      record.maintenance_type.toLowerCase().includes(searchLower) ||
+      record.description.toLowerCase().includes(searchLower) ||
+      record.bus?.registration_number.toLowerCase().includes(searchLower)
+    );
+  });
+
+  const activeRecords = filteredRecords.filter(r => r.status === 'active');
   const totalCost = activeRecords.reduce((sum, r) => sum + r.cost, 0);
 
   // Get unique maintenance types for filter
@@ -61,58 +77,38 @@ export default function MaintenancePage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Maintenance</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Track bus maintenance records and costs
-          </p>
+      <PageHeader 
+        title="Maintenance" 
+        description="Track bus maintenance records and costs"
+      >
+        <div className="flex gap-2">
+          <PrintButton />
+          <Button onClick={() => navigate('/app/maintenance/new')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Record
+          </Button>
         </div>
-        <Button onClick={() => navigate('/app/maintenance/new')}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Record
-        </Button>
-      </div>
+      </PageHeader>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
-              <Wrench className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Total Records</p>
-              <p className="text-xl font-bold text-gray-900">{records.length}</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
-              <Wrench className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Active Records</p>
-              <p className="text-xl font-bold text-gray-900">{activeRecords.length}</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4 col-span-2 sm:col-span-1">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100">
-              <Wrench className="h-5 w-5 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Total Cost</p>
-              <p className="text-xl font-bold text-amber-600">
-                {formatCurrency(totalCost)}
-              </p>
-            </div>
-          </div>
-        </Card>
+        <SummaryCard
+          label="Total Records"
+          value={records.length}
+          icon={<Wrench className="h-6 w-6" />}
+        />
+        <SummaryCard
+          label="Active Records"
+          value={activeRecords.length}
+          icon={<Wrench className="h-6 w-6" />}
+          variant="success"
+        />
+        <SummaryCard
+          label="Total Cost"
+          value={formatCurrency(totalCost)}
+          icon={<Wrench className="h-6 w-6" />}
+          variant="warning"
+        />
       </div>
 
       {/* Filters */}
@@ -127,6 +123,15 @@ export default function MaintenancePage() {
             <Filter className="mr-1 h-4 w-4" />
             {showFilters ? 'Hide' : 'Show'}
           </Button>
+        </div>
+
+        {/* Search */}
+        <div className="mb-3">
+          <SearchInput
+            value={filters.search}
+            onChange={(value) => setFilters({ ...filters, search: value })}
+            placeholder="Search by type, description, or bus..."
+          />
         </div>
 
         {showFilters && (
@@ -182,13 +187,13 @@ export default function MaintenancePage() {
       </Card>
 
       {/* Records List */}
-      {records.length === 0 ? (
+      {filteredRecords.length === 0 ? (
         <EmptyState
           title="No maintenance records found"
-          description={showFilters ? 'Try adjusting your filters' : 'Add your first maintenance record to get started'}
+          description={showFilters || filters.search ? 'Try adjusting your filters' : 'Add your first maintenance record to get started'}
           icon={<Wrench className="h-8 w-8" />}
           action={
-            !showFilters && (
+            !showFilters && !filters.search && (
               <Button onClick={() => navigate('/app/maintenance/new')}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add First Record
@@ -198,7 +203,7 @@ export default function MaintenancePage() {
         />
       ) : (
         <div className="space-y-3">
-          {records.map((record) => (
+          {filteredRecords.map((record) => (
             <div
               key={record.id}
               className="cursor-pointer"
