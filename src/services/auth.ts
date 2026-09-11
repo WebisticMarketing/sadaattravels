@@ -218,51 +218,16 @@ export async function resetPassword(newPassword: string): Promise<void> {
 }
 
 /**
- * Restore session from Supabase (e.g., after page refresh).
- */
-export async function restoreSession(): Promise<AuthUser | null> {
-  const { data, error } = await supabase.auth.getSession();
-
-  if (error) {
-    logError(error, 'restoreSession');
-    return null;
-  }
-
-  if (!data.session?.user) {
-    _currentUser = null;
-    notifyListeners();
-    return null;
-  }
-
-  const authUser = await resolveAuthUser(
-    data.session.user.id,
-    data.session.user.email!
-  );
-
-  _currentUser = authUser;
-  notifyListeners();
-
-  return authUser;
-}
-
-/**
  * Get the current authenticated user (synchronous).
+ * Note: This is re-exported from authService for consistency.
  */
-export function getCurrentUser(): AuthUser | null {
-  return _currentUser;
-}
+export { getCurrentUser } from './authService';
 
 /**
  * Subscribe to auth state changes.
+ * Note: This is re-exported from authService for consistency.
  */
-export function onAuthStateChange(
-  callback: (user: AuthUser | null) => void
-): () => void {
-  _sessionListeners.push(callback);
-  return () => {
-    _sessionListeners = _sessionListeners.filter((l) => l !== callback);
-  };
-}
+export { onAuthStateChange } from './authService';
 
 // ============================================================================
 // User Profile Resolution
