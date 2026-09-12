@@ -491,13 +491,13 @@ export default function BusDetailPage() {
                 View Vouchers
               </Button>
             </Link>
-            <Link to={`/app/maintenance/new?bus_id=${id}`}>
+            <Link to={`/app/buses/${id}/maintenance/create`}>
               <Button variant="secondary" className="w-full">
                 <Wrench className="mr-2 h-4 w-4" />
                 Add Maintenance
               </Button>
             </Link>
-            <Link to={`/app/tyres/new?bus_id=${id}`}>
+            <Link to={`/app/buses/${id}/tyres/create`}>
               <Button variant="secondary" className="w-full">
                 <Settings className="mr-2 h-4 w-4" />
                 Add Tyre
@@ -575,7 +575,7 @@ export default function BusDetailPage() {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Maintenance Records</h2>
-            <Link to={`/app/maintenance/new?bus_id=${id}`}>
+            <Link to={`/app/buses/${id}/maintenance/create`}>
               <Button variant="ghost" size="sm">Add Maintenance</Button>
             </Link>
           </div>
@@ -629,7 +629,7 @@ export default function BusDetailPage() {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Tyre Records</h2>
-            <Link to={`/app/tyres/new?bus_id=${id}`}>
+            <Link to={`/app/buses/${id}/tyres/create`}>
               <Button variant="ghost" size="sm">Add Tyre</Button>
             </Link>
           </div>

@@ -7,13 +7,14 @@ import { ArrowLeft } from 'lucide-react';
 
 export default function TyreFormPage() {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
+  const { id, busId } = useParams<{ id: string; busId: string }>();
   const isEdit = !!id;
+  const isNewForBus = !!busId && !isEdit;
   const { buses } = useBuses();
   const { tyre, loading: tyreLoading } = useTyre(id || null);
 
   const [formData, setFormData] = useState({
-    bus_id: '',
+    bus_id: busId || '',
     purchase_date: formatDate(new Date()),
     tyre_brand: '',
     tyre_size: '',
@@ -87,7 +88,12 @@ export default function TyreFormPage() {
         await createTyreRecord(data);
       }
 
-      navigate('/app/tyres');
+      // Navigate back to the bus tyres tab if coming from bus context
+      if (busId) {
+        navigate(`/app/buses/${busId}`, { state: { activeTab: 'tyres' } });
+      } else {
+        navigate('/app/buses');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save tyre record');
       setLoading(false);
@@ -110,7 +116,7 @@ export default function TyreFormPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
-          onClick={() => navigate('/app/tyres')}
+          onClick={() => busId ? navigate(`/app/buses/${busId}`) : navigate('/app/buses')}
           className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -300,7 +306,7 @@ export default function TyreFormPage() {
             <div className="flex gap-3 pt-4">
               <button
                 type="button"
-                onClick={() => navigate('/app/tyres')}
+                onClick={() => busId ? navigate(`/app/buses/${busId}`) : navigate('/app/buses')}
                 className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
                 Cancel

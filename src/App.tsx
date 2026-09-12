@@ -9,8 +9,9 @@ import BusesPage from './pages/BusesPage';
 import BusDetailPage from './pages/BusDetailPage';
 import BusVouchersPage from './pages/BusVouchersPage';
 import AddVoucherPage from './pages/AddVoucherPage';
-// Trips, Maintenance, Tyres pages are now accessed through Bus Details
-// Old imports kept for potential future use but routes redirect to /app/buses
+// Maintenance and Tyres are now accessed through Bus Details
+import MaintenanceFormPage from './pages/MaintenanceFormPage';
+import TyreFormPage from './pages/TyreFormPage';
 import FuelPurchasesPage from './pages/FuelPurchasesPage';
 import FuelPurchaseFormPage from './pages/FuelPurchaseFormPage';
 import FuelSalesPage from './pages/FuelSalesPage';
@@ -76,6 +77,8 @@ export default function App() {
             <Route path="buses/:id" element={<BusDetailPage />} />
             <Route path="buses/:id/vouchers" element={<BusVouchersPage />} />
             <Route path="buses/:id/vouchers/create" element={<AddVoucherPage />} />
+            <Route path="buses/:id/maintenance/create" element={<MaintenanceFormPage />} />
+            <Route path="buses/:id/tyres/create" element={<TyreFormPage />} />
             {/* Redirect old standalone routes to buses - these are now bus-specific */}
             <Route path="trips" element={<Navigate to="/app/buses" replace />} />
             <Route path="trips/new" element={<Navigate to="/app/buses" replace />} />
