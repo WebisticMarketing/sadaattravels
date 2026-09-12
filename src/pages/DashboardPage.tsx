@@ -180,7 +180,7 @@ export default function DashboardPage() {
   const [selectedMonth, setSelectedMonth] = useState(String(new Date().getMonth() + 1).padStart(2, '0'));
   const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
   
-  const { metrics, loading, error } = useDashboardMetrics();
+  const { metrics, loading, error } = useDashboardMetrics(selectedMonth, selectedYear);
 
   const handleMonthChange = (newMonth: string) => {
     setSelectedMonth(newMonth);
@@ -218,21 +218,39 @@ export default function DashboardPage() {
   const displayStats = {
     totalBuses: metrics.buses.total,
     activeBuses: metrics.buses.active,
-    totalTrips: metrics.thisMonth.trips,
-    totalRevenue: metrics.thisMonth.revenue,
-    totalExpenses: metrics.thisMonth.expenses,
-    netProfit: metrics.thisMonth.profit,
-    occupancyRate: 0, // Will be calculated from actual data
-    pendingMaintenance: 0, // Will be calculated from actual data
-    recentActivity: [], // Will be populated from actual data
+    totalTrips: metrics.selectedPeriod.trips,
+    totalRevenue: metrics.selectedPeriod.revenue,
+    totalExpenses: metrics.selectedPeriod.expenses,
+    netProfit: metrics.selectedPeriod.profit,
+    occupancyRate: metrics.occupancyRate,
+    pendingMaintenance: metrics.pendingMaintenance,
+    recentActivity: metrics.recentActivity,
   };
+
+  // Calculate real trends or show neutral states
+  const calculateTrend = (current: number, previous: number): { change: string; trend: 'up' | 'down' | 'neutral' } => {
+    if (previous === 0) {
+      if (current === 0) return { change: '—', trend: 'neutral' };
+      return { change: '—', trend: 'neutral' };
+    }
+    const change = ((current - previous) / previous) * 100;
+    if (Math.abs(change) < 0.1) return { change: '—', trend: 'neutral' };
+    return {
+      change: `${change > 0 ? '+' : ''}${change.toFixed(1)}%`,
+      trend: change > 0 ? 'up' : 'down',
+    };
+  };
+
+  const revenueTrend = calculateTrend(displayStats.totalRevenue, metrics.previousPeriod.revenue);
+  const profitTrend = calculateTrend(displayStats.netProfit, metrics.previousPeriod.profit);
+  const tripsTrend = calculateTrend(displayStats.totalTrips, metrics.previousPeriod.trips);
 
   const mainKPIs = [
     {
       label: "Total Revenue",
       value: `Rs ${displayStats.totalRevenue.toLocaleString()}`,
-      change: "+12.5%",
-      trend: "up",
+      change: revenueTrend.change,
+      trend: revenueTrend.trend,
       icon: DollarSign,
       color: "text-emerald-600",
       bg: "bg-emerald-100",
@@ -240,17 +258,17 @@ export default function DashboardPage() {
     {
       label: "Net Profit",
       value: `Rs ${displayStats.netProfit.toLocaleString()}`,
-      change: "+8.3%",
-      trend: "up",
+      change: profitTrend.change,
+      trend: profitTrend.trend,
       icon: TrendingUp,
       color: "text-blue-600",
       bg: "bg-blue-100",
     },
     {
       label: "Occupancy Rate",
-      value: `${displayStats.occupancyRate}%`,
-      change: displayStats.occupancyRate > 80 ? "+2.1%" : "-1.5%",
-      trend: displayStats.occupancyRate > 80 ? "up" : "down",
+      value: displayStats.occupancyRate !== null ? `${displayStats.occupancyRate}%` : '—',
+      change: '—',
+      trend: 'neutral' as const,
       icon: Users,
       color: "text-yellow-600",
       bg: "bg-yellow-100",
@@ -258,8 +276,8 @@ export default function DashboardPage() {
     {
       label: "Total Trips",
       value: displayStats.totalTrips.toLocaleString(),
-      change: "+18.7%",
-      trend: "up",
+      change: tripsTrend.change,
+      trend: tripsTrend.trend,
       icon: Activity,
       color: "text-purple-600",
       bg: "bg-purple-100",
@@ -378,7 +396,7 @@ export default function DashboardPage() {
             {displayStats.recentActivity.length === 0 ? (
               <p className="text-gray-400 text-sm text-center py-4">No recent activity for this month</p>
             ) : (
-              displayStats.recentActivity.map((activity: any) => {
+              displayStats.recentActivity.map((activity) => {
                 let IconComponent = Activity;
                 switch (activity.icon) {
                   case "bus": IconComponent = Bus; break;
