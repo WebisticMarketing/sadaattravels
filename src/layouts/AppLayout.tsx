@@ -25,13 +25,11 @@ import type { NavItem } from '../types';
 /**
  * Navigation structure.
  * Business modules will be enabled as they are implemented.
+ * Note: Trips, Maintenance, and Tyres are accessed through Bus Details.
  */
 const navigation: NavItem[] = [
   { label: 'Dashboard', path: '/app/dashboard', icon: 'LayoutDashboard' },
   { label: 'Buses', path: '/app/buses', icon: 'Bus' },
-  { label: 'Trips & Vouchers', path: '/app/trips', icon: 'Route' },
-  { label: 'Maintenance', path: '/app/maintenance', icon: 'Wrench' },
-  { label: 'Tyres', path: '/app/tyres', icon: 'CircleDot' },
   { label: 'Petrol Pump', path: '/app/petrol', icon: 'Fuel' },
   { label: 'Adda', path: '/app/adda', icon: 'MapPin' },
   { label: 'Cargo', path: '/app/cargo', icon: 'Package' },

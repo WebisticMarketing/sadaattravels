@@ -12,115 +12,69 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.py~
 *.py.class
-*.py.obj
-*.py.out
-*.py.o
-*.py.a
-*.py.so
-*.py.dll
-*.py.exe
-*.py.lib
-*.py.dll.a
-*.py.dll.lib
-*.py.dll.so
-*.py.dll.o
-*.py.dll.obj
-*.py.dll.out
-*.py.dll.pyd
-*.py.dll.pyo
-*.py.dll.pyc
-*.py.dll.py.class
-*.py.dll.py.obj
-*.py.dll.py.out
-*.py.dll.py.o
-*.py.dll.py.a
-*.py.dll.py.so
-*.py.dll.py.dll
-*.py.dll.py.exe
-*.py.dll.py.lib
-*.py.dll.py.pyc
-*.py.dll.py.pyo
-*.py.dll.py.pyd
-*.py.dll.py.class
-*.py.dll.py.obj
-*.py.dll.py.out
-*.py.dll.py.o
-*.py.dll.py.a
-*.py.dll.py.so
-*.py.dll.py.dll
-*.py.dll.py.exe
-*.py.dll.py.lib
-
-# Virtual environments
+.Python
+env/
 venv/
 .venv/
-env/
-.env/
-
-# Environment variables
 .env
 .env.local
 .env.*
-!/.env.example
+pyproject.toml
+poetry.lock
 
-# IDE and editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*.tmp
-
-# OS generated files
-.DS_Store
-Thumbs.db
+# Compiled and binary files
+*.o
+*.obj
+*.so
+*.a
+*.lib
+*.dll
+*.dylib
+*.exe
+*.out
 
 # Logs
 *.log
-
-# Coverage reports
-coverage/
-htmlcov/
-.coverage
-
-# Testing
-.mypy_cache/
-.pytest_cache/
-.nyc_output/
-coverage/
-
-# Node.js
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# TypeScript
-*.tsbuildinfo
-.next/
-.nuxt/
-dist/
+# Temporary files
+*.tmp
+*.temp
+*~
+.DS_Store
+Thumbs.db
 
-# General build artifacts
-*.class
-*.o
-*.obj
-*.out
-*.exe
-*.dll
-*.so
-*.a
-*.lib
-*.dylib
-*.jar
-*.war
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Cache
+.cache/
+.mypy_cache/
+.pytest_cache/
+.gradle/
+.npm/
+.yarn/
+
+# Distribution
+*.tar.gz
 *.zip
-*.tar
+*.rar
+*.7z
 *.gz
-*.tgz
 *.bz2
 *.xz
-*.7z
-*.rar
 *.zst
 *.lz4
 *.lzh
@@ -131,16 +85,14 @@ dist/
 *.Z
 *.lz
 *.lzo
-*.tar.gz
-*.tar.bz2
-*.tar.xz
-*.tar.zst
 
-# Images (not ignored as per instructions)
-# *.png
-# *.jpg
-# *.jpeg
-# *.bmp
-# *.gif
-# *.webm
+# Images (if accidentally added)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.webp
+*.svg
+*.ico
 ```
