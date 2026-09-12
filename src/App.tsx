@@ -9,15 +9,8 @@ import BusesPage from './pages/BusesPage';
 import BusDetailPage from './pages/BusDetailPage';
 import BusVouchersPage from './pages/BusVouchersPage';
 import AddVoucherPage from './pages/AddVoucherPage';
-import TripsPage from './pages/TripsPage';
-import TripFormPage from './pages/TripFormPage';
-import TripDetailPage from './pages/TripDetailPage';
-import MaintenancePage from './pages/MaintenancePage';
-import MaintenanceFormPage from './pages/MaintenanceFormPage';
-import MaintenanceDetailPage from './pages/MaintenanceDetailPage';
-import TyresPage from './pages/TyresPage';
-import TyreFormPage from './pages/TyreFormPage';
-import TyreDetailPage from './pages/TyreDetailPage';
+// Trips, Maintenance, Tyres pages are now accessed through Bus Details
+// Old imports kept for potential future use but routes redirect to /app/buses
 import FuelPurchasesPage from './pages/FuelPurchasesPage';
 import FuelPurchaseFormPage from './pages/FuelPurchaseFormPage';
 import FuelSalesPage from './pages/FuelSalesPage';
@@ -83,17 +76,18 @@ export default function App() {
             <Route path="buses/:id" element={<BusDetailPage />} />
             <Route path="buses/:id/vouchers" element={<BusVouchersPage />} />
             <Route path="buses/:id/vouchers/create" element={<AddVoucherPage />} />
-            <Route path="trips" element={<TripsPage />} />
-            <Route path="trips/new" element={<TripFormPage />} />
-            <Route path="trips/:id" element={<TripDetailPage />} />
-            <Route path="maintenance" element={<MaintenancePage />} />
-            <Route path="maintenance/new" element={<MaintenanceFormPage />} />
-            <Route path="maintenance/:id" element={<MaintenanceDetailPage />} />
-            <Route path="maintenance/:id/edit" element={<MaintenanceFormPage />} />
-            <Route path="tyres" element={<TyresPage />} />
-            <Route path="tyres/new" element={<TyreFormPage />} />
-            <Route path="tyres/:id" element={<TyreDetailPage />} />
-            <Route path="tyres/:id/edit" element={<TyreFormPage />} />
+            {/* Redirect old standalone routes to buses - these are now bus-specific */}
+            <Route path="trips" element={<Navigate to="/app/buses" replace />} />
+            <Route path="trips/new" element={<Navigate to="/app/buses" replace />} />
+            <Route path="trips/:id" element={<Navigate to="/app/buses" replace />} />
+            <Route path="maintenance" element={<Navigate to="/app/buses" replace />} />
+            <Route path="maintenance/new" element={<Navigate to="/app/buses" replace />} />
+            <Route path="maintenance/:id" element={<Navigate to="/app/buses" replace />} />
+            <Route path="maintenance/:id/edit" element={<Navigate to="/app/buses" replace />} />
+            <Route path="tyres" element={<Navigate to="/app/buses" replace />} />
+            <Route path="tyres/new" element={<Navigate to="/app/buses" replace />} />
+            <Route path="tyres/:id" element={<Navigate to="/app/buses" replace />} />
+            <Route path="tyres/:id/edit" element={<Navigate to="/app/buses" replace />} />
             <Route path="petrol" element={<FuelSalesPage />} />
             <Route path="petrol/purchases" element={<FuelPurchasesPage />} />
             <Route path="petrol/purchases/new" element={<FuelPurchaseFormPage />} />
