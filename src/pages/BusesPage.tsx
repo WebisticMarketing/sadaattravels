@@ -13,7 +13,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SearchInput } from '../components/ui/SearchInput';
 import { SummaryCard } from '../components/ui/SummaryCard';
-import { formatCurrency } from '../lib/utils';
+
 import { Bus as BusIcon, Plus, Edit2 } from 'lucide-react';
 import { createBus, updateBus } from '../hooks/useBuses';
 
@@ -106,7 +106,7 @@ export default function BusesPage() {
         </div>
       </Card>
 
-      {/* Bus List */}
+      {/* Bus List - Table View */}
       {buses.length === 0 ? (
         <EmptyState
           title="No buses yet"
@@ -120,99 +120,93 @@ export default function BusesPage() {
           }
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {buses.map((bus) => (
-            <Card key={bus.id} className="p-4 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(`/app/buses/${bus.id}`)}>
-              <div className="space-y-3">
-                {/* Header */}
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">
-                      {bus.registration_number}
-                    </h3>
-                    {bus.bus_name && (
-                      <p className="text-sm text-gray-600">{bus.bus_name}</p>
-                    )}
-                  </div>
-                  <Badge
-                    variant={bus.status === 'active' ? 'success' : 'secondary'}
-                    size="sm"
+        <Card className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50">
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Bus
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Number Plate
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Name
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Capacity
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredBuses.map((bus) => (
+                  <tr 
+                    key={bus.id} 
+                    className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                    onClick={() => navigate(`/app/buses/${bus.id}`)}
                   >
-                    {bus.status}
-                  </Badge>
-                </div>
-
-                {/* Details */}
-                <div className="space-y-1 text-sm">
-                  {bus.bus_type && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Type:</span>
-                      <span className="font-medium">{bus.bus_type}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Capacity:</span>
-                    <span className="font-medium">{bus.capacity} seats</span>
-                  </div>
-                </div>
-
-                {/* Stats */}
-                {bus.totalTrips !== undefined && (
-                  <div className="border-t border-gray-200 pt-3">
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                      <div>
-                        <p className="text-xs text-gray-500">Trips</p>
-                        <p className="font-semibold text-gray-900">
-                          {bus.totalTrips}
-                        </p>
+                    <td className="py-3 px-4">
+                      <span className="font-semibold text-gray-900">
+                        {bus.bus_name || `BUS-${bus.id.slice(0, 4)}`}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="font-medium text-blue-600 hover:underline">
+                        {bus.registration_number}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="text-gray-900">
+                        {bus.bus_name || '-'}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="text-gray-900">
+                        {bus.capacity} seats
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <Badge
+                        variant={bus.status === 'active' ? 'success' : bus.status === 'maintenance' ? 'warning' : 'secondary'}
+                        size="sm"
+                      >
+                        {bus.status}
+                      </Badge>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => navigate(`/app/buses/${bus.id}`)}
+                        >
+                          View
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedBus(bus);
+                            setShowEditModal(true);
+                          }}
+                        >
+                          <Edit2 className="h-3 w-3" />
+                        </Button>
                       </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Revenue</p>
-                        <p className="font-semibold text-green-600">
-                          {formatCurrency(bus.totalRevenue || 0)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Trip Expenses</p>
-                        <p className="font-semibold text-red-600">
-                          {formatCurrency(bus.totalExpenses || 0)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Maintenance</p>
-                        <p className="font-semibold text-amber-600">
-                          {formatCurrency(bus.totalMaintenanceCost || 0)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Tyres</p>
-                        <p className="font-semibold text-purple-600">
-                          {formatCurrency(bus.totalTyreCost || 0)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => {
-                      setSelectedBus(bus);
-                      setShowEditModal(true);
-                    }}
-                  >
-                    <Edit2 className="mr-1 h-3 w-3" />
-                    Edit
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
 
       {/* Add Bus Modal */}

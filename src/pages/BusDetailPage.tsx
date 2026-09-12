@@ -20,7 +20,9 @@ import {
   MapPin,
   Edit2,
   FileText,
-  Plus
+  Plus,
+  TrendingUp,
+  TrendingDown
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import type { Bus, Trip, MaintenanceRecord, TyreRecord } from '../types/database';
@@ -52,6 +54,7 @@ export default function BusDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
+  const [activeTab, setActiveTab] = useState('overview');
   const [showEditModal, setShowEditModal] = useState(false);
   const [busDetails, setBusDetails] = useState<BusDetails>({
     bus: null,
@@ -294,8 +297,56 @@ export default function BusDetailPage() {
         )}
       </Card>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      {/* Financial Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Revenue</p>
+              <p className="text-2xl font-bold text-green-600">
+                {formatCurrency(totalRevenue)}
+              </p>
+            </div>
+            <TrendingUp className="h-8 w-8 text-green-600 opacity-20" />
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Expenses</p>
+              <p className="text-2xl font-bold text-red-600">
+                {formatCurrency(totalExpenses)}
+              </p>
+            </div>
+            <TrendingDown className="h-8 w-8 text-red-600 opacity-20" />
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Profit</p>
+              <p className={`text-2xl font-bold ${(totalRevenue - totalExpenses) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {formatCurrency(totalRevenue - totalExpenses)}
+              </p>
+            </div>
+            <DollarSign className="h-8 w-8 text-gray-600 opacity-20" />
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Net Profit</p>
+              <p className={`text-2xl font-bold ${(totalRevenue - totalExpenses - totalMaintenanceCost - totalTyreCost) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {formatCurrency(totalRevenue - totalExpenses - totalMaintenanceCost - totalTyreCost)}
+              </p>
+            </div>
+            <DollarSign className="h-8 w-8 text-gray-600 opacity-20" />
+          </div>
+        </Card>
+      </div>
+
+      {/* Additional Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <Card className="p-4">
           <div className="text-center">
             <p className="text-xs text-gray-500 mb-1">Total Trips</p>
@@ -304,23 +355,7 @@ export default function BusDetailPage() {
         </Card>
         <Card className="p-4">
           <div className="text-center">
-            <p className="text-xs text-gray-500 mb-1">Trip Revenue</p>
-            <p className="text-2xl font-bold text-green-600">
-              {formatCurrency(totalRevenue)}
-            </p>
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="text-center">
-            <p className="text-xs text-gray-500 mb-1">Trip Expenses</p>
-            <p className="text-2xl font-bold text-red-600">
-              {formatCurrency(totalExpenses)}
-            </p>
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="text-center">
-            <p className="text-xs text-gray-500 mb-1">Maintenance</p>
+            <p className="text-xs text-gray-500 mb-1">Maintenance Cost</p>
             <p className="text-2xl font-bold text-amber-600">
               {formatCurrency(totalMaintenanceCost)}
             </p>
@@ -328,7 +363,7 @@ export default function BusDetailPage() {
         </Card>
         <Card className="p-4">
           <div className="text-center">
-            <p className="text-xs text-gray-500 mb-1">Tyres</p>
+            <p className="text-xs text-gray-500 mb-1">Tyre Cost</p>
             <p className="text-2xl font-bold text-purple-600">
               {formatCurrency(totalTyreCost)}
             </p>
@@ -336,218 +371,330 @@ export default function BusDetailPage() {
         </Card>
       </div>
 
-      {/* Trips Section */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <MapPin className="h-5 w-5 text-gray-500" />
-            <h2 className="text-lg font-semibold text-gray-900">Recent Trips</h2>
+      {/* Tabs Navigation */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'overview'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Overview
+          </button>
+          <button
+            onClick={() => setActiveTab('trips')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'trips'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Trips
+          </button>
+          <button
+            onClick={() => setActiveTab('maintenance')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'maintenance'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Maintenance
+          </button>
+          <button
+            onClick={() => setActiveTab('tyres')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'tyres'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Tyres
+          </button>
+          <button
+            onClick={() => setActiveTab('fuel')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'fuel'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Fuel
+          </button>
+        </nav>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'overview' && (
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Bus Information</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Bus Number</p>
+              <p className="font-semibold text-gray-900">{bus.bus_name || `BUS-${id?.slice(0, 4)}`}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Number Plate</p>
+              <p className="font-semibold text-gray-900">{bus.registration_number}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Name</p>
+              <p className="font-semibold text-gray-900">{bus.bus_name || '-'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Type</p>
+              <p className="font-semibold text-gray-900">{bus.bus_type || 'Not specified'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Capacity</p>
+              <p className="font-semibold text-gray-900">{bus.capacity} seats</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Status</p>
+              <Badge variant={bus.status === 'active' ? 'success' : bus.status === 'maintenance' ? 'warning' : 'secondary'} size="sm">
+                {bus.status}
+              </Badge>
+            </div>
+            {bus.purchase_date && (
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Purchase Date</p>
+                <p className="font-semibold text-gray-900">{formatDate(new Date(bus.purchase_date))}</p>
+              </div>
+            )}
+            {bus.purchase_cost && (
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Purchase Cost</p>
+                <p className="font-semibold text-gray-900">{formatCurrency(bus.purchase_cost)}</p>
+              </div>
+            )}
           </div>
-          <Link to="/app/trips">
-            <Button variant="ghost" size="sm">View All</Button>
-          </Link>
-        </div>
-        {trips.length === 0 ? (
-          <EmptyState
-            title="No trips yet"
-            description="This bus hasn't been assigned to any trips"
-            icon={<MapPin className="h-8 w-8" />}
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">Date</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">Route</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase">Revenue</th>
-                  <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase">Expenses</th>
-                  <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase">Profit</th>
-                </tr>
-              </thead>
-              <tbody>
-                {trips.map(trip => (
-                  <tr key={trip.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-3 text-sm text-gray-900">
-                      {formatDate(new Date(trip.trip_date))}
-                    </td>
-                    <td className="py-3 px-3 text-sm text-gray-900">{trip.route}</td>
-                    <td className="py-3 px-3">
+          {bus.notes && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-sm text-gray-600">{bus.notes}</p>
+            </div>
+          )}
+          
+          <h3 className="text-lg font-semibold text-gray-900 mt-6 mb-4">Quick Actions</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Link to={`/app/buses/${id}/vouchers/create`}>
+              <Button variant="secondary" className="w-full">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Voucher
+              </Button>
+            </Link>
+            <Link to={`/app/buses/${id}/vouchers`}>
+              <Button variant="secondary" className="w-full">
+                <FileText className="mr-2 h-4 w-4" />
+                View Vouchers
+              </Button>
+            </Link>
+            <Link to={`/app/maintenance/new?bus_id=${id}`}>
+              <Button variant="secondary" className="w-full">
+                <Wrench className="mr-2 h-4 w-4" />
+                Add Maintenance
+              </Button>
+            </Link>
+            <Link to={`/app/tyres/new?bus_id=${id}`}>
+              <Button variant="secondary" className="w-full">
+                <Settings className="mr-2 h-4 w-4" />
+                Add Tyre
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      )}
+
+      {activeTab === 'trips' && (
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Trips / Vouchers</h2>
+            <Link to={`/app/buses/${id}/vouchers`}>
+              <Button variant="ghost" size="sm">View All</Button>
+            </Link>
+          </div>
+          {trips.length === 0 ? (
+            <EmptyState
+              title="No trips yet"
+              description="This bus hasn't been assigned to any trips"
+              icon={<MapPin className="h-8 w-8" />}
+            />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">Date</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">Route</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase">Revenue</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase">Expenses</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase">Profit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {trips.map(trip => (
+                    <tr key={trip.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-3 text-sm text-gray-900">
+                        {formatDate(new Date(trip.trip_date))}
+                      </td>
+                      <td className="py-3 px-3 text-sm text-gray-900">{trip.route}</td>
+                      <td className="py-3 px-3">
+                        <Badge
+                          variant={trip.status === 'active' ? 'success' : 'secondary'}
+                          size="sm"
+                        >
+                          {trip.status}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-3 text-sm text-right text-green-600 font-medium">
+                        {formatCurrency(trip.revenue || 0)}
+                      </td>
+                      <td className="py-3 px-3 text-sm text-right text-red-600 font-medium">
+                        {formatCurrency(trip.expenses || 0)}
+                      </td>
+                      <td className={`py-3 px-3 text-sm text-right font-medium ${
+                        ((trip.revenue || 0) - (trip.expenses || 0)) >= 0 
+                          ? 'text-green-600' 
+                          : 'text-red-600'
+                      }`}>
+                        {formatCurrency((trip.revenue || 0) - (trip.expenses || 0))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {activeTab === 'maintenance' && (
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Maintenance Records</h2>
+            <Link to={`/app/maintenance/new?bus_id=${id}`}>
+              <Button variant="ghost" size="sm">Add Maintenance</Button>
+            </Link>
+          </div>
+          {maintenance.length === 0 ? (
+            <EmptyState
+              title="No maintenance records"
+              description="This bus has no maintenance history"
+              icon={<Wrench className="h-8 w-8" />}
+            />
+          ) : (
+            <div className="space-y-3">
+              {maintenance.map(record => (
+                <div
+                  key={record.id}
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-gray-900">{record.maintenance_type}</p>
                       <Badge
-                        variant={trip.status === 'active' ? 'success' : 'secondary'}
+                        variant={record.status === 'active' ? 'success' : 'secondary'}
                         size="sm"
                       >
-                        {trip.status}
+                        {record.status}
                       </Badge>
-                    </td>
-                    <td className="py-3 px-3 text-sm text-right text-green-600 font-medium">
-                      {formatCurrency(trip.revenue || 0)}
-                    </td>
-                    <td className="py-3 px-3 text-sm text-right text-red-600 font-medium">
-                      {formatCurrency(trip.expenses || 0)}
-                    </td>
-                    <td className={`py-3 px-3 text-sm text-right font-medium ${
-                      ((trip.revenue || 0) - (trip.expenses || 0)) >= 0 
-                        ? 'text-green-600' 
-                        : 'text-red-600'
-                    }`}>
-                      {formatCurrency((trip.revenue || 0) - (trip.expenses || 0))}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-
-      {/* Maintenance Section */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Wrench className="h-5 w-5 text-gray-500" />
-            <h2 className="text-lg font-semibold text-gray-900">Maintenance Records</h2>
-          </div>
-          <Link to="/app/maintenance">
-            <Button variant="ghost" size="sm">View All</Button>
-          </Link>
-        </div>
-        {maintenance.length === 0 ? (
-          <EmptyState
-            title="No maintenance records"
-            description="This bus has no maintenance history"
-            icon={<Wrench className="h-8 w-8" />}
-          />
-        ) : (
-          <div className="space-y-3">
-            {maintenance.map(record => (
-              <div
-                key={record.id}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium text-gray-900">{record.maintenance_type}</p>
-                    <Badge
-                      variant={record.status === 'active' ? 'success' : 'secondary'}
-                      size="sm"
-                    >
-                      {record.status}
-                    </Badge>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">{record.description}</p>
+                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {formatDate(new Date(record.maintenance_date))}
+                      </span>
+                      {record.performed_by_name && (
+                        <span>By: {record.performed_by_name}</span>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-600 mt-1">{record.description}</p>
-                  <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {formatDate(new Date(record.maintenance_date))}
-                    </span>
-                    {record.performed_by_name && (
-                      <span>By: {record.performed_by_name}</span>
-                    )}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-lg font-bold text-amber-600">
-                    {formatCurrency(record.cost)}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
-
-      {/* Tyres Section */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Settings className="h-5 w-5 text-gray-500" />
-            <h2 className="text-lg font-semibold text-gray-900">Tyre Records</h2>
-          </div>
-          <Link to="/app/tyres">
-            <Button variant="ghost" size="sm">View All</Button>
-          </Link>
-        </div>
-        {tyres.length === 0 ? (
-          <EmptyState
-            title="No tyre records"
-            description="This bus has no tyre purchase history"
-            icon={<Settings className="h-8 w-8" />}
-          />
-        ) : (
-          <div className="space-y-3">
-            {tyres.map(record => (
-              <div
-                key={record.id}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium text-gray-900">
-                      {record.tyre_brand || 'Unknown Brand'}
-                      {record.tyre_size && ` - ${record.tyre_size}`}
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-amber-600">
+                      {formatCurrency(record.cost)}
                     </p>
-                    <Badge
-                      variant={record.status === 'active' ? 'success' : 'secondary'}
-                      size="sm"
-                    >
-                      {record.status}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {formatDate(new Date(record.purchase_date))}
-                    </span>
-                    <span>Qty: {record.quantity}</span>
-                    {record.supplier && <span>Supplier: {record.supplier}</span>}
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm text-gray-600">
-                    {formatCurrency(record.cost_per_tyre)} / tyre
-                  </p>
-                  <p className="text-lg font-bold text-purple-600">
-                    {formatCurrency(record.total_cost)}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
 
-      {/* Quick Actions */}
-      <Card className="p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Link to={`/app/buses/${id}/vouchers/create`} className="block">
-            <Button variant="secondary" className="w-full">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Voucher
-            </Button>
-          </Link>
-          <Link to={`/app/buses/${id}/vouchers`} className="block">
-            <Button variant="secondary" className="w-full">
-              <FileText className="mr-2 h-4 w-4" />
-              View Vouchers
-            </Button>
-          </Link>
-          <Link to={`/app/maintenance/new?bus_id=${id}`} className="block">
-            <Button variant="secondary" className="w-full">
-              <Wrench className="mr-2 h-4 w-4" />
-              Add Maintenance
-            </Button>
-          </Link>
-          <Link to={`/app/tyres/new?bus_id=${id}`} className="block">
-            <Button variant="secondary" className="w-full">
-              <Settings className="mr-2 h-4 w-4" />
-              Add Tyre
-            </Button>
-          </Link>
-        </div>
-      </Card>
+      {activeTab === 'tyres' && (
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Tyre Records</h2>
+            <Link to={`/app/tyres/new?bus_id=${id}`}>
+              <Button variant="ghost" size="sm">Add Tyre</Button>
+            </Link>
+          </div>
+          {tyres.length === 0 ? (
+            <EmptyState
+              title="No tyre records"
+              description="This bus has no tyre purchase history"
+              icon={<Settings className="h-8 w-8" />}
+            />
+          ) : (
+            <div className="space-y-3">
+              {tyres.map(record => (
+                <div
+                  key={record.id}
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-gray-900">
+                        {record.tyre_brand || 'Unknown Brand'}
+                        {record.tyre_size && ` - ${record.tyre_size}`}
+                      </p>
+                      <Badge
+                        variant={record.status === 'active' ? 'success' : 'secondary'}
+                        size="sm"
+                      >
+                        {record.status}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {formatDate(new Date(record.purchase_date))}
+                      </span>
+                      <span>Qty: {record.quantity}</span>
+                      {record.supplier && <span>Supplier: {record.supplier}</span>}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-gray-600">
+                      {formatCurrency(record.cost_per_tyre)} / tyre
+                    </p>
+                    <p className="text-lg font-bold text-purple-600">
+                      {formatCurrency(record.total_cost)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {activeTab === 'fuel' && (
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Fuel Records</h2>
+          </div>
+          <EmptyState
+            title="Fuel records not yet implemented"
+            description="Fuel tracking for individual buses requires additional implementation. The existing fuel_purchases and fuel_sales tables can be linked to buses, but this feature needs to be added."
+            icon={<DollarSign className="h-8 w-8" />}
+          />
+        </Card>
+      )}
 
       {/* Edit Bus Modal */}
       {showEditModal && (

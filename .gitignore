@@ -1,65 +1,121 @@
-```
+```gitignore
 # Dependencies
 node_modules/
 
 # Build outputs
 dist/
 build/
-*.js.map
-*.ts.map
+target/
 
-# Environment variables
-.env
-.env.local
-*.env.*
-
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Logs
-*.log
-
-# Coverage
-coverage/
-htmlcov/
-.coverage
-
-# Temporary files
-*.tmp
-.DS_Store
-Thumbs.db
-
-# Python specific
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
-*.so
-*.egg-info/
-.eggs/
+*.py.class
+*.py.obj
+*.py.out
+*.py.o
+*.py.a
+*.py.so
+*.py.dll
+*.py.exe
+*.py.lib
+*.py.dll.a
+*.py.dll.lib
+*.py.dll.so
+*.py.dll.o
+*.py.dll.obj
+*.py.dll.out
+*.py.dll.pyd
+*.py.dll.pyo
+*.py.dll.pyc
+*.py.dll.py.class
+*.py.dll.py.obj
+*.py.dll.py.out
+*.py.dll.py.o
+*.py.dll.py.a
+*.py.dll.py.so
+*.py.dll.py.dll
+*.py.dll.py.exe
+*.py.dll.py.lib
+*.py.dll.py.pyc
+*.py.dll.py.pyo
+*.py.dll.py.pyd
+*.py.dll.py.class
+*.py.dll.py.obj
+*.py.dll.py.out
+*.py.dll.py.o
+*.py.dll.py.a
+*.py.dll.py.so
+*.py.dll.py.dll
+*.py.dll.py.exe
+*.py.dll.py.lib
 
-# Node.js specific
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+
+# Environment variables
+.env
+.env.local
+.env.*
+!/.env.example
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Coverage reports
+coverage/
+htmlcov/
+.coverage
+
+# Testing
+.mypy_cache/
+.pytest_cache/
+.nyc_output/
+coverage/
+
+# Node.js
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Compiled Binary files
+# TypeScript
+*.tsbuildinfo
+.next/
+.nuxt/
+dist/
+
+# General build artifacts
+*.class
+*.o
+*.obj
+*.out
 *.exe
 *.dll
 *.so
 *.a
-*.o
-*.obj
-*.out
-
-# Compression files
+*.lib
+*.dylib
+*.jar
+*.war
 *.zip
-*.gz
 *.tar
+*.gz
 *.tgz
 *.bz2
 *.xz
@@ -80,31 +136,11 @@ yarn-error.log*
 *.tar.xz
 *.tar.zst
 
-# Testing
-.mypy_cache/
-.pytest_cache/
-.jest/
-.nyc_output/
-
-# Gradle
-.gradle/
-build/
-
-# Maven
-target/
-
-# Go
-*.exe
-*.dll
-*.so
-*.dylib
-
-# Rust
-target/
-
-# Julia
-julia-*/
-
-# Zig
-zig*/
+# Images (not ignored as per instructions)
+# *.png
+# *.jpg
+# *.jpeg
+# *.bmp
+# *.gif
+# *.webm
 ```
