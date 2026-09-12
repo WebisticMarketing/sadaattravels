@@ -18,7 +18,9 @@ import {
   Settings,
   DollarSign,
   MapPin,
-  Edit2
+  Edit2,
+  FileText,
+  Plus
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import type { Bus, Trip, MaintenanceRecord, TyreRecord } from '../types/database';
@@ -224,6 +226,12 @@ export default function BusDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Link to={`/app/buses/${id}/vouchers`}>
+            <Button variant="secondary" size="sm">
+              <FileText className="mr-1 h-3 w-3" />
+              View Vouchers
+            </Button>
+          </Link>
           <Button
             variant="secondary"
             size="sm"
@@ -508,6 +516,37 @@ export default function BusDetailPage() {
             ))}
           </div>
         )}
+      </Card>
+
+      {/* Quick Actions */}
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Link to={`/app/buses/${id}/vouchers/create`} className="block">
+            <Button variant="secondary" className="w-full">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Voucher
+            </Button>
+          </Link>
+          <Link to={`/app/buses/${id}/vouchers`} className="block">
+            <Button variant="secondary" className="w-full">
+              <FileText className="mr-2 h-4 w-4" />
+              View Vouchers
+            </Button>
+          </Link>
+          <Link to={`/app/maintenance/new?bus_id=${id}`} className="block">
+            <Button variant="secondary" className="w-full">
+              <Wrench className="mr-2 h-4 w-4" />
+              Add Maintenance
+            </Button>
+          </Link>
+          <Link to={`/app/tyres/new?bus_id=${id}`} className="block">
+            <Button variant="secondary" className="w-full">
+              <Settings className="mr-2 h-4 w-4" />
+              Add Tyre
+            </Button>
+          </Link>
+        </div>
       </Card>
 
       {/* Edit Bus Modal */}
