@@ -10,15 +10,16 @@ import { formatDate } from '../lib/utils';
 import { ArrowLeft } from 'lucide-react';
 
 export default function MaintenanceFormPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id, busId } = useParams<{ id: string; busId: string }>();
   const navigate = useNavigate();
   const { buses, loading: busesLoading } = useBuses();
   const { records: existingRecords } = useBusMaintenance(id || null);
 
   const isEdit = !!id;
+  const isNewForBus = !!busId && !isEdit;
 
   const [formData, setFormData] = useState({
-    bus_id: '',
+    bus_id: busId || '',
     maintenance_date: formatDate(new Date()),
     maintenance_type: '',
     description: '',
@@ -97,7 +98,12 @@ export default function MaintenanceFormPage() {
         await createMaintenanceRecord(data);
       }
 
-      navigate('/app/maintenance');
+      // Navigate back to the bus maintenance tab if coming from bus context
+      if (busId) {
+        navigate(`/app/buses/${busId}`, { state: { activeTab: 'maintenance' } });
+      } else {
+        navigate('/app/buses');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save maintenance record');
       setLoading(false);
@@ -119,7 +125,7 @@ export default function MaintenanceFormPage() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate('/app/maintenance')}
+          onClick={() => busId ? navigate(`/app/buses/${busId}`) : navigate('/app/buses')}
         >
           <ArrowLeft className="mr-1 h-4 w-4" />
           Back
@@ -251,7 +257,7 @@ export default function MaintenanceFormPage() {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => navigate('/app/maintenance')}
+              onClick={() => busId ? navigate(`/app/buses/${busId}`) : navigate('/app/buses')}
               className="flex-1"
             >
               Cancel

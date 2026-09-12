@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useBuses } from '../hooks/useBuses';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Modal } from '../components/ui/Modal';
 import { Loading } from '../components/ui/Loading';
@@ -11,10 +10,8 @@ import { Alert } from '../components/ui/Alert';
 import { Badge } from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/EmptyState';
 import { PageHeader } from '../components/ui/PageHeader';
-import { SearchInput } from '../components/ui/SearchInput';
-import { SummaryCard } from '../components/ui/SummaryCard';
 
-import { Bus as BusIcon, Plus, Edit2 } from 'lucide-react';
+import { Bus as BusIcon, Plus } from 'lucide-react';
 import { createBus, updateBus } from '../hooks/useBuses';
 
 export default function BusesPage() {
@@ -23,16 +20,12 @@ export default function BusesPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedBus, setSelectedBus] = useState<any>(null);
-  const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
   // Filter buses
   const filteredBuses = buses.filter(bus => {
-    const matchesSearch = !searchQuery || 
-      bus.registration_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (bus.bus_name && bus.bus_name.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesStatus = !statusFilter || bus.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    return matchesStatus;
   });
 
   // Calculate summary stats
@@ -87,11 +80,6 @@ export default function BusesPage() {
       {/* Filters */}
       <Card className="p-4">
         <div className="grid gap-3 sm:grid-cols-2">
-          <SearchInput
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Search by registration or name..."
-          />
           <Select
             label="Status"
             value={statusFilter}
