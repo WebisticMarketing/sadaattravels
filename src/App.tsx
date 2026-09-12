@@ -7,6 +7,8 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import BusesPage from './pages/BusesPage';
 import BusDetailPage from './pages/BusDetailPage';
+import BusVouchersPage from './pages/BusVouchersPage';
+import AddVoucherPage from './pages/AddVoucherPage';
 import TripsPage from './pages/TripsPage';
 import TripFormPage from './pages/TripFormPage';
 import TripDetailPage from './pages/TripDetailPage';
@@ -79,6 +81,8 @@ export default function App() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="buses" element={<BusesPage />} />
             <Route path="buses/:id" element={<BusDetailPage />} />
+            <Route path="buses/:id/vouchers" element={<BusVouchersPage />} />
+            <Route path="buses/:id/vouchers/create" element={<AddVoucherPage />} />
             <Route path="trips" element={<TripsPage />} />
             <Route path="trips/new" element={<TripFormPage />} />
             <Route path="trips/:id" element={<TripDetailPage />} />
