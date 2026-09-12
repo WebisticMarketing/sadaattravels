@@ -120,12 +120,11 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
 
         if (periodTrips && periodTrips.length > 0) {
           const tripIds = periodTrips.map(t => t.id);
-          const busIds = [...new Set(periodTrips.map(t => t.bus_id))];
 
           // Revenue
           const { data: revenueData, error: revenueError } = await supabase
             .from('trip_revenue_entries')
-            .select('amount, entry_type, quantity')
+            .select('amount, entry_type, quantity, trip_id')
             .in('trip_id', tripIds)
             .eq('status', 'active');
 
@@ -148,14 +147,22 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
           periodExpenses = expenseData?.reduce((sum, e) => sum + e.amount, 0) || 0;
 
           // Get bus capacities for occupancy calculation
-          if (busIds.length > 0) {
+          // For each trip, get the bus capacity and sum it (so if a bus runs multiple trips, its capacity is counted multiple times)
+          const busIdsForTrips = periodTrips.map(t => t.bus_id).filter(id => id != null);
+          if (busIdsForTrips.length > 0) {
             const { data: busesData, error: busesError } = await supabase
               .from('buses')
               .select('id, capacity')
-              .in('id', busIds);
+              .in('id', busIdsForTrips);
 
             if (!busesError && busesData) {
-              totalCapacity = busesData.reduce((sum, b) => sum + b.capacity, 0);
+              // Create a map of bus_id to capacity
+              const busCapacityMap = new Map(busesData.map(b => [b.id, b.capacity]));
+              // For each trip, add the capacity of its bus (so capacity is counted per trip, not per unique bus)
+              totalCapacity = periodTrips.reduce((sum, trip) => {
+                const capacity = busCapacityMap.get(trip.bus_id) || 0;
+                return sum + capacity;
+              }, 0);
             }
           }
         }
@@ -250,10 +257,12 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
 
         const pendingMaintenance = maintenanceRecords?.length || 0;
 
-        // Fetch recent activity from audit logs
+        // Fetch recent activity from audit logs (filtered by selected period)
         const { data: auditLogs, error: auditError } = await supabase
           .from('audit_logs')
           .select('id, action, table_name, created_at, meta')
+          .gte('created_at', periodStart)
+          .lte('created_at', periodEnd)
           .order('created_at', { ascending: false })
           .limit(10);
 
