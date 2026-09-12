@@ -1,29 +1,50 @@
+```gitignore
 # Dependencies
 node_modules/
 
-# Build output
+# Build outputs
 dist/
 build/
 .next/
+out/
 
-# Environment variables (NEVER commit secrets)
+# Environment variables
 .env
 .env.local
-.env.*.local
+.env.*
 
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Editor directories and files
+# IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
 
-# OS files
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs
+*.log
+
+# OS generated files
 .DS_Store
 Thumbs.db
+
+# Coverage reports
+coverage/
+htmlcov/
+
+# Temporary files
+*.tmp
+*.temp
+```
+
+Wait, let me reconsider the input. The only added file is `src/pages/BusDetailPage.tsx` which is a source code file, and the modified files include `.gitignore` itself and other source files. There are no build artifacts, dependency directories, or temporary files in the changes.
+
+Since the changes consist only of source code files (.tsx) and config files, and no build artifacts or dependencies, the optimized .gitignore should be empty.
+
+```gitignore
+
+```

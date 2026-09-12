@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useBuses } from '../hooks/useBuses';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -17,6 +18,7 @@ import { Bus as BusIcon, Plus, Edit2 } from 'lucide-react';
 import { createBus, updateBus } from '../hooks/useBuses';
 
 export default function BusesPage() {
+  const navigate = useNavigate();
   const { buses, loading, error, refetch } = useBuses(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -120,7 +122,7 @@ export default function BusesPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {buses.map((bus) => (
-            <Card key={bus.id} className="p-4">
+            <Card key={bus.id} className="p-4 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(`/app/buses/${bus.id}`)}>
               <div className="space-y-3">
                 {/* Header */}
                 <div className="flex items-start justify-between">
@@ -193,7 +195,7 @@ export default function BusesPage() {
                 )}
 
                 {/* Actions */}
-                <div className="flex gap-2">
+                <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                   <Button
                     variant="secondary"
                     size="sm"
