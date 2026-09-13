@@ -98,13 +98,14 @@ export default function MaintenanceFormPage() {
         await createMaintenanceRecord(data);
       }
 
-      // Navigate back to the bus detail page (maintenance tab will be visible there)
-      if (id) {
-        navigate(`/app/buses/${id}`);
+      // Navigate back to the bus detail page if coming from bus context
+      if (busId) {
+        navigate(`/app/buses/${busId}`);
       } else {
         navigate('/app/buses');
       }
     } catch (err) {
+      console.error('Failed to save maintenance record:', err);
       setError(err instanceof Error ? err.message : 'Failed to save maintenance record');
       setLoading(false);
     }
