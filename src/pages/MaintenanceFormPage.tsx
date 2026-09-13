@@ -10,12 +10,12 @@ import { formatDate } from '../lib/utils';
 import { ArrowLeft } from 'lucide-react';
 
 export default function MaintenanceFormPage() {
-  const { id, busId } = useParams<{ id: string; busId: string }>();
+  const { recordId, busId } = useParams<{ recordId: string; busId: string }>();
   const navigate = useNavigate();
   const { buses, loading: busesLoading } = useBuses();
-  const { records: existingRecords } = useBusMaintenance(id || null);
+  const { records: existingRecords } = useBusMaintenance(busId || null);
 
-  const isEdit = !!id;
+  const isEdit = !!recordId;
   const isNewForBus = !!busId && !isEdit;
 
   const [formData, setFormData] = useState({
@@ -93,14 +93,14 @@ export default function MaintenanceFormPage() {
       };
 
       if (isEdit) {
-        await updateMaintenanceRecord(id!, data);
+        await updateMaintenanceRecord(recordId!, data);
       } else {
         await createMaintenanceRecord(data);
       }
 
-      // Navigate back to the bus maintenance tab if coming from bus context
+      // Navigate back to the bus detail page (maintenance tab will be visible there)
       if (busId) {
-        navigate(`/app/buses/${busId}/maintenance`);
+        navigate(`/app/buses/${busId}`);
       } else {
         navigate('/app/buses');
       }
