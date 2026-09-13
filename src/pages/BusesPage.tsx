@@ -3,34 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import { useBuses } from '../hooks/useBuses';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Select } from '../components/ui/Select';
 import { Modal } from '../components/ui/Modal';
 import { Loading } from '../components/ui/Loading';
 import { Alert } from '../components/ui/Alert';
 import { Badge } from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/EmptyState';
 import { PageHeader } from '../components/ui/PageHeader';
+import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
 
-import { Bus as BusIcon, Plus } from 'lucide-react';
+import { Bus as BusIcon, Plus, Edit2 } from 'lucide-react';
 import { createBus, updateBus } from '../hooks/useBuses';
 
 export default function BusesPage() {
   const navigate = useNavigate();
-  const { buses, loading, error, refetch } = useBuses(true);
+  const { buses, loading, error, refetch } = useBuses(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedBus, setSelectedBus] = useState<any>(null);
-  const [statusFilter, setStatusFilter] = useState('');
-
-  // Filter buses
-  const filteredBuses = buses.filter(bus => {
-    const matchesStatus = !statusFilter || bus.status === statusFilter;
-    return matchesStatus;
-  });
-
-  // Calculate summary stats
-  const activeBuses = filteredBuses.filter(b => b.status === 'active').length;
-  const totalBuses = filteredBuses.length;
 
   if (loading) {
     return (
@@ -54,7 +44,7 @@ export default function BusesPage() {
     <div className="space-y-6">
       {/* Header */}
       <PageHeader 
-        title="Buses" 
+        title="Fleet Management" 
         description="Manage your bus fleet"
       >
         <Button onClick={() => setShowAddModal(true)}>
@@ -62,37 +52,6 @@ export default function BusesPage() {
           Add Bus
         </Button>
       </PageHeader>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <SummaryCard
-          label="Active Buses"
-          value={activeBuses}
-          icon={<BusIcon className="h-6 w-6" />}
-        />
-        <SummaryCard
-          label="Total Buses"
-          value={totalBuses}
-          icon={<BusIcon className="h-6 w-6" />}
-        />
-      </div>
-
-      {/* Filters */}
-      <Card className="p-4">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Select
-            label="Status"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            options={[
-              { value: '', label: 'All statuses' },
-              { value: 'active', label: 'Active' },
-              { value: 'inactive', label: 'Inactive' },
-              { value: 'maintenance', label: 'Maintenance' },
-            ]}
-          />
-        </div>
-      </Card>
 
       {/* Bus List - Table View */}
       {buses.length === 0 ? (
@@ -134,7 +93,7 @@ export default function BusesPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredBuses.map((bus) => (
+                {buses.map((bus) => (
                   <tr 
                     key={bus.id} 
                     className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"

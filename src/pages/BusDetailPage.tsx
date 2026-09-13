@@ -22,7 +22,8 @@ import {
   FileText,
   Plus,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  Fuel
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import type { Bus, Trip, MaintenanceRecord, TyreRecord } from '../types/database';
@@ -392,7 +393,7 @@ export default function BusDetailPage() {
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
-            Trips
+            Trips & Vouchers
           </button>
           <button
             onClick={() => setActiveTab('maintenance')}
@@ -688,11 +689,10 @@ export default function BusDetailPage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Fuel Records</h2>
           </div>
-          <EmptyState
-            title="Fuel records not yet implemented"
-            description="Fuel tracking for individual buses requires additional implementation. The existing fuel_purchases and fuel_sales tables can be linked to buses, but this feature needs to be added."
-            icon={<DollarSign className="h-8 w-8" />}
-          />
+          <p className="text-sm text-gray-600 mb-4">
+            Diesel/fuel expenses are recorded within Trip Vouchers. The records below show diesel expenses extracted from all trips for this bus.
+          </p>
+          <FuelTabContent busId={id!} />
         </Card>
       )}
 
@@ -816,6 +816,130 @@ function EditBusModal({ bus, onClose, onSuccess }: EditBusModalProps) {
         </div>
       </form>
     </Modal>
+  );
+}
+
+interface FuelRecord {
+  id: string;
+  trip_id: string;
+  expense_type: string;
+  description: string | null;
+  amount: number;
+  paid_to: string | null;
+  trip_date: string;
+  route: string;
+}
+
+function FuelTabContent({ busId }: { busId: string }) {
+  const [fuelRecords, setFuelRecords] = useState<FuelRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [totalDiesel, setTotalDiesel] = useState(0);
+
+  useEffect(() => {
+    async function fetchFuelRecords() {
+      try {
+        setLoading(true);
+        
+        // Fetch trips for this bus
+        const { data: trips } = await supabase
+          .from('trips')
+          .select('id, trip_date, route')
+          .eq('bus_id', busId)
+          .eq('status', 'active');
+
+        if (!trips || trips.length === 0) {
+          setFuelRecords([]);
+          setLoading(false);
+          return;
+        }
+
+        const tripIds = trips.map(t => t.id);
+
+        // Fetch diesel expenses from trip_expenses
+        const { data: expenses } = await supabase
+          .from('trip_expenses')
+          .select('id, trip_id, expense_type, description, amount, paid_to')
+          .in('trip_id', tripIds)
+          .eq('expense_type', 'diesel')
+          .eq('status', 'active');
+
+        // Combine with trip info
+        const records: FuelRecord[] = (expenses || []).map(exp => {
+          const trip = trips.find(t => t.id === exp.trip_id);
+          return {
+            id: exp.id,
+            trip_id: exp.trip_id,
+            expense_type: exp.expense_type,
+            description: exp.description,
+            amount: exp.amount,
+            paid_to: exp.paid_to,
+            trip_date: trip?.trip_date || '',
+            route: trip?.route || '',
+          };
+        });
+
+        setFuelRecords(records);
+        setTotalDiesel(records.reduce((sum, r) => sum + r.amount, 0));
+        setLoading(false);
+      } catch (err) {
+        console.error('Failed to fetch fuel records:', err);
+        setLoading(false);
+      }
+    }
+
+    fetchFuelRecords();
+  }, [busId]);
+
+  if (loading) {
+    return <Loading size="sm" label="Loading fuel records..." />;
+  }
+
+  if (fuelRecords.length === 0) {
+    return (
+      <EmptyState
+        title="No fuel records"
+        description="No diesel expenses have been recorded for this bus yet. Diesel is added when creating trip vouchers."
+        icon={<Fuel className="h-8 w-8" />}
+      />
+    );
+  }
+
+  return (
+    <div>
+      <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+        <p className="text-sm text-blue-700">
+          <span className="font-semibold">Total Diesel:</span> {formatCurrency(totalDiesel)}
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">Date</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">Route</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">Description</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">Paid To</th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {fuelRecords.map(record => (
+              <tr key={record.id} className="border-b border-gray-100 hover:bg-gray-50">
+                <td className="py-2 px-3 text-sm text-gray-900">
+                  {formatDate(new Date(record.trip_date))}
+                </td>
+                <td className="py-2 px-3 text-sm text-gray-900">{record.route}</td>
+                <td className="py-2 px-3 text-sm text-gray-900">{record.description || '-'}</td>
+                <td className="py-2 px-3 text-sm text-gray-900">{record.paid_to || '-'}</td>
+                <td className="py-2 px-3 text-sm text-right font-medium text-red-600">
+                  {formatCurrency(record.amount)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
