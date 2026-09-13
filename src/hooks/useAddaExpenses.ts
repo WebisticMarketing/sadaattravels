@@ -103,9 +103,12 @@ export async function createAddaExpense(data: {
   receipt_number?: string;
   notes?: string;
 }) {
+  const { data: session } = await supabase.auth.getSession();
+  const userId = session?.session?.user?.id;
+
   const { data: expense, error } = await supabase
     .from('adda_expenses')
-    .insert([data])
+    .insert([{ ...data, created_by: userId }])
     .select()
     .single();
 
