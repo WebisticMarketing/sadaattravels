@@ -311,102 +311,105 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
 
         const pendingMaintenance = overdueMaintenanceRecords?.length || 0;
 
-        // Fetch recent activity from audit logs (filtered by selected period)
-        const { data: auditLogs, error: auditError } = await supabase
-          .from('audit_logs')
-          .select('id, action, table_name, created_at, meta')
-          .gte('created_at', periodStart)
-          .lte('created_at', periodEnd)
-          .order('created_at', { ascending: false })
-          .limit(10);
+        // Fetch recent activity from multiple sources (trips, maintenance, tyres)
+        // This avoids relying on audit_logs which may have RLS issues
+        const [recentTrips, recentMaintenance, recentTyres] = await Promise.all([
+          // Recent trips
+          supabase
+            .from('trips')
+            .select('id, trip_date, route, bus_id, status')
+            .gte('trip_date', periodStart)
+            .lte('trip_date', periodEnd)
+            .eq('status', 'active')
+            .order('trip_date', { ascending: false })
+            .limit(5),
+          
+          // Recent maintenance
+          supabase
+            .from('maintenance_records')
+            .select('id, maintenance_date, maintenance_type, description, bus_id, status')
+            .gte('maintenance_date', periodStart)
+            .lte('maintenance_date', periodEnd)
+            .eq('status', 'active')
+            .order('maintenance_date', { ascending: false })
+            .limit(5),
+          
+          // Recent tyres
+          supabase
+            .from('tyre_records')
+            .select('id, purchase_date, tyre_type, notes, bus_id, status')
+            .gte('purchase_date', periodStart)
+            .lte('purchase_date', periodEnd)
+            .eq('status', 'active')
+            .order('purchase_date', { ascending: false })
+            .limit(5)
+        ]);
 
-        if (auditError) throw auditError;
+        if (recentTrips.error) throw recentTrips.error;
+        if (recentMaintenance.error) throw recentMaintenance.error;
+        if (recentTyres.error) throw recentTyres.error;
 
-        const recentActivity = (auditLogs || []).map(log => {
-          let type = 'activity';
-          let title = '';
-          let subtitle = '';
-          let href = '#';
-          let icon = 'activity';
+        // Combine and normalize activities
+        const allActivities: Array<{
+          id: string;
+          type: string;
+          title: string;
+          subtitle: string;
+          href: string;
+          time: string;
+          timeAgo: string;
+          icon: string;
+          date: string;
+        }> = [];
 
-          // Map audit actions to activity types
-          switch (log.action) {
-            case 'create':
-              if (log.table_name === 'buses') {
-                type = 'bus';
-                title = 'Bus created';
-                subtitle = log.meta?.registration_number || 'New bus added';
-                href = '/app/buses';
-                icon = 'bus';
-              } else if (log.table_name === 'trips') {
-                type = 'trip';
-                title = 'Trip created';
-                subtitle = log.meta?.route || 'New trip added';
-                href = '/app/trips';
-                icon = 'trip';
-              } else if (log.table_name === 'maintenance_records') {
-                type = 'maintenance';
-                title = 'Maintenance scheduled';
-                subtitle = log.meta?.maintenance_type || 'Maintenance record';
-                href = '/app/maintenance';
-                icon = 'wrench';
-              } else if (log.table_name === 'fuel_purchases') {
-                type = 'fuel';
-                title = 'Fuel purchased';
-                subtitle = `${log.meta?.litres || 0}L purchased`;
-                href = '/app/petrol';
-                icon = 'fuel';
-              } else if (log.table_name === 'cargo_records') {
-                type = 'cargo';
-                title = 'Cargo shipment';
-                subtitle = log.meta?.description || 'Cargo record';
-                href = '/app/cargo';
-                icon = 'cargo';
-              } else if (log.table_name === 'adda_income' || log.table_name === 'adda_expenses') {
-                type = 'adda';
-                title = log.table_name === 'adda_income' ? 'Adda income' : 'Adda expense';
-                subtitle = `Rs ${log.meta?.amount || 0}`;
-                href = '/app/adda';
-                icon = 'adda';
-              } else {
-                type = 'activity';
-                title = `${log.action} on ${log.table_name}`;
-                subtitle = '';
-                icon = 'activity';
-              }
-              break;
-            case 'login':
-              type = 'login';
-              title = 'User logged in';
-              subtitle = log.meta?.email || '';
-              href = '#';
-              icon = 'login';
-              break;
-            case 'logout':
-              type = 'logout';
-              title = 'User logged out';
-              subtitle = log.meta?.email || '';
-              href = '#';
-              icon = 'logout';
-              break;
-            default:
-              type = 'activity';
-              title = `${log.action}`;
-              subtitle = '';
-              icon = 'activity';
-          }
-
-          return {
-            id: log.id,
-            type,
-            title,
-            subtitle,
-            href,
-            time: log.created_at,
-            timeAgo: formatTimeAgo(log.created_at),
-            icon,
-          };
+        // Add trips
+        (recentTrips.data || []).forEach(trip => {
+          allActivities.push({
+            id: `trip-${trip.id}`,
+            type: 'trip',
+            title: 'Trip completed',
+            subtitle: trip.route || 'Trip record',
+            href: `/app/trips`,
+            time: trip.trip_date,
+            timeAgo: formatTimeAgo(trip.trip_date),
+            icon: 'trip',
+            date: trip.trip_date
+          });
         });
+
+        // Add maintenance
+        (recentMaintenance.data || []).forEach(record => {
+          allActivities.push({
+            id: `maint-${record.id}`,
+            type: 'maintenance',
+            title: 'Maintenance recorded',
+            subtitle: record.maintenance_type || record.description || 'Maintenance record',
+            href: `/app/buses/${record.bus_id}/maintenance`,
+            time: record.maintenance_date,
+            timeAgo: formatTimeAgo(record.maintenance_date),
+            icon: 'wrench',
+            date: record.maintenance_date
+          });
+        });
+
+        // Add tyres
+        (recentTyres.data || []).forEach(record => {
+          allActivities.push({
+            id: `tyre-${record.id}`,
+            type: 'tyre',
+            title: 'Tyre record added',
+            subtitle: record.tyre_type || record.notes || 'Tyre record',
+            href: `/app/buses/${record.bus_id}/tyres`,
+            time: record.purchase_date,
+            timeAgo: formatTimeAgo(record.purchase_date),
+            icon: 'tyre',
+            date: record.purchase_date
+          });
+        });
+
+        // Sort all activities by date descending and take top 5
+        allActivities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const recentActivity = allActivities.slice(0, 5).map(({ date, ...rest }) => rest);
 
         setMetrics({
           selectedPeriod: {
