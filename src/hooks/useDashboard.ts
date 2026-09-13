@@ -254,7 +254,7 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
         // Fetch Fuel sales profit for the selected period (external sales only)
         const { data: fuelSalesRecords, error: fuelSalesError } = await supabase
           .from('fuel_sales')
-          .select('total_amount, litres, cost_per_litre, sale_type')
+          .select('total_amount, litres, cost_price_per_litre, sale_type')
           .gte('sale_date', periodStart)
           .lte('sale_date', periodEnd)
           .eq('sale_type', 'external')
@@ -265,7 +265,7 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
         // Calculate fuel profit from external sales (not internal bus fuel)
         const fuelProfit = fuelSalesRecords?.reduce((sum, sale) => {
           const revenue = sale.total_amount || 0;
-          const cost = (sale.litres || 0) * (sale.cost_per_litre || 0);
+          const cost = (sale.litres || 0) * (sale.cost_price_per_litre || 0);
           return sum + (revenue - cost);
         }, 0) || 0;
 
