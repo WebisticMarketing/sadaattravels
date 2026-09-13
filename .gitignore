@@ -1,17 +1,25 @@
 ```gitignore
-# Dependencies
-node_modules/
-
-# Build outputs
+# Compiled and build artifacts
+*.pyc
+__pycache__/
+*.o
+*.obj
 dist/
 build/
-*.js.map
-*.tsbuildinfo
+target/
 
-# Environment
+# Dependencies
+node_modules/
+venv/
+.venv/
 .env
 .env.local
 *.env.*
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
 
 # Editors
 .vscode/
@@ -19,43 +27,18 @@ build/
 *.swp
 *.swo
 
-# Logs
-*.log
-
 # Coverage
 coverage/
 htmlcov/
-*.coverage
-
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
-venv/
-.venv/
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
 .coverage
-.nox/
-*.so
 
-# Temporary files
-*.tmp
-*.temp
-.DS_Store
-Thumbs.db
-
-# MyPy
+# Python specific
 .mypy_cache/
-.dmypy.json
-dmypy.json
-
-# PyTest
 .pytest_cache/
+
+# Java/Gradle
+.gradle/
+*.class
 
 # Compressed files
 *.zip
