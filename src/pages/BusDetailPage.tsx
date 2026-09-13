@@ -118,10 +118,7 @@ export default function BusDetailPage() {
       // Fetch maintenance records - include all statuses for accurate cost calculation
       const { data: maintenanceData, error: maintenanceError } = await supabase
         .from('maintenance_records')
-        .select(`
-          *,
-          performed_by:users(full_name)
-        `)
+        .select('*')
         .eq('bus_id', id)
         .order('maintenance_date', { ascending: false })
         .limit(10);
@@ -132,8 +129,7 @@ export default function BusDetailPage() {
 
       const maintenance = (maintenanceData || []).map(record => ({
         ...record,
-        performed_by_name: (record.performed_by as any)?.full_name || record.performed_by,
-        performed_by: undefined,
+        performed_by_name: record.performed_by,
       }));
 
       // Fetch tyre records - include all statuses for accurate cost calculation

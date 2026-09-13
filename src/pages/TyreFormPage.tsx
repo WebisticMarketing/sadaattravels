@@ -7,10 +7,10 @@ import { ArrowLeft } from 'lucide-react';
 
 export default function TyreFormPage() {
   const navigate = useNavigate();
-  const { id, tyreId } = useParams<{ id: string; tyreId: string }>();
-  const isEdit = !!id;
+  const { busId, tyreId } = useParams<{ busId: string; tyreId: string }>();
+  const isEdit = !!tyreId;
   const { buses } = useBuses();
-  const { tyre, loading: tyreLoading } = useTyre(id || null);
+  const { tyre, loading: tyreLoading } = useTyre(tyreId || null);
 
   const [formData, setFormData] = useState({
     bus_id: '',
@@ -40,11 +40,14 @@ export default function TyreFormPage() {
         expected_life_km: tyre.expected_life_km?.toString() || '',
         notes: tyre.notes || '',
       });
-    } else if (!isEdit) {
-      // For create mode, bus_id should be set by the route or left empty
-      // The BusDetailPage will pass it via the route
+    } else if (!isEdit && busId) {
+      // Pre-fill bus_id when coming from bus context
+      setFormData(prev => ({
+        ...prev,
+        bus_id: busId,
+      }));
     }
-  }, [tyre, isEdit]);
+  }, [tyre, isEdit, busId]);
 
   const totalCost =
     parseFloat(formData.quantity || '0') * parseFloat(formData.cost_per_tyre || '0');
@@ -84,15 +87,15 @@ export default function TyreFormPage() {
         notes: formData.notes || undefined,
       };
 
-      if (isEdit && id) {
-        await updateTyreRecord(id, data);
+      if (isEdit && tyreId) {
+        await updateTyreRecord(tyreId, data);
       } else {
         await createTyreRecord(data);
       }
 
       // Navigate back to the bus detail page if coming from bus context
-      if (id) {
-        navigate(`/app/buses/${id}`);
+      if (busId) {
+        navigate(`/app/buses/${busId}`);
       } else {
         navigate('/app/buses');
       }
