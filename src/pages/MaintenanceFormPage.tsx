@@ -10,7 +10,7 @@ import { formatDate } from '../lib/utils';
 import { ArrowLeft } from 'lucide-react';
 
 export default function MaintenanceFormPage() {
-  const { recordId, busId } = useParams<{ recordId: string; busId: string }>();
+  const { recordId, id } = useParams<{ recordId: string; id: string }>();
   const navigate = useNavigate();
   const { buses, loading: busesLoading } = useBuses();
   const { record: existingRecord, loading: recordLoading } = useMaintenanceRecord(recordId || null);
@@ -18,7 +18,7 @@ export default function MaintenanceFormPage() {
   const isEdit = !!recordId;
 
   const [formData, setFormData] = useState({
-    bus_id: busId || '',
+    bus_id: id || '',
     maintenance_date: formatDate(new Date()),
     maintenance_type: '',
     description: '',
@@ -48,12 +48,12 @@ export default function MaintenanceFormPage() {
   }, [isEdit, existingRecord]);
 
   useEffect(() => {
-    if (busId && !formData.bus_id) {
-      setFormData({ ...formData, bus_id: busId });
-    } else if (buses.length > 0 && !formData.bus_id && !isEdit && !busId) {
+    if (id && !formData.bus_id) {
+      setFormData({ ...formData, bus_id: id });
+    } else if (buses.length > 0 && !formData.bus_id && !isEdit && !id) {
       setFormData({ ...formData, bus_id: buses[0].id });
     }
-  }, [buses, formData, isEdit, busId]);
+  }, [buses, formData, isEdit, id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,8 +99,8 @@ export default function MaintenanceFormPage() {
       }
 
       // Navigate back to the bus detail page (maintenance tab will be visible there)
-      if (busId) {
-        navigate(`/app/buses/${busId}`);
+      if (id) {
+        navigate(`/app/buses/${id}`);
       } else {
         navigate('/app/buses');
       }
@@ -125,7 +125,7 @@ export default function MaintenanceFormPage() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => busId ? navigate(`/app/buses/${busId}`) : navigate('/app/buses')}
+          onClick={() => id ? navigate(`/app/buses/${id}`) : navigate('/app/buses')}
         >
           <ArrowLeft className="mr-1 h-4 w-4" />
           Back
@@ -143,8 +143,8 @@ export default function MaintenanceFormPage() {
       {/* Form */}
       <Card className="p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Bus Selection - Only show if busId is not provided in route */}
-          {!busId && (
+          {/* Bus Selection - Only show if id is not provided in route */}
+          {!id && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Bus *
@@ -259,7 +259,7 @@ export default function MaintenanceFormPage() {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => busId ? navigate(`/app/buses/${busId}`) : navigate('/app/buses')}
+              onClick={() => id ? navigate(`/app/buses/${id}`) : navigate('/app/buses')}
               className="flex-1"
             >
               Cancel
