@@ -6,6 +6,10 @@ build/
 # Dependencies
 node_modules/
 
+# Logs and temp files
+*.log
+*.tmp
+
 # Environment
 .env
 .env.local
@@ -15,18 +19,13 @@ node_modules/
 .vscode/
 .idea/
 
-# Logs and temp files
-*.log
-*.tmp
-*.swp
-
 # Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Compiled
+# Compiled files
 *.o
 *.obj
 *.so
@@ -34,26 +33,6 @@ __pycache__/
 *.dll
 *.exe
 *.out
-
-# Compression
-*.zip
-*.gz
-*.tar
-*.tgz
-*.bz2
-*.xz
-*.7z
-*.rar
-*.zst
-*.lz4
-*.lzh
-*.cab
-*.arj
-*.rpm
-*.deb
-*.Z
-*.lz
-*.lzo
 
 # Coverage
 coverage/
