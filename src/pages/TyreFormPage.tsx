@@ -9,7 +9,6 @@ export default function TyreFormPage() {
   const navigate = useNavigate();
   const { id, busId } = useParams<{ id: string; busId: string }>();
   const isEdit = !!id;
-  const isNewForBus = !!busId && !isEdit;
   const { buses } = useBuses();
   const { tyre, loading: tyreLoading } = useTyre(id || null);
 
@@ -90,7 +89,7 @@ export default function TyreFormPage() {
 
       // Navigate back to the bus tyres tab if coming from bus context
       if (busId) {
-        navigate(`/app/buses/${busId}/tyres`);
+        navigate(`/app/buses/${busId}`);
       } else {
         navigate('/app/buses');
       }

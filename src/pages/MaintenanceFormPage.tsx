@@ -16,7 +16,6 @@ export default function MaintenanceFormPage() {
   const { records: existingRecords } = useBusMaintenance(busId || null);
 
   const isEdit = !!recordId;
-  const isNewForBus = !!busId && !isEdit;
 
   const [formData, setFormData] = useState({
     bus_id: busId || '',
