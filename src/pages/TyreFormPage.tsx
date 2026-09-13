@@ -7,14 +7,13 @@ import { ArrowLeft } from 'lucide-react';
 
 export default function TyreFormPage() {
   const navigate = useNavigate();
-  const { id, busId } = useParams<{ id: string; busId: string }>();
+  const { id, tyreId } = useParams<{ id: string; tyreId: string }>();
   const isEdit = !!id;
-  const isNewForBus = !!busId && !isEdit;
   const { buses } = useBuses();
   const { tyre, loading: tyreLoading } = useTyre(id || null);
 
   const [formData, setFormData] = useState({
-    bus_id: busId || '',
+    bus_id: '',
     purchase_date: formatDate(new Date()),
     tyre_brand: '',
     tyre_size: '',
@@ -41,6 +40,9 @@ export default function TyreFormPage() {
         expected_life_km: tyre.expected_life_km?.toString() || '',
         notes: tyre.notes || '',
       });
+    } else if (!isEdit) {
+      // For create mode, bus_id should be set by the route or left empty
+      // The BusDetailPage will pass it via the route
     }
   }, [tyre, isEdit]);
 
@@ -137,27 +139,29 @@ export default function TyreFormPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="rounded-lg border border-gray-200 bg-white p-6">
           <div className="space-y-4">
-            {/* Bus Selection */}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                Bus *
-              </label>
-              <select
-                value={formData.bus_id}
-                onChange={(e) => setFormData({ ...formData, bus_id: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                required
-                disabled={isEdit}
-              >
-                <option value="">Select a bus</option>
-                {buses.map((bus) => (
-                  <option key={bus.id} value={bus.id}>
-                    {bus.registration_number}
-                    {bus.bus_name ? ` - ${bus.bus_name}` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Bus Selection - Only show if busId is not provided in route */}
+            {!busId && (
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Bus *
+                </label>
+                <select
+                  value={formData.bus_id}
+                  onChange={(e) => setFormData({ ...formData, bus_id: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  required
+                  disabled={isEdit}
+                >
+                  <option value="">Select a bus</option>
+                  {buses.map((bus) => (
+                    <option key={bus.id} value={bus.id}>
+                      {bus.registration_number}
+                      {bus.bus_name ? ` - ${bus.bus_name}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Purchase Date */}
             <div>

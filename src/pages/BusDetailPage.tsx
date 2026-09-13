@@ -115,7 +115,7 @@ export default function BusDetailPage() {
         };
       });
 
-      // Fetch maintenance records
+      // Fetch maintenance records - include all statuses for accurate cost calculation
       const { data: maintenanceData } = await supabase
         .from('maintenance_records')
         .select(`
@@ -132,7 +132,7 @@ export default function BusDetailPage() {
         performed_by: undefined,
       }));
 
-      // Fetch tyre records
+      // Fetch tyre records - include all statuses for accurate cost calculation
       const { data: tyreData } = await supabase
         .from('tyre_records')
         .select('*')
