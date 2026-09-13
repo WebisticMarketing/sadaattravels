@@ -167,6 +167,34 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
           }
         }
 
+        // Fetch maintenance costs for the selected period
+        const { data: maintenanceRecords, error: maintenanceError } = await supabase
+          .from('maintenance_records')
+          .select('cost')
+          .gte('maintenance_date', periodStart)
+          .lte('maintenance_date', periodEnd)
+          .eq('status', 'active');
+
+        if (maintenanceError) throw maintenanceError;
+        const maintenanceCost = maintenanceRecords?.reduce((sum, m) => sum + m.cost, 0) || 0;
+
+        // Add maintenance to total expenses
+        periodExpenses += maintenanceCost;
+
+        // Fetch tyre costs for the selected period
+        const { data: tyreRecords, error: tyreError } = await supabase
+          .from('tyre_records')
+          .select('total_cost')
+          .gte('purchase_date', periodStart)
+          .lte('purchase_date', periodEnd)
+          .eq('status', 'active');
+
+        if (tyreError) throw tyreError;
+        const tyreCost = tyreRecords?.reduce((sum, t) => sum + t.total_cost, 0) || 0;
+
+        // Add tyre cost to total expenses
+        periodExpenses += tyreCost;
+
         // Fetch previous period for comparison
         const { data: prevPeriodTrips, error: prevPeriodError } = await supabase
           .from('trips')
@@ -202,6 +230,32 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
           if (!prevExpenseError) {
             prevPeriodExpenses = prevExpenseData?.reduce((sum, e) => sum + e.amount, 0) || 0;
           }
+        }
+
+        // Fetch previous period maintenance costs
+        const { data: prevMaintenanceRecords, error: prevMaintenanceError } = await supabase
+          .from('maintenance_records')
+          .select('cost')
+          .gte('maintenance_date', prevPeriodStart)
+          .lte('maintenance_date', prevPeriodEnd)
+          .eq('status', 'active');
+
+        if (!prevMaintenanceError) {
+          const prevMaintenanceCost = prevMaintenanceRecords?.reduce((sum, m) => sum + m.cost, 0) || 0;
+          prevPeriodExpenses += prevMaintenanceCost;
+        }
+
+        // Fetch previous period tyre costs
+        const { data: prevTyreRecords, error: prevTyreError } = await supabase
+          .from('tyre_records')
+          .select('total_cost')
+          .gte('purchase_date', prevPeriodStart)
+          .lte('purchase_date', prevPeriodEnd)
+          .eq('status', 'active');
+
+        if (!prevTyreError) {
+          const prevTyreCost = prevTyreRecords?.reduce((sum, t) => sum + t.total_cost, 0) || 0;
+          prevPeriodExpenses += prevTyreCost;
         }
 
         // Fetch bus counts
@@ -244,18 +298,18 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
         // Calculate occupancy rate
         const occupancyRate = totalCapacity > 0 ? Math.min(100, Math.round((totalSeatsBooked / totalCapacity) * 100)) : null;
 
-        // Fetch pending maintenance
+        // Fetch pending maintenance (overdue)
         const today = getTodayPKT();
-        const { data: maintenanceRecords, error: maintenanceError } = await supabase
+        const { data: overdueMaintenanceRecords, error: overdueMaintenanceError } = await supabase
           .from('maintenance_records')
           .select('id, next_maintenance_date')
           .eq('status', 'active')
           .not('next_maintenance_date', 'is', null)
           .lte('next_maintenance_date', today);
 
-        if (maintenanceError) throw maintenanceError;
+        if (overdueMaintenanceError) throw overdueMaintenanceError;
 
-        const pendingMaintenance = maintenanceRecords?.length || 0;
+        const pendingMaintenance = overdueMaintenanceRecords?.length || 0;
 
         // Fetch recent activity from audit logs (filtered by selected period)
         const { data: auditLogs, error: auditError } = await supabase
