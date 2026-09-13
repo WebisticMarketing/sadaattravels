@@ -1,67 +1,64 @@
-```gitignore
-# Dependencies
-node_modules/
-
+```typescript
 # Build outputs
 dist/
 build/
-*.js
-*.ts
+out/
+target/
 
-# Logs and temp files
-*.log
-*.tmp
+# Dependencies
+node_modules/
+vendor/
+
+# IDE files
+.vscode/
+.idea/
 *.swp
+*.swo
+
+# Logs
+*.log
 
 # Environment
 .env
 .env.local
 *.env.*
 
-# Editors
-.vscode/
-.idea/
-
-# Python artifacts (if any Python in project)
+# Python (if applicable)
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
-# Coverage reports
-coverage/
-htmlcov/
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
 .coverage
-
-# Testing
-.mypy_cache/
-.pytest_cache/
-
-# OS generated files
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
 .DS_Store
 Thumbs.db
 
-# Zip and compressed files
-*.zip
-*.gz
-*.tar
-*.tgz
-*.bz2
-*.xz
-*.7z
-*.rar
-*.zst
-*.lz4
-*.lzh
-*.cab
-*.arj
-*.rpm
-*.deb
-*.Z
-*.lz
-*.lzo
-*.tar.gz
-*.tar.bz2
-*.tar.xz
-*.tar.zst
+# Temporary files
+*.tmp
+*.temp
+*~
+.DS_Store
+Thumbs.db
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Icon?
+Thumbs.db
 ```
