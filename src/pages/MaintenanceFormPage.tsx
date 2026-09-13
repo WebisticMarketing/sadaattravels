@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useBuses } from '../hooks/useBuses';
-import { createMaintenanceRecord, updateMaintenanceRecord, useBusMaintenance } from '../hooks/useMaintenance';
+import { createMaintenanceRecord, updateMaintenanceRecord, useMaintenanceRecord } from '../hooks/useMaintenance';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -13,7 +13,7 @@ export default function MaintenanceFormPage() {
   const { recordId, busId } = useParams<{ recordId: string; busId: string }>();
   const navigate = useNavigate();
   const { buses, loading: busesLoading } = useBuses();
-  const { records: existingRecords } = useBusMaintenance(busId || null);
+  const { record: existingRecord, loading: recordLoading } = useMaintenanceRecord(recordId || null);
 
   const isEdit = !!recordId;
 
@@ -33,26 +33,27 @@ export default function MaintenanceFormPage() {
 
   // Load existing record if editing
   useEffect(() => {
-    if (isEdit && existingRecords.length > 0) {
-      const record = existingRecords[0];
+    if (isEdit && existingRecord) {
       setFormData({
-        bus_id: record.bus_id,
-        maintenance_date: formatDate(new Date(record.maintenance_date)),
-        maintenance_type: record.maintenance_type,
-        description: record.description,
-        cost: record.cost.toString(),
-        performed_by: record.performed_by || '',
-        next_maintenance_date: record.next_maintenance_date ? formatDate(new Date(record.next_maintenance_date)) : '',
-        notes: record.notes || '',
+        bus_id: existingRecord.bus_id,
+        maintenance_date: formatDate(new Date(existingRecord.maintenance_date)),
+        maintenance_type: existingRecord.maintenance_type,
+        description: existingRecord.description,
+        cost: existingRecord.cost.toString(),
+        performed_by: existingRecord.performed_by || '',
+        next_maintenance_date: existingRecord.next_maintenance_date ? formatDate(new Date(existingRecord.next_maintenance_date)) : '',
+        notes: existingRecord.notes || '',
       });
     }
-  }, [isEdit, existingRecords]);
+  }, [isEdit, existingRecord]);
 
   useEffect(() => {
-    if (buses.length > 0 && !formData.bus_id && !isEdit) {
+    if (busId && !formData.bus_id) {
+      setFormData({ ...formData, bus_id: busId });
+    } else if (buses.length > 0 && !formData.bus_id && !isEdit && !busId) {
       setFormData({ ...formData, bus_id: buses[0].id });
     }
-  }, [buses, formData, isEdit]);
+  }, [buses, formData, isEdit, busId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,10 +110,10 @@ export default function MaintenanceFormPage() {
     }
   };
 
-  if (busesLoading) {
+  if (busesLoading || (isEdit && recordLoading)) {
     return (
       <div className="p-4">
-        <p className="text-gray-500">Loading buses...</p>
+        <p className="text-gray-500">Loading...</p>
       </div>
     );
   }
@@ -142,27 +143,29 @@ export default function MaintenanceFormPage() {
       {/* Form */}
       <Card className="p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Bus Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Bus *
-            </label>
-            <select
-              value={formData.bus_id}
-              onChange={(e) => setFormData({ ...formData, bus_id: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-              disabled={isEdit}
-            >
-              <option value="">Select a bus</option>
-              {buses.map((bus) => (
-                <option key={bus.id} value={bus.id}>
-                  {bus.registration_number}
-                  {bus.bus_name ? ` - ${bus.bus_name}` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Bus Selection - Only show if busId is not provided in route */}
+          {!busId && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Bus *
+              </label>
+              <select
+                value={formData.bus_id}
+                onChange={(e) => setFormData({ ...formData, bus_id: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+                disabled={isEdit}
+              >
+                <option value="">Select a bus</option>
+                {buses.map((bus) => (
+                  <option key={bus.id} value={bus.id}>
+                    {bus.registration_number}
+                    {bus.bus_name ? ` - ${bus.bus_name}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Maintenance Date */}
           <Input
