@@ -77,8 +77,9 @@ export default function App() {
             <Route path="buses/:id" element={<BusDetailPage />} />
             <Route path="buses/:id/vouchers" element={<BusVouchersPage />} />
             <Route path="buses/:id/vouchers/create" element={<AddVoucherPage />} />
-            <Route path="buses/:id/maintenance/create" element={<MaintenanceFormPage />} />
-            <Route path="buses/:id/tyres/create" element={<TyreFormPage />} />
+            <Route path="buses/:busId/maintenance/create" element={<MaintenanceFormPage />} />
+            <Route path="buses/:busId/maintenance/:recordId/edit" element={<MaintenanceFormPage />} />
+            <Route path="buses/:busId/tyres/create" element={<TyreFormPage />} />
             {/* Redirect old standalone routes to buses - these are now bus-specific */}
             <Route path="trips" element={<Navigate to="/app/buses" replace />} />
             <Route path="trips/new" element={<Navigate to="/app/buses" replace />} />

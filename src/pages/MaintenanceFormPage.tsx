@@ -10,12 +10,12 @@ import { formatDate } from '../lib/utils';
 import { ArrowLeft } from 'lucide-react';
 
 export default function MaintenanceFormPage() {
-  const { id, busId } = useParams<{ id: string; busId: string }>();
+  const { recordId, busId } = useParams<{ recordId: string; busId: string }>();
   const navigate = useNavigate();
   const { buses, loading: busesLoading } = useBuses();
-  const { records: existingRecords } = useBusMaintenance(id || null);
+  const { records: existingRecords, refetch } = useBusMaintenance(busId || null);
 
-  const isEdit = !!id;
+  const isEdit = !!recordId;
   const isNewForBus = !!busId && !isEdit;
 
   const [formData, setFormData] = useState({
@@ -34,20 +34,22 @@ export default function MaintenanceFormPage() {
 
   // Load existing record if editing
   useEffect(() => {
-    if (isEdit && existingRecords.length > 0) {
-      const record = existingRecords[0];
-      setFormData({
-        bus_id: record.bus_id,
-        maintenance_date: formatDate(new Date(record.maintenance_date)),
-        maintenance_type: record.maintenance_type,
-        description: record.description,
-        cost: record.cost.toString(),
-        performed_by: record.performed_by || '',
-        next_maintenance_date: record.next_maintenance_date ? formatDate(new Date(record.next_maintenance_date)) : '',
-        notes: record.notes || '',
-      });
+    if (isEdit && recordId && existingRecords.length > 0) {
+      const record = existingRecords.find(r => r.id === recordId);
+      if (record) {
+        setFormData({
+          bus_id: record.bus_id,
+          maintenance_date: formatDate(new Date(record.maintenance_date)),
+          maintenance_type: record.maintenance_type,
+          description: record.description,
+          cost: record.cost.toString(),
+          performed_by: record.performed_by || '',
+          next_maintenance_date: record.next_maintenance_date ? formatDate(new Date(record.next_maintenance_date)) : '',
+          notes: record.notes || '',
+        });
+      }
     }
-  }, [isEdit, existingRecords]);
+  }, [isEdit, recordId, existingRecords]);
 
   useEffect(() => {
     if (buses.length > 0 && !formData.bus_id && !isEdit) {
@@ -93,7 +95,7 @@ export default function MaintenanceFormPage() {
       };
 
       if (isEdit) {
-        await updateMaintenanceRecord(id!, data);
+        await updateMaintenanceRecord(recordId!, data);
       } else {
         await createMaintenanceRecord(data);
       }
@@ -105,6 +107,7 @@ export default function MaintenanceFormPage() {
         navigate('/app/buses');
       }
     } catch (err) {
+      console.error('Failed to save maintenance record:', err);
       setError(err instanceof Error ? err.message : 'Failed to save maintenance record');
       setLoading(false);
     }
