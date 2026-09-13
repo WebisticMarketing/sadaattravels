@@ -195,6 +195,82 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
         // Add tyre cost to total expenses
         periodExpenses += tyreCost;
 
+        // Fetch Adda income for the selected period
+        const { data: addaIncomeRecords, error: addaIncomeError } = await supabase
+          .from('adda_income')
+          .select('amount')
+          .gte('income_date', periodStart)
+          .lte('income_date', periodEnd)
+          .eq('status', 'active');
+
+        if (addaIncomeError) throw addaIncomeError;
+        const addaIncome = addaIncomeRecords?.reduce((sum, r) => sum + r.amount, 0) || 0;
+
+        // Add Adda income to total revenue
+        periodRevenue += addaIncome;
+
+        // Fetch Adda expenses for the selected period
+        const { data: addaExpenseRecords, error: addaExpenseError } = await supabase
+          .from('adda_expenses')
+          .select('amount')
+          .gte('expense_date', periodStart)
+          .lte('expense_date', periodEnd)
+          .eq('status', 'active');
+
+        if (addaExpenseError) throw addaExpenseError;
+        const addaExpenses = addaExpenseRecords?.reduce((sum, r) => sum + r.amount, 0) || 0;
+
+        // Add Adda expenses to total expenses
+        periodExpenses += addaExpenses;
+
+        // Fetch Cargo revenue for the selected period
+        const { data: cargoRecords, error: cargoError } = await supabase
+          .from('cargo_records')
+          .select('revenue')
+          .gte('date', periodStart)
+          .lte('date', periodEnd)
+          .eq('status', 'active');
+
+        if (cargoError) throw cargoError;
+        const cargoRevenue = cargoRecords?.reduce((sum, r) => sum + r.revenue, 0) || 0;
+
+        // Add Cargo revenue to total revenue
+        periodRevenue += cargoRevenue;
+
+        // Fetch Cargo expenses for the selected period
+        const { data: cargoExpenseRecords, error: cargoExpenseError } = await supabase
+          .from('cargo_records')
+          .select('expenses')
+          .gte('date', periodStart)
+          .lte('date', periodEnd)
+          .eq('status', 'active');
+
+        if (cargoExpenseError) throw cargoExpenseError;
+        const cargoExpenses = cargoExpenseRecords?.reduce((sum, r) => sum + r.expenses, 0) || 0;
+
+        // Add Cargo expenses to total expenses
+        periodExpenses += cargoExpenses;
+
+        // Fetch Fuel sales profit for the selected period (external sales only)
+        const { data: fuelSalesRecords, error: fuelSalesError } = await supabase
+          .from('fuel_sales')
+          .select('total_amount, litres, price_per_litre')
+          .gte('sale_date', periodStart)
+          .lte('sale_date', periodEnd)
+          .eq('status', 'active');
+
+        if (fuelSalesError) throw fuelSalesError;
+        
+        // Calculate fuel profit from external sales (not internal bus fuel)
+        const fuelProfit = fuelSalesRecords?.reduce((sum, sale) => {
+          const revenue = sale.total_amount || 0;
+          // Profit is already calculated as revenue minus cost in the business model
+          return sum + revenue;
+        }, 0) || 0;
+
+        // Add Fuel profit to total revenue
+        periodRevenue += fuelProfit;
+
         // Fetch previous period for comparison
         const { data: prevPeriodTrips, error: prevPeriodError } = await supabase
           .from('trips')
@@ -258,6 +334,60 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
           prevPeriodExpenses += prevTyreCost;
         }
 
+        // Fetch previous period Adda income
+        const { data: prevAddaIncomeRecords, error: prevAddaIncomeError } = await supabase
+          .from('adda_income')
+          .select('amount')
+          .gte('income_date', prevPeriodStart)
+          .lte('income_date', prevPeriodEnd)
+          .eq('status', 'active');
+
+        if (!prevAddaIncomeError) {
+          const prevAddaIncome = prevAddaIncomeRecords?.reduce((sum, r) => sum + r.amount, 0) || 0;
+          prevPeriodRevenue += prevAddaIncome;
+        }
+
+        // Fetch previous period Adda expenses
+        const { data: prevAddaExpenseRecords, error: prevAddaExpenseError } = await supabase
+          .from('adda_expenses')
+          .select('amount')
+          .gte('expense_date', prevPeriodStart)
+          .lte('expense_date', prevPeriodEnd)
+          .eq('status', 'active');
+
+        if (!prevAddaExpenseError) {
+          const prevAddaExpenses = prevAddaExpenseRecords?.reduce((sum, r) => sum + r.amount, 0) || 0;
+          prevPeriodExpenses += prevAddaExpenses;
+        }
+
+        // Fetch previous period Cargo revenue and expenses
+        const { data: prevCargoRecords, error: prevCargoError } = await supabase
+          .from('cargo_records')
+          .select('revenue, expenses')
+          .gte('date', prevPeriodStart)
+          .lte('date', prevPeriodEnd)
+          .eq('status', 'active');
+
+        if (!prevCargoError && prevCargoRecords) {
+          const prevCargoRevenue = prevCargoRecords.reduce((sum, r) => sum + (r.revenue || 0), 0);
+          const prevCargoExpenses = prevCargoRecords.reduce((sum, r) => sum + (r.expenses || 0), 0);
+          prevPeriodRevenue += prevCargoRevenue;
+          prevPeriodExpenses += prevCargoExpenses;
+        }
+
+        // Fetch previous period Fuel sales profit
+        const { data: prevFuelSalesRecords, error: prevFuelSalesError } = await supabase
+          .from('fuel_sales')
+          .select('total_amount')
+          .gte('sale_date', prevPeriodStart)
+          .lte('sale_date', prevPeriodEnd)
+          .eq('status', 'active');
+
+        if (!prevFuelSalesError) {
+          const prevFuelProfit = prevFuelSalesRecords?.reduce((sum, s) => sum + (s.total_amount || 0), 0) || 0;
+          prevPeriodRevenue += prevFuelProfit;
+        }
+
         // Fetch bus counts
         const { data: buses, error: busesError } = await supabase
           .from('buses')
@@ -311,9 +441,9 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
 
         const pendingMaintenance = overdueMaintenanceRecords?.length || 0;
 
-        // Fetch recent activity from multiple sources (trips, maintenance, tyres)
+        // Fetch recent activity from multiple sources (trips, maintenance, tyres, adda)
         // This avoids relying on audit_logs which may have RLS issues
-        const [recentTrips, recentMaintenance, recentTyres] = await Promise.all([
+        const [recentTrips, recentMaintenance, recentTyres, recentAddaIncome, recentAddaExpenses] = await Promise.all([
           // Recent trips
           supabase
             .from('trips')
@@ -323,7 +453,7 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
             .eq('status', 'active')
             .order('trip_date', { ascending: false })
             .limit(5),
-          
+
           // Recent maintenance
           supabase
             .from('maintenance_records')
@@ -333,7 +463,7 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
             .eq('status', 'active')
             .order('maintenance_date', { ascending: false })
             .limit(5),
-          
+
           // Recent tyres
           supabase
             .from('tyre_records')
@@ -342,11 +472,33 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
             .lte('purchase_date', periodEnd)
             .eq('status', 'active')
             .order('purchase_date', { ascending: false })
+            .limit(5),
+
+          // Recent Adda income
+          supabase
+            .from('adda_income')
+            .select('id, income_date, income_type, amount, received_from, status')
+            .gte('income_date', periodStart)
+            .lte('income_date', periodEnd)
+            .eq('status', 'active')
+            .order('income_date', { ascending: false })
+            .limit(5),
+
+          // Recent Adda expenses
+          supabase
+            .from('adda_expenses')
+            .select('id, expense_date, expense_type, amount, paid_to, status')
+            .gte('expense_date', periodStart)
+            .lte('expense_date', periodEnd)
+            .eq('status', 'active')
+            .order('expense_date', { ascending: false })
             .limit(5)
         ]);
 
         if (recentTrips.error) throw recentTrips.error;
         if (recentMaintenance.error) throw recentMaintenance.error;
+        if (recentTyres.error) throw recentTyres.error;
+        if (recentAddaIncome.error) throw recentAddaIncome.error;
         if (recentTyres.error) throw recentTyres.error;
 
         // Combine and normalize activities
@@ -404,6 +556,36 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
             timeAgo: formatTimeAgo(record.purchase_date),
             icon: 'tyre',
             date: record.purchase_date
+          });
+        });
+
+        // Add Adda income
+        (recentAddaIncome.data || []).forEach(record => {
+          allActivities.push({
+            id: `adda-income-${record.id}`,
+            type: 'adda-income',
+            title: 'Adda income recorded',
+            subtitle: `${record.income_type} - Rs ${record.amount}`,
+            href: `/app/adda`,
+            time: record.income_date,
+            timeAgo: formatTimeAgo(record.income_date),
+            icon: 'plus-circle',
+            date: record.income_date
+          });
+        });
+
+        // Add Adda expenses
+        (recentAddaExpenses.data || []).forEach(record => {
+          allActivities.push({
+            id: `adda-expense-${record.id}`,
+            type: 'adda-expense',
+            title: 'Adda expense recorded',
+            subtitle: `${record.expense_type} - Rs ${record.amount}`,
+            href: `/app/adda`,
+            time: record.expense_date,
+            timeAgo: formatTimeAgo(record.expense_date),
+            icon: 'minus-circle',
+            date: record.expense_date
           });
         });
 

@@ -103,9 +103,12 @@ export async function createAddaIncome(data: {
   receipt_number?: string;
   notes?: string;
 }) {
+  const { data: session } = await supabase.auth.getSession();
+  const userId = session?.session?.user?.id;
+
   const { data: income, error } = await supabase
     .from('adda_income')
-    .insert([data])
+    .insert([{ ...data, created_by: userId }])
     .select()
     .single();
 
