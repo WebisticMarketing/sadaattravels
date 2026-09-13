@@ -116,7 +116,7 @@ export default function BusDetailPage() {
       });
 
       // Fetch maintenance records - include all statuses for accurate cost calculation
-      const { data: maintenanceData } = await supabase
+      const { data: maintenanceData, error: maintenanceError } = await supabase
         .from('maintenance_records')
         .select(`
           *,
@@ -126,6 +126,10 @@ export default function BusDetailPage() {
         .order('maintenance_date', { ascending: false })
         .limit(10);
 
+      if (maintenanceError) {
+        console.error('Failed to fetch maintenance records:', maintenanceError);
+      }
+
       const maintenance = (maintenanceData || []).map(record => ({
         ...record,
         performed_by_name: (record.performed_by as any)?.full_name || record.performed_by,
@@ -133,12 +137,16 @@ export default function BusDetailPage() {
       }));
 
       // Fetch tyre records - include all statuses for accurate cost calculation
-      const { data: tyreData } = await supabase
+      const { data: tyreData, error: tyreError } = await supabase
         .from('tyre_records')
         .select('*')
         .eq('bus_id', id)
         .order('purchase_date', { ascending: false })
         .limit(10);
+
+      if (tyreError) {
+        console.error('Failed to fetch tyre records:', tyreError);
+      }
 
       setBusDetails({
         bus,
