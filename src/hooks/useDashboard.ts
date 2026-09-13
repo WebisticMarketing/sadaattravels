@@ -337,7 +337,7 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
           // Recent tyres
           supabase
             .from('tyre_records')
-            .select('id, purchase_date, tyre_type, notes, bus_id, status')
+            .select('id, purchase_date, tyre_size, notes, bus_id, status')
             .gte('purchase_date', periodStart)
             .lte('purchase_date', periodEnd)
             .eq('status', 'active')
@@ -398,7 +398,7 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
             id: `tyre-${record.id}`,
             type: 'tyre',
             title: 'Tyre record added',
-            subtitle: record.tyre_type || record.notes || 'Tyre record',
+            subtitle: record.tyre_size || record.notes || 'Tyre record',
             href: `/app/buses/${record.bus_id}/tyres`,
             time: record.purchase_date,
             timeAgo: formatTimeAgo(record.purchase_date),
