@@ -88,13 +88,14 @@ export default function TyreFormPage() {
         await createTyreRecord(data);
       }
 
-      // Navigate back to the bus tyres tab if coming from bus context
+      // Navigate back to the bus detail page if coming from bus context
       if (busId) {
-        navigate(`/app/buses/${busId}/tyres`);
+        navigate(`/app/buses/${busId}`);
       } else {
         navigate('/app/buses');
       }
     } catch (err) {
+      console.error('Failed to save tyre record:', err);
       setError(err instanceof Error ? err.message : 'Failed to save tyre record');
       setLoading(false);
     }
