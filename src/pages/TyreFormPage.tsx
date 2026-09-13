@@ -7,13 +7,13 @@ import { ArrowLeft } from 'lucide-react';
 
 export default function TyreFormPage() {
   const navigate = useNavigate();
-  const { id, busId } = useParams<{ id: string; busId: string }>();
+  const { id, tyreId } = useParams<{ id: string; tyreId: string }>();
   const isEdit = !!id;
   const { buses } = useBuses();
   const { tyre, loading: tyreLoading } = useTyre(id || null);
 
   const [formData, setFormData] = useState({
-    bus_id: busId || '',
+    bus_id: '',
     purchase_date: formatDate(new Date()),
     tyre_brand: '',
     tyre_size: '',
@@ -40,12 +40,11 @@ export default function TyreFormPage() {
         expected_life_km: tyre.expected_life_km?.toString() || '',
         notes: tyre.notes || '',
       });
-    } else if (busId && !formData.bus_id && !isEdit) {
-      setFormData({ ...formData, bus_id: busId });
-    } else if (buses.length > 0 && !formData.bus_id && !isEdit && !busId) {
-      setFormData({ ...formData, bus_id: buses[0].id });
+    } else if (!isEdit) {
+      // For create mode, bus_id should be set by the route or left empty
+      // The BusDetailPage will pass it via the route
     }
-  }, [tyre, isEdit, busId, buses]);
+  }, [tyre, isEdit]);
 
   const totalCost =
     parseFloat(formData.quantity || '0') * parseFloat(formData.cost_per_tyre || '0');
