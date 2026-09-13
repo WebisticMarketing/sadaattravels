@@ -227,8 +227,8 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
         const { data: cargoRecords, error: cargoError } = await supabase
           .from('cargo_records')
           .select('revenue')
-          .gte('date', periodStart)
-          .lte('date', periodEnd)
+          .gte('shipment_date', periodStart)
+          .lte('shipment_date', periodEnd)
           .eq('status', 'active');
 
         if (cargoError) throw cargoError;
@@ -241,8 +241,8 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
         const { data: cargoExpenseRecords, error: cargoExpenseError } = await supabase
           .from('cargo_records')
           .select('expenses')
-          .gte('date', periodStart)
-          .lte('date', periodEnd)
+          .gte('shipment_date', periodStart)
+          .lte('shipment_date', periodEnd)
           .eq('status', 'active');
 
         if (cargoExpenseError) throw cargoExpenseError;
@@ -364,8 +364,8 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
         const { data: prevCargoRecords, error: prevCargoError } = await supabase
           .from('cargo_records')
           .select('revenue, expenses')
-          .gte('date', prevPeriodStart)
-          .lte('date', prevPeriodEnd)
+          .gte('shipment_date', prevPeriodStart)
+          .lte('shipment_date', prevPeriodEnd)
           .eq('status', 'active');
 
         if (!prevCargoError && prevCargoRecords) {
