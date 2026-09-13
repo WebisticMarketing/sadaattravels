@@ -82,11 +82,9 @@ export function AppLayout() {
         {/* Logo */}
         <div className="flex h-16 items-center justify-between px-6 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            <img
-              src="/logo.png"
-              alt="Sadaat Travels"
-              className="h-10 w-auto object-contain"
-            />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-sm">
+              ST
+            </div>
             <span className="text-lg font-semibold text-gray-900">Sadaat Travels</span>
           </div>
           <button

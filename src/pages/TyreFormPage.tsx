@@ -91,8 +91,8 @@ export default function TyreFormPage() {
       }
 
       // Navigate back to the bus detail page if coming from bus context
-      if (busId) {
-        navigate(`/app/buses/${busId}`);
+      if (id) {
+        navigate(`/app/buses/${id}`);
       } else {
         navigate('/app/buses');
       }
