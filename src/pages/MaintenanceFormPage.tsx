@@ -100,7 +100,7 @@ export default function MaintenanceFormPage() {
 
       // Navigate back to the bus maintenance tab if coming from bus context
       if (busId) {
-        navigate(`/app/buses/${busId}`, { state: { activeTab: 'maintenance' } });
+        navigate(`/app/buses/${busId}/maintenance`);
       } else {
         navigate('/app/buses');
       }

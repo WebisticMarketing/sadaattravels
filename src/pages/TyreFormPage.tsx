@@ -90,7 +90,7 @@ export default function TyreFormPage() {
 
       // Navigate back to the bus tyres tab if coming from bus context
       if (busId) {
-        navigate(`/app/buses/${busId}`, { state: { activeTab: 'tyres' } });
+        navigate(`/app/buses/${busId}/tyres`);
       } else {
         navigate('/app/buses');
       }
