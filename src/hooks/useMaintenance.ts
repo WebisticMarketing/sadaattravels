@@ -140,6 +140,56 @@ export function useBusMaintenance(busId: string | null) {
 }
 
 /**
+ * Fetch a single maintenance record by ID
+ */
+export function useMaintenanceRecord(id: string | null) {
+  const [record, setRecord] = useState<MaintenanceRecordWithBus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchRecord = useCallback(async () => {
+    if (!id) {
+      setRecord(null);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data, error: fetchError } = await supabase
+        .from('maintenance_records')
+        .select(`
+          *,
+          bus:buses(id, registration_number, bus_name)
+        `)
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      setRecord({
+        ...data,
+        bus: data.bus as any,
+      });
+
+      setLoading(false);
+    } catch (err) {
+      logError(err, 'useMaintenanceRecord');
+      setError(err instanceof Error ? err.message : 'Failed to load maintenance record');
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchRecord();
+  }, [fetchRecord]);
+
+  return { record, loading, error, refetch: fetchRecord };
+}
+
+/**
  * Create a new maintenance record
  */
 export async function createMaintenanceRecord(data: {

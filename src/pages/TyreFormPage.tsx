@@ -40,8 +40,12 @@ export default function TyreFormPage() {
         expected_life_km: tyre.expected_life_km?.toString() || '',
         notes: tyre.notes || '',
       });
+    } else if (busId && !formData.bus_id && !isEdit) {
+      setFormData({ ...formData, bus_id: busId });
+    } else if (buses.length > 0 && !formData.bus_id && !isEdit && !busId) {
+      setFormData({ ...formData, bus_id: buses[0].id });
     }
-  }, [tyre, isEdit]);
+  }, [tyre, isEdit, busId, buses]);
 
   const totalCost =
     parseFloat(formData.quantity || '0') * parseFloat(formData.cost_per_tyre || '0');
@@ -135,27 +139,29 @@ export default function TyreFormPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="rounded-lg border border-gray-200 bg-white p-6">
           <div className="space-y-4">
-            {/* Bus Selection */}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                Bus *
-              </label>
-              <select
-                value={formData.bus_id}
-                onChange={(e) => setFormData({ ...formData, bus_id: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                required
-                disabled={isEdit}
-              >
-                <option value="">Select a bus</option>
-                {buses.map((bus) => (
-                  <option key={bus.id} value={bus.id}>
-                    {bus.registration_number}
-                    {bus.bus_name ? ` - ${bus.bus_name}` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Bus Selection - Only show if busId is not provided in route */}
+            {!busId && (
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Bus *
+                </label>
+                <select
+                  value={formData.bus_id}
+                  onChange={(e) => setFormData({ ...formData, bus_id: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  required
+                  disabled={isEdit}
+                >
+                  <option value="">Select a bus</option>
+                  {buses.map((bus) => (
+                    <option key={bus.id} value={bus.id}>
+                      {bus.registration_number}
+                      {bus.bus_name ? ` - ${bus.bus_name}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Purchase Date */}
             <div>
