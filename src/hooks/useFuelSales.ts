@@ -4,13 +4,22 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
-import type { FuelSale } from '../types/database';
+import type { FuelSale, FuelSaleExpenseLink } from '../types/database';
 
 export interface FuelSaleWithBus extends FuelSale {
   buses?: {
     registration_number: string;
     bus_name: string | null;
   };
+  trips?: {
+    id: string;
+    trip_date: string;
+    route: string;
+  } | null;
+}
+
+export interface FuelSaleWithLinks extends FuelSaleWithBus {
+  expense_link?: FuelSaleExpenseLink;
 }
 
 export function useFuelSales(filters?: {
@@ -39,6 +48,11 @@ export function useFuelSales(filters?: {
           buses (
             registration_number,
             bus_name
+          ),
+          trips (
+            id,
+            trip_date,
+            route
           )
         `)
         .eq('status', 'active')
@@ -118,6 +132,9 @@ export function useFuelSale(id: string | null) {
   return { sale, loading, error, refetch: fetchSale };
 }
 
+/**
+ * Create a fuel sale and optionally link it to a trip expense
+ */
 export async function createFuelSale(data: {
   sale_date: string;
   sale_type: 'EXTERNAL_CUSTOMER' | 'INTERNAL_BUS';
@@ -131,14 +148,70 @@ export async function createFuelSale(data: {
   customer_phone?: string;
   receipt_number?: string;
   notes?: string;
+}, options?: {
+  /** If true and sale_type is INTERNAL_BUS with trip_id, create the expense link */
+  linkToTripExpense?: boolean;
 }) {
-  const { data: sale, error } = await supabase
+  const { linkToTripExpense = true } = options || {};
+  
+  // First, create the fuel sale
+  const { data: sale, error: saleError } = await supabase
     .from('fuel_sales')
     .insert([data])
     .select()
     .single();
 
-  if (error) throw error;
+  if (saleError) throw saleError;
+
+  // For INTERNAL_BUS sales with trip_id, create the expense link if requested
+  if (linkToTripExpense && data.sale_type === 'INTERNAL_BUS' && data.trip_id) {
+    // Check if a diesel expense already exists for this trip
+    const { data: existingExpenses } = await supabase
+      .from('trip_expenses')
+      .select('id, amount')
+      .eq('trip_id', data.trip_id)
+      .eq('expense_type', 'diesel')
+      .eq('status', 'active')
+      .maybeSingle();
+
+    let tripExpenseId: string;
+
+    if (existingExpenses) {
+      // Reuse existing diesel expense
+      tripExpenseId = existingExpenses.id;
+    } else {
+      // Create new diesel expense for this trip
+      const { data: newExpense, error: expenseError } = await supabase
+        .from('trip_expenses')
+        .insert({
+          trip_id: data.trip_id,
+          expense_type: 'diesel',
+          amount: data.total_amount,
+          description: `Diesel fuel from Petrol Pump - ${data.litres}L @ Rs. ${data.cost_price_per_litre.toFixed(2)}/L`,
+          status: 'active',
+        })
+        .select('id')
+        .single();
+
+      if (expenseError) throw expenseError;
+      tripExpenseId = newExpense.id;
+    }
+
+    // Create the fuel_sale_expense_links record
+    const { error: linkError } = await supabase
+      .from('fuel_sale_expense_links')
+      .insert({
+        fuel_sale_id: sale.id,
+        trip_expense_id: tripExpenseId,
+        auto_created: !existingExpenses,
+        notes: existingExpenses 
+          ? 'Linked to existing diesel expense' 
+          : 'Auto-created diesel expense from fuel sale',
+      });
+
+    if (linkError) throw linkError;
+  }
+
   return sale;
 }
 
