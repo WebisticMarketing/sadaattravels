@@ -126,7 +126,7 @@ export default function PetrolPumpOverviewPage() {
       {/* Quick Actions */}
       <div className="rounded-lg border border-gray-200 bg-white p-6">
         <h3 className="mb-4 text-lg font-semibold text-gray-900">Quick Actions</h3>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
           <button
             onClick={() => navigate('/app/petrol/purchases/new')}
             className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 transition-colors hover:bg-gray-50"
@@ -141,20 +141,7 @@ export default function PetrolPumpOverviewPage() {
           </button>
           
           <button
-            onClick={() => navigate('/app/petrol/sales/new')}
-            className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 transition-colors hover:bg-gray-50"
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
-              <Fuel className="h-5 w-5 text-green-600" />
-            </div>
-            <div className="text-left">
-              <p className="font-medium text-gray-900">Record Sale</p>
-              <p className="text-xs text-gray-500">Bus or external customer</p>
-            </div>
-          </button>
-          
-          <button
-            onClick={() => navigate('/app/petrol/sales?tab=bus')}
+            onClick={() => navigate('/app/petrol/bus-fuel')}
             className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 transition-colors hover:bg-gray-50"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100">
@@ -162,12 +149,12 @@ export default function PetrolPumpOverviewPage() {
             </div>
             <div className="text-left">
               <p className="font-medium text-gray-900">Bus Fuel Records</p>
-              <p className="text-xs text-gray-500">View internal fuel</p>
+              <p className="text-xs text-gray-500">View & record bus fuel</p>
             </div>
           </button>
           
           <button
-            onClick={() => navigate('/app/petrol/sales?tab=external')}
+            onClick={() => navigate('/app/petrol/external-sales')}
             className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 transition-colors hover:bg-gray-50"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
@@ -176,6 +163,19 @@ export default function PetrolPumpOverviewPage() {
             <div className="text-left">
               <p className="font-medium text-gray-900">External Sales</p>
               <p className="text-xs text-gray-500">Customer fuel sales</p>
+            </div>
+          </button>
+          
+          <button
+            onClick={() => navigate('/app/petrol/purchases')}
+            className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 transition-colors hover:bg-gray-50"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
+              <Fuel className="h-5 w-5 text-green-600" />
+            </div>
+            <div className="text-left">
+              <p className="font-medium text-gray-900">View Purchases</p>
+              <p className="text-xs text-gray-500">Purchase history</p>
             </div>
           </button>
         </div>

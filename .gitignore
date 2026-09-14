@@ -1,35 +1,23 @@
-```gitignore
+```
+# Build artifacts
+dist/
+build/
+
 # Dependencies
 node_modules/
 
-# Build outputs
-dist/
-build/
-.next/
-.nuxt/
-public/dist/
-*.min.js
-*.min.css
+# Logs and temp files
+*.log
+*.tmp
 
-# Environment variables
+# Editors
+.vscode/
+.idea/
+
+# Environment
 .env
 .env.local
 .env.*
-
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-*.tmp
-
-# Logs
-*.log
-
-# Coverage
-coverage/
-htmlcov/
-.coverage
 
 # Python
 __pycache__/
@@ -44,22 +32,30 @@ pip-log.txt
 pip-delete-this-directory.txt
 .tox/
 .coverage
-.nox/
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
 *.cover
 *.log
-.DS_Store
-Thumbs.db
+.git/
+.mypy_cache/
+.pytest_cache/
+.hypothesis/
 
 # Compiled and binary files
+*.class
+*.o
+*.obj
 *.exe
 *.dll
 *.so
-*.dylib
-*.o
-*.obj
 *.a
-*.lib
 *.out
+
+# System files
+.DS_Store
+Thumbs.db
 
 # Compressed files
 *.zip
