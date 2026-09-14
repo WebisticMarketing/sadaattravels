@@ -43,7 +43,6 @@ export default function AddaExpenseFormPage() {
         description: formData.description.trim() || undefined,
         paid_to: formData.paid_to.trim() || undefined,
         receipt_number: formData.receipt_number.trim() || undefined,
-        notes: formData.notes.trim() || undefined,
       });
 
       navigate('/app/adda');

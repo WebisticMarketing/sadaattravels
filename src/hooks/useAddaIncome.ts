@@ -101,10 +101,14 @@ export async function createAddaIncome(data: {
   description?: string;
   received_from?: string;
   receipt_number?: string;
-  notes?: string;
 }) {
-  const { data: session } = await supabase.auth.getSession();
-  const userId = session?.session?.user?.id;
+  const { data: sessionData } = await supabase.auth.getSession();
+  
+  if (!sessionData?.session?.user) {
+    throw new Error('Authentication required. Please log in.');
+  }
+  
+  const userId = sessionData.session.user.id;
 
   const { data: income, error } = await supabase
     .from('adda_income')
@@ -112,7 +116,12 @@ export async function createAddaIncome(data: {
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    if (error.code === 'PGRST301' || error.message.includes('permission denied')) {
+      throw new Error('You do not have permission to create adda income records. Please contact an administrator.');
+    }
+    throw error;
+  }
   return income;
 }
 
