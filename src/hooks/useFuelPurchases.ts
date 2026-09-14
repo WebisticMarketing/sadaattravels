@@ -17,7 +17,7 @@ export function useFuelPurchases(filters?: {
 
   useEffect(() => {
     fetchPurchases();
-  }, [filters]);
+  }, [filters?.startDate, filters?.endDate, filters?.supplier]);
 
   async function fetchPurchases() {
     try {

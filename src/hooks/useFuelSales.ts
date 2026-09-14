@@ -25,7 +25,7 @@ export function useFuelSales(filters?: {
 
   useEffect(() => {
     fetchSales();
-  }, [filters]);
+  }, [filters?.startDate, filters?.endDate, filters?.saleType, filters?.busId]);
 
   async function fetchSales() {
     try {
