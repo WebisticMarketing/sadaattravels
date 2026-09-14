@@ -43,7 +43,6 @@ export default function AddaIncomeFormPage() {
         description: formData.description.trim() || undefined,
         received_from: formData.received_from.trim() || undefined,
         receipt_number: formData.receipt_number.trim() || undefined,
-        notes: formData.notes.trim() || undefined,
       });
 
       navigate('/app/adda');
