@@ -4,7 +4,7 @@ import { useBuses } from '../hooks/useBuses';
 import { useTrips } from '../hooks/useTrips';
 import { createFuelSale, calculateWeightedAverageCost } from '../hooks/useFuelSales';
 import { formatDate } from '../lib/utils';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Info } from 'lucide-react';
 
 export default function FuelSaleFormPage() {
   const navigate = useNavigate();
@@ -15,6 +15,7 @@ export default function FuelSaleFormPage() {
     busId: selectedBusId || undefined,
     status: 'active',
   });
+  const [selectedTripDieselAmount, setSelectedTripDieselAmount] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     sale_date: formatDate(new Date()),
     litres: '',
@@ -35,6 +36,21 @@ export default function FuelSaleFormPage() {
     // Calculate weighted average cost on mount
     calculateWeightedAverageCost().then(setWeightedAvgCost);
   }, []);
+
+  // When trip selection changes, fetch its diesel expense amount
+  useEffect(() => {
+    if (saleType === 'INTERNAL_BUS' && formData.trip_id) {
+      const selectedTrip = trips.find(t => t.id === formData.trip_id);
+      if (selectedTrip && selectedTrip.expenseEntries) {
+        const dieselExpense = selectedTrip.expenseEntries.find(e => e.expense_type === 'diesel');
+        setSelectedTripDieselAmount(dieselExpense ? dieselExpense.amount : null);
+      } else {
+        setSelectedTripDieselAmount(null);
+      }
+    } else {
+      setSelectedTripDieselAmount(null);
+    }
+  }, [formData.trip_id, saleType, trips]);
 
   const totalAmount = parseFloat(formData.litres || '0') * parseFloat(formData.sale_price_per_litre || '0');
 
@@ -57,6 +73,17 @@ export default function FuelSaleFormPage() {
 
       if (saleType === 'INTERNAL_BUS' && !formData.trip_id) {
         throw new Error('Please select a trip/voucher for internal bus fuel');
+      }
+
+      // Validate that selected trip has a diesel expense
+      if (saleType === 'INTERNAL_BUS' && formData.trip_id && selectedTripDieselAmount === null) {
+        const selectedTrip = trips.find(t => t.id === formData.trip_id);
+        if (selectedTrip && selectedTrip.expenseEntries) {
+          const hasDiesel = selectedTrip.expenseEntries.some(e => e.expense_type === 'diesel');
+          if (!hasDiesel) {
+            throw new Error('This voucher has no Diesel expense. Please add the Diesel amount to the voucher first before recording fuel.');
+          }
+        }
       }
 
       if (saleType === 'EXTERNAL_CUSTOMER' && !formData.customer_name.trim()) {
@@ -287,7 +314,7 @@ export default function FuelSaleFormPage() {
 
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                  {saleType === 'INTERNAL_BUS' ? 'Cost Price per Litre (Rs.)' : 'Sale Price per Litre (Rs.) *'}
+                  {saleType === 'INTERNAL_BUS' ? 'Cost Price per Litre (Rs.) - Informational Only' : 'Sale Price per Litre (Rs.) *'}
                 </label>
                 <input
                   type="number"
@@ -302,11 +329,45 @@ export default function FuelSaleFormPage() {
                 />
                 {saleType === 'INTERNAL_BUS' && (
                   <p className="mt-1 text-xs text-gray-500">
-                    Auto-filled from weighted average cost (internal transfers use cost basis)
+                    Auto-filled from weighted average cost for stock tracking. Actual expense comes from voucher.
                   </p>
                 )}
               </div>
             </div>
+
+            {/* Voucher Diesel Amount Display (for INTERNAL_BUS) */}
+            {saleType === 'INTERNAL_BUS' && selectedTripDieselAmount !== null && (
+              <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+                <div className="flex items-start gap-2">
+                  <Info className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-green-900">
+                      Voucher Diesel Amount: Rs. {selectedTripDieselAmount.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+                    </p>
+                    <p className="mt-1 text-xs text-green-700">
+                      This is the actual diesel expense from the selected voucher. The fuel record tracks litres issued against this amount.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Warning if no diesel expense on voucher */}
+            {saleType === 'INTERNAL_BUS' && formData.trip_id && selectedTripDieselAmount === null && tripsLoading === false && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <div className="flex items-start gap-2">
+                  <Info className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-900">
+                      No Diesel Expense Found
+                    </p>
+                    <p className="mt-1 text-xs text-amber-700">
+                      The selected voucher has no Diesel expense recorded. Please add the Diesel amount to the voucher first before recording fuel.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Cost Info */}
             {weightedAvgCost > 0 && (
