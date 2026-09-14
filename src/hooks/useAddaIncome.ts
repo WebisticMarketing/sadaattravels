@@ -17,7 +17,7 @@ export function useAddaIncome(filters?: {
 
   useEffect(() => {
     fetchIncomes();
-  }, [filters]);
+  }, [filters?.startDate, filters?.endDate, filters?.incomeType]);
 
   async function fetchIncomes() {
     try {

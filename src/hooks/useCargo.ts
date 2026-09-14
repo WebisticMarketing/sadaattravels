@@ -26,7 +26,7 @@ export function useCargo(filters?: {
 
   useEffect(() => {
     fetchCargo();
-  }, [filters]);
+  }, [filters?.startDate, filters?.endDate, filters?.busId, filters?.origin, filters?.destination]);
 
   async function fetchCargo() {
     try {

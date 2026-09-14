@@ -17,7 +17,7 @@ export function useAddaExpenses(filters?: {
 
   useEffect(() => {
     fetchExpenses();
-  }, [filters]);
+  }, [filters?.startDate, filters?.endDate, filters?.expenseType]);
 
   async function fetchExpenses() {
     try {

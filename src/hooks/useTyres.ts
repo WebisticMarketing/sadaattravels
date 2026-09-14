@@ -25,7 +25,7 @@ export function useTyres(filters?: {
 
   useEffect(() => {
     fetchTyres();
-  }, [filters]);
+  }, [filters?.busId, filters?.status, filters?.startDate, filters?.endDate]);
 
   async function fetchTyres() {
     try {
