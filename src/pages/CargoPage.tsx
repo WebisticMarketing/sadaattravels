@@ -2,30 +2,36 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCargo } from '../hooks/useCargo';
 import { useBuses } from '../hooks/useBuses';
-import { formatCurrency, formatDate } from '../lib/utils';
+import { formatCurrency, formatDate, getMonthStart, getMonthEnd } from '../lib/utils';
 import { Plus, Filter, Package } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SearchInput } from '../components/ui/SearchInput';
 import { SummaryCard } from '../components/ui/SummaryCard';
 import { PrintButton } from '../components/ui/PrintButton';
 import { Button } from '../components/ui/Button';
+import { MonthYearFilter } from '../components/ui/MonthYearFilter';
 
 export default function CargoPage() {
   const navigate = useNavigate();
   const { buses } = useBuses();
   const [showFilters, setShowFilters] = useState(false);
+  const today = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const [filters, setFilters] = useState({
-    startDate: '',
-    endDate: '',
     busId: '',
     origin: '',
     destination: '',
     search: '',
   });
 
+  // Calculate month start/end dates for queries
+  const monthStart = getMonthStart(selectedYear, selectedMonth);
+  const monthEnd = getMonthEnd(selectedYear, selectedMonth);
+
   const { cargo, loading, error } = useCargo({
-    startDate: filters.startDate || undefined,
-    endDate: filters.endDate || undefined,
+    startDate: monthStart,
+    endDate: monthEnd,
     busId: filters.busId || undefined,
     origin: filters.origin || undefined,
     destination: filters.destination || undefined,
@@ -84,6 +90,16 @@ export default function CargoPage() {
         />
       </div>
 
+      {/* Month + Year Filter */}
+      <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <MonthYearFilter
+          month={selectedMonth}
+          year={selectedYear}
+          onMonthChange={setSelectedMonth}
+          onYearChange={setSelectedYear}
+        />
+      </div>
+
       {/* Filters */}
       <div className="rounded-lg border border-gray-200 bg-white p-4">
         <div className="flex items-center justify-between mb-3">
@@ -109,30 +125,6 @@ export default function CargoPage() {
 
         {showFilters && (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                Start Date
-              </label>
-              <input
-                type="date"
-                value={filters.startDate}
-                onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                End Date
-              </label>
-              <input
-                type="date"
-                value={filters.endDate}
-                onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">
                 Bus

@@ -53,3 +53,25 @@ export function sleep(ms: number): Promise<void> {
 export function shortId(): string {
   return Math.random().toString(36).substring(2, 10);
 }
+
+/**
+ * Get the first day of a given month/year as YYYY-MM-DD
+ */
+export function getMonthStart(year: number, month: number): string {
+  const date = new Date(year, month - 1, 1);
+  const y = date.getFullYear();
+  const m = (date.getMonth() + 1).toString().padStart(2, '0');
+  const d = date.getDate().toString().padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Get the last day of a given month/year as YYYY-MM-DD
+ */
+export function getMonthEnd(year: number, month: number): string {
+  const date = new Date(year, month, 0); // Day 0 of next month = last day of current month
+  const y = date.getFullYear();
+  const m = (date.getMonth() + 1).toString().padStart(2, '0');
+  const d = date.getDate().toString().padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
