@@ -149,24 +149,15 @@ export async function createFuelSale(data: {
   receipt_number?: string;
   notes?: string;
 }, options?: {
-  /** If true and sale_type is INTERNAL_BUS with trip_id, create the expense link */
+  /** If true and sale_type is INTERNAL_BUS with trip_id, link to existing expense (do NOT create new) */
   linkToTripExpense?: boolean;
 }) {
   const { linkToTripExpense = true } = options || {};
   
-  // First, create the fuel sale
-  const { data: sale, error: saleError } = await supabase
-    .from('fuel_sales')
-    .insert([data])
-    .select()
-    .single();
-
-  if (saleError) throw saleError;
-
-  // For INTERNAL_BUS sales with trip_id, create the expense link if requested
+  // For INTERNAL_BUS sales with trip_id, validate that a diesel expense already exists
   if (linkToTripExpense && data.sale_type === 'INTERNAL_BUS' && data.trip_id) {
     // Check if a diesel expense already exists for this trip
-    const { data: existingExpenses } = await supabase
+    const { data: existingExpenses, error: expenseFetchError } = await supabase
       .from('trip_expenses')
       .select('id, amount')
       .eq('trip_id', data.trip_id)
@@ -174,28 +165,26 @@ export async function createFuelSale(data: {
       .eq('status', 'active')
       .maybeSingle();
 
-    let tripExpenseId: string;
+    if (expenseFetchError) throw expenseFetchError;
 
-    if (existingExpenses) {
-      // Reuse existing diesel expense
-      tripExpenseId = existingExpenses.id;
-    } else {
-      // Create new diesel expense for this trip
-      const { data: newExpense, error: expenseError } = await supabase
-        .from('trip_expenses')
-        .insert({
-          trip_id: data.trip_id,
-          expense_type: 'diesel',
-          amount: data.total_amount,
-          description: `Diesel fuel from Petrol Pump - ${data.litres}L @ Rs. ${data.cost_price_per_litre.toFixed(2)}/L`,
-          status: 'active',
-        })
-        .select('id')
-        .single();
-
-      if (expenseError) throw expenseError;
-      tripExpenseId = newExpense.id;
+    if (!existingExpenses) {
+      // Reject the sale - no diesel expense exists on the voucher
+      throw new Error(
+        'This voucher has no Diesel expense. Please add the Diesel amount to the voucher first before recording fuel.'
+      );
     }
+
+    // Reuse existing diesel expense - do NOT create a new one
+    const tripExpenseId = existingExpenses.id;
+
+    // First, create the fuel sale
+    const { data: sale, error: saleError } = await supabase
+      .from('fuel_sales')
+      .insert([data])
+      .select()
+      .single();
+
+    if (saleError) throw saleError;
 
     // Create the fuel_sale_expense_links record
     const { error: linkError } = await supabase
@@ -203,14 +192,23 @@ export async function createFuelSale(data: {
       .insert({
         fuel_sale_id: sale.id,
         trip_expense_id: tripExpenseId,
-        auto_created: !existingExpenses,
-        notes: existingExpenses 
-          ? 'Linked to existing diesel expense' 
-          : 'Auto-created diesel expense from fuel sale',
+        auto_created: false,
+        notes: 'Linked to existing diesel expense from voucher',
       });
 
     if (linkError) throw linkError;
+
+    return sale;
   }
+
+  // For EXTERNAL_CUSTOMER or when linkToTripExpense is false
+  const { data: sale, error: saleError } = await supabase
+    .from('fuel_sales')
+    .insert([data])
+    .select()
+    .single();
+
+  if (saleError) throw saleError;
 
   return sale;
 }
