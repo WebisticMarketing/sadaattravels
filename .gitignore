@@ -1,23 +1,4 @@
 ```
 # Build artifacts
 dist/
-build/
-*.css
-*.js
-*.html
-
-# Dependencies
-node_modules/
-
-# Environment
-.env
-.env.local
-.env.*
-
-# Cache
-__pycache__/
-*.pyc
-.pytest_cache/
-.mypy_cache/
-.vscod
 ```
