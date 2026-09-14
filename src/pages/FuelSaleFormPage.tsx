@@ -9,11 +9,12 @@ import { ArrowLeft } from 'lucide-react';
 export default function FuelSaleFormPage() {
   const navigate = useNavigate();
   const { buses } = useBuses();
+  const [saleType, setSaleType] = useState<'EXTERNAL_CUSTOMER' | 'INTERNAL_BUS'>('EXTERNAL_CUSTOMER');
+  const [selectedBusId, setSelectedBusId] = useState<string>('');
   const { trips, loading: tripsLoading } = useTrips({
-    busId: formData.bus_id || undefined,
+    busId: selectedBusId || undefined,
     status: 'active',
   });
-  const [saleType, setSaleType] = useState<'EXTERNAL_CUSTOMER' | 'INTERNAL_BUS'>('EXTERNAL_CUSTOMER');
   const [formData, setFormData] = useState({
     sale_date: formatDate(new Date()),
     litres: '',
@@ -187,7 +188,7 @@ export default function FuelSaleFormPage() {
                   </label>
                   <select
                     value={formData.bus_id}
-                    onChange={(e) => setFormData({ ...formData, bus_id: e.target.value, trip_id: '' })}
+                    onChange={(e) => { setSelectedBusId(e.target.value); setFormData({ ...formData, bus_id: e.target.value, trip_id: '' }); }}
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     required={saleType === 'INTERNAL_BUS'}
                   >

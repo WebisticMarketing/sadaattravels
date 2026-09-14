@@ -1,39 +1,67 @@
-```
-# Build artifacts
-dist/
-build/
-
+```gitignore
 # Dependencies
 node_modules/
+
+# Build outputs
+dist/
+build/
+.next/
+.nuxt/
+public/dist/
+*.min.js
+*.min.css
+
+# Environment variables
+.env
+.env.local
+.env.*
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
 
 # Logs
 *.log
 
-# Environment
-.env
-.env.local
-*.env.*
-
-# Editors
-.vscode/
-.idea/
+# Coverage
+coverage/
+htmlcov/
+.coverage
 
 # Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.nox/
+*.cover
+*.log
+.DS_Store
+Thumbs.db
 
-# Compiled files
+# Compiled and binary files
+*.exe
+*.dll
+*.so
+*.dylib
 *.o
 *.obj
-*.so
 *.a
-*.dll
-*.exe
+*.lib
 *.out
 
-# Compression
+# Compressed files
 *.zip
 *.gz
 *.tar
@@ -52,19 +80,8 @@ __pycache__/
 *.Z
 *.lz
 *.lzo
-
-# Coverage
-coverage/
-htmlcov/
-.coverage
-
-# Testing
-.mypy_cache/
-.pytest_cache/
-
-# Gradle
-.gradle/
-
-# Target
-target/
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
 ```
