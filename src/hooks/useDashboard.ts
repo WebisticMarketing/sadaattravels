@@ -257,7 +257,7 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
           .select('total_amount, litres, cost_price_per_litre, sale_type')
           .gte('sale_date', periodStart)
           .lte('sale_date', periodEnd)
-          .eq('sale_type', 'external')
+          .eq('sale_type', 'EXTERNAL_CUSTOMER')
           .eq('status', 'active');
 
         if (fuelSalesError) throw fuelSalesError;
