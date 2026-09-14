@@ -14,24 +14,30 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { SearchInput } from '../components/ui/SearchInput';
 import { SummaryCard } from '../components/ui/SummaryCard';
 import { PrintButton } from '../components/ui/PrintButton';
-import { formatCurrency, formatDate } from '../lib/utils';
+import { formatCurrency, formatDate, getMonthStart, getMonthEnd } from '../lib/utils';
 import { Plus, Filter, Wrench, Calendar, Bus } from 'lucide-react';
+import { MonthYearFilter } from '../components/ui/MonthYearFilter';
 
 export default function MaintenancePage() {
   const navigate = useNavigate();
   const { buses } = useBuses();
+  const today = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const [filters, setFilters] = useState({
-    startDate: '',
-    endDate: '',
     busId: '',
     maintenanceType: '',
     status: '',
     search: '',
   });
 
+  // Calculate month start/end dates for queries
+  const monthStart = getMonthStart(selectedYear, selectedMonth);
+  const monthEnd = getMonthEnd(selectedYear, selectedMonth);
+
   const { records, loading, error } = useMaintenance({
-    startDate: filters.startDate || undefined,
-    endDate: filters.endDate || undefined,
+    startDate: monthStart,
+    endDate: monthEnd,
     busId: filters.busId || undefined,
     maintenanceType: filters.maintenanceType || undefined,
     status: filters.status || undefined,

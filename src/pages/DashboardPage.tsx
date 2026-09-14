@@ -177,21 +177,15 @@ function SkeletonLoader() {
 // MAIN COMPONENT
 // ============================================================
 export default function DashboardPage() {
-  const [selectedMonth, setSelectedMonth] = useState(String(new Date().getMonth() + 1).padStart(2, '0'));
-  const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
+  // Dashboard automatically uses the CURRENT MONTH - no manual picker
+  const today = new Date();
+  const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
+  const currentYear = String(today.getFullYear());
   
-  const { metrics, loading, error } = useDashboardMetrics(selectedMonth, selectedYear);
+  const { metrics, loading, error } = useDashboardMetrics(currentMonth, currentYear);
 
-  const handleMonthChange = (newMonth: string) => {
-    setSelectedMonth(newMonth);
-  };
-
-  const handleYearChange = (newYear: string) => {
-    setSelectedYear(newYear);
-  };
-
-  const displayMonth = selectedYear && selectedMonth
-    ? new Date(`${selectedYear}-${selectedMonth}-01`).toLocaleString("default", {
+  const displayMonth = currentYear && currentMonth
+    ? new Date(`${currentYear}-${currentMonth}-01`).toLocaleString("default", {
         month: "long",
         year: "numeric",
       })
@@ -302,19 +296,7 @@ export default function DashboardPage() {
               </p>
             </div>
           </div>
-          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
-            <div className="flex min-w-0 flex-1 items-center gap-1 rounded-xl border border-gray-200 bg-white px-2 py-1.5 transition-all focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500 sm:flex-none sm:gap-2 sm:px-3">
-              <Calendar className="w-4 h-4 text-gray-400" />
-              <CustomDropdown value={selectedMonth} options={MONTHS} onChange={handleMonthChange} placeholder="Month" />
-              <span className="text-gray-300">/</span>
-              <CustomDropdown
-                value={selectedYear}
-                options={getYears().map((y) => ({ value: String(y), label: String(y) }))}
-                onChange={handleYearChange}
-                placeholder="Year"
-              />
-            </div>
-          </div>
+          {/* No manual picker - Dashboard always shows current month */}
         </header>
 
         {error && (

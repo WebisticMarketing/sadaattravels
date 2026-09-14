@@ -1,26 +1,21 @@
 import { useState } from 'react';
 import { useOverallSummary, useBusProfitability } from '../hooks/useReports';
-import { formatCurrency, formatDate } from '../lib/utils';
+import { formatCurrency, formatDate, getMonthStart, getMonthEnd } from '../lib/utils';
 import { TrendingUp, TrendingDown, DollarSign, Bus } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
 import { PrintButton } from '../components/ui/PrintButton';
+import { MonthYearFilter } from '../components/ui/MonthYearFilter';
 
 export default function ReportsPage() {
   // Default to current month
   const today = new Date();
-  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-  
-  const [dateRange, setDateRange] = useState({
-    startDate: formatDate(firstDay),
-    endDate: formatDate(today),
-  });
+  const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(today.getFullYear());
 
-  // Convert DD/MM/YYYY to YYYY-MM-DD for database queries
-  const [startDate, month, year] = dateRange.startDate.split('/');
-  const [endDate, endMonth, endYear] = dateRange.endDate.split('/');
+  // Calculate month start/end dates for queries
   const dbDateRange = {
-    startDate: `${year}-${month}-${startDate}`,
-    endDate: `${endYear}-${endMonth}-${endDate}`,
+    startDate: getMonthStart(selectedYear, selectedMonth),
+    endDate: getMonthEnd(selectedYear, selectedMonth),
   };
 
   const { summary, loading: summaryLoading, error: summaryError } = useOverallSummary(dbDateRange);
@@ -36,35 +31,14 @@ export default function ReportsPage() {
         <PrintButton />
       </PageHeader>
 
-      {/* Date Range Filter */}
+      {/* Month + Year Filter */}
       <div className="rounded-lg border border-gray-200 bg-white p-4">
-        <h3 className="mb-3 font-semibold text-gray-900">Date Range</h3>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              Start Date
-            </label>
-            <input
-              type="text"
-              value={dateRange.startDate}
-              onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
-              placeholder="DD/MM/YYYY"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              End Date
-            </label>
-            <input
-              type="text"
-              value={dateRange.endDate}
-              onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
-              placeholder="DD/MM/YYYY"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            />
-          </div>
-        </div>
+        <MonthYearFilter
+          month={selectedMonth}
+          year={selectedYear}
+          onMonthChange={setSelectedMonth}
+          onYearChange={setSelectedYear}
+        />
       </div>
 
       {/* Overall Summary */}
