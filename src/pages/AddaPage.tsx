@@ -136,8 +136,7 @@ export default function AddaPage() {
             {incomes.map((income) => (
               <div
                 key={income.id}
-                onClick={() => navigate(`/app/adda/income/${income.id}`)}
-                className="cursor-pointer rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md"
+                className="rounded-lg border border-gray-200 bg-white p-4"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -192,8 +191,7 @@ export default function AddaPage() {
             {expenses.map((expense) => (
               <div
                 key={expense.id}
-                onClick={() => navigate(`/app/adda/expenses/${expense.id}`)}
-                className="cursor-pointer rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md"
+                className="rounded-lg border border-gray-200 bg-white p-4"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">

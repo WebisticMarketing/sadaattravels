@@ -12,42 +12,12 @@ node_modules/
 # Environment
 .env
 .env.local
-*.env.*
+.env.*
 
-# Editors
-.vscode/
-.idea/
-
-# Logs
-*.log
-
-# Python
+# Cache
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-
-# Compressed files
-*.zip
-*.gz
-*.tar
-*.tgz
-*.bz2
-*.xz
-*.7z
-*.rar
-*.zst
-*.lz4
-*.lzh
-*.cab
-*.arj
-*.rpm
-*.deb
-*.Z
-*.lz
-*.lzo
-*.tar.gz
-*.tar.bz2
-*.tar.xz
-*.tar.zst
+.pytest_cache/
+.mypy_cache/
+.vscod
 ```
