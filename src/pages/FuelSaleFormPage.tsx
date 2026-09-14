@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBuses } from '../hooks/useBuses';
+import { useTrips } from '../hooks/useTrips';
 import { createFuelSale, calculateWeightedAverageCost } from '../hooks/useFuelSales';
 import { formatDate } from '../lib/utils';
 import { ArrowLeft } from 'lucide-react';
@@ -8,12 +9,17 @@ import { ArrowLeft } from 'lucide-react';
 export default function FuelSaleFormPage() {
   const navigate = useNavigate();
   const { buses } = useBuses();
+  const { trips, loading: tripsLoading } = useTrips({
+    busId: formData.bus_id || undefined,
+    status: 'active',
+  });
   const [saleType, setSaleType] = useState<'EXTERNAL_CUSTOMER' | 'INTERNAL_BUS'>('EXTERNAL_CUSTOMER');
   const [formData, setFormData] = useState({
     sale_date: formatDate(new Date()),
     litres: '',
     sale_price_per_litre: '',
     bus_id: '',
+    trip_id: '',
     customer_name: '',
     customer_phone: '',
     receipt_number: '',
@@ -48,27 +54,46 @@ export default function FuelSaleFormPage() {
         throw new Error('Please select a bus for internal sale');
       }
 
+      if (saleType === 'INTERNAL_BUS' && !formData.trip_id) {
+        throw new Error('Please select a trip/voucher for internal bus fuel');
+      }
+
       if (saleType === 'EXTERNAL_CUSTOMER' && !formData.customer_name.trim()) {
         throw new Error('Please enter customer name for external sale');
+      }
+
+      // Validate that the selected trip belongs to the selected bus
+      if (saleType === 'INTERNAL_BUS' && formData.bus_id && formData.trip_id) {
+        const selectedTrip = trips.find(t => t.id === formData.trip_id);
+        if (selectedTrip && selectedTrip.bus_id !== formData.bus_id) {
+          throw new Error('Selected trip does not belong to the selected bus');
+        }
       }
 
       // Convert date from DD/MM/YYYY to YYYY-MM-DD for database
       const [day, month, year] = formData.sale_date.split('/');
       const isoDate = `${year}-${month}-${day}`;
 
+      // For INTERNAL_BUS, sale_price_per_litre must be 0 per database constraint
+      const finalSalePrice = saleType === 'INTERNAL_BUS' ? 0 : parseFloat(formData.sale_price_per_litre);
+      const finalTotalAmount = saleType === 'INTERNAL_BUS' 
+        ? parseFloat(formData.litres) * weightedAvgCost 
+        : totalAmount;
+
       await createFuelSale({
         sale_date: isoDate,
         sale_type: saleType,
         litres: parseFloat(formData.litres),
-        sale_price_per_litre: parseFloat(formData.sale_price_per_litre),
+        sale_price_per_litre: finalSalePrice,
         cost_price_per_litre: weightedAvgCost,
-        total_amount: totalAmount,
+        total_amount: finalTotalAmount,
         bus_id: saleType === 'INTERNAL_BUS' ? formData.bus_id : undefined,
+        trip_id: saleType === 'INTERNAL_BUS' ? formData.trip_id : undefined,
         customer_name: saleType === 'EXTERNAL_CUSTOMER' ? formData.customer_name.trim() : undefined,
         customer_phone: saleType === 'EXTERNAL_CUSTOMER' ? formData.customer_phone.trim() : undefined,
         receipt_number: formData.receipt_number.trim() || undefined,
         notes: formData.notes.trim() || undefined,
-      });
+      }, { linkToTripExpense: saleType === 'INTERNAL_BUS' });
 
       navigate('/app/petrol/sales');
     } catch (err) {
@@ -155,25 +180,58 @@ export default function FuelSaleFormPage() {
 
             {/* Bus Selection (for internal sales) */}
             {saleType === 'INTERNAL_BUS' && (
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                  Bus *
-                </label>
-                <select
-                  value={formData.bus_id}
-                  onChange={(e) => setFormData({ ...formData, bus_id: e.target.value })}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  required={saleType === 'INTERNAL_BUS'}
-                >
-                  <option value="">Select a bus</option>
-                  {buses.map((bus) => (
-                    <option key={bus.id} value={bus.id}>
-                      {bus.registration_number}
-                      {bus.bus_name ? ` - ${bus.bus_name}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                    Bus *
+                  </label>
+                  <select
+                    value={formData.bus_id}
+                    onChange={(e) => setFormData({ ...formData, bus_id: e.target.value, trip_id: '' })}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    required={saleType === 'INTERNAL_BUS'}
+                  >
+                    <option value="">Select a bus</option>
+                    {buses.map((bus) => (
+                      <option key={bus.id} value={bus.id}>
+                        {bus.registration_number}
+                        {bus.bus_name ? ` - ${bus.bus_name}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Trip/Voucher Selection (for internal sales) */}
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                    Trip / Voucher *
+                  </label>
+                  {tripsLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-blue-600"></div>
+                      Loading trips...
+                    </div>
+                  ) : trips.length === 0 ? (
+                    <p className="text-sm text-red-600">
+                      No active trips found for this bus. Please create a trip first.
+                    </p>
+                  ) : (
+                    <select
+                      value={formData.trip_id}
+                      onChange={(e) => setFormData({ ...formData, trip_id: e.target.value })}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      required={saleType === 'INTERNAL_BUS'}
+                    >
+                      <option value="">Select a trip/voucher</option>
+                      {trips.map((trip) => (
+                        <option key={trip.id} value={trip.id}>
+                          {new Date(trip.trip_date).toLocaleDateString('en-PK')} - {trip.route}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              </>
             )}
 
             {/* Customer Info (for external sales) */}
@@ -228,18 +286,24 @@ export default function FuelSaleFormPage() {
 
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                  Sale Price per Litre (Rs.) *
+                  {saleType === 'INTERNAL_BUS' ? 'Cost Price per Litre (Rs.)' : 'Sale Price per Litre (Rs.) *'}
                 </label>
                 <input
                   type="number"
-                  value={formData.sale_price_per_litre}
+                  value={saleType === 'INTERNAL_BUS' ? weightedAvgCost.toFixed(2) : formData.sale_price_per_litre}
                   onChange={(e) => setFormData({ ...formData, sale_price_per_litre: e.target.value })}
                   placeholder="0.00"
                   min="0"
                   step="0.01"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  disabled={saleType === 'INTERNAL_BUS'}
+                  className={`w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${saleType === 'INTERNAL_BUS' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   required
                 />
+                {saleType === 'INTERNAL_BUS' && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Auto-filled from weighted average cost (internal transfers use cost basis)
+                  </p>
+                )}
               </div>
             </div>
 

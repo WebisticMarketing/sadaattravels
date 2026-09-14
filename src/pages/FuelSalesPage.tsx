@@ -1,19 +1,29 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useFuelSales } from '../hooks/useFuelSales';
 import { useBuses } from '../hooks/useBuses';
 import { formatCurrency, formatDate } from '../lib/utils';
-import { Plus, Filter, Fuel } from 'lucide-react';
+import { Plus, Filter, Fuel, Truck, Users } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SearchInput } from '../components/ui/SearchInput';
 import { SummaryCard } from '../components/ui/SummaryCard';
 import { PrintButton } from '../components/ui/PrintButton';
 import { Button } from '../components/ui/Button';
 
+type TabType = 'all' | 'bus' | 'external';
+
 export default function FuelSalesPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { buses } = useBuses();
   const [showFilters, setShowFilters] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'bus') return 'bus';
+    if (tabParam === 'external') return 'external';
+    return 'all';
+  });
+  
   const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',
@@ -21,6 +31,17 @@ export default function FuelSalesPage() {
     busId: '',
     search: '',
   });
+  
+  // Update saleType filter based on active tab
+  useEffect(() => {
+    if (activeTab === 'bus') {
+      setFilters(prev => ({ ...prev, saleType: 'INTERNAL_BUS' }));
+    } else if (activeTab === 'external') {
+      setFilters(prev => ({ ...prev, saleType: 'EXTERNAL_CUSTOMER' }));
+    } else {
+      setFilters(prev => ({ ...prev, saleType: '' }));
+    }
+  }, [activeTab]);
 
   const { sales, loading, error } = useFuelSales({
     startDate: filters.startDate || undefined,
@@ -41,8 +62,10 @@ export default function FuelSalesPage() {
   });
 
   const externalSales = filteredSales.filter(s => s.sale_type === 'EXTERNAL_CUSTOMER');
+  const internalSales = filteredSales.filter(s => s.sale_type === 'INTERNAL_BUS');
   
   const externalRevenue = externalSales.reduce((sum, s) => sum + s.total_amount, 0);
+  const internalBusValue = internalSales.reduce((sum, s) => sum + s.total_amount, 0);
   const totalLitres = filteredSales.reduce((sum, s) => sum + s.litres, 0);
 
   return (
@@ -61,25 +84,105 @@ export default function FuelSalesPage() {
         </div>
       </PageHeader>
 
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab('all')}
+          className={`px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === 'all'
+              ? 'border-b-2 border-blue-600 text-blue-600'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          All Sales ({filteredSales.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('bus')}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === 'bus'
+              ? 'border-b-2 border-purple-600 text-purple-600'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <Truck className="h-4 w-4" />
+          Bus Fuel Records ({internalSales.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('external')}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === 'external'
+              ? 'border-b-2 border-green-600 text-green-600'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <Users className="h-4 w-4" />
+          External Sales ({externalSales.length})
+        </button>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <SummaryCard
-          label="Total Sales"
-          value={filteredSales.length}
-          icon={<Fuel className="h-6 w-6" />}
-        />
-        <SummaryCard
-          label="External Revenue"
-          value={formatCurrency(externalRevenue)}
-          icon={<Fuel className="h-6 w-6" />}
-          variant="success"
-        />
-        <SummaryCard
-          label="Total Litres"
-          value={`${totalLitres.toFixed(0)} L`}
-          icon={<Fuel className="h-6 w-6" />}
-          variant="warning"
-        />
+        {activeTab === 'external' ? (
+          <>
+            <SummaryCard
+              label="External Sales"
+              value={externalSales.length}
+              icon={<Users className="h-6 w-6" />}
+            />
+            <SummaryCard
+              label="External Revenue"
+              value={formatCurrency(externalRevenue)}
+              icon={<Fuel className="h-6 w-6" />}
+              variant="success"
+            />
+            <SummaryCard
+              label="Total Litres"
+              value={`${totalLitres.toFixed(0)} L`}
+              icon={<Fuel className="h-6 w-6" />}
+              variant="warning"
+            />
+          </>
+        ) : activeTab === 'bus' ? (
+          <>
+            <SummaryCard
+              label="Bus Fuel Records"
+              value={internalSales.length}
+              icon={<Truck className="h-6 w-6" />}
+            />
+            <SummaryCard
+              label="Internal Bus Fuel Value"
+              value={formatCurrency(internalBusValue)}
+              icon={<Fuel className="h-6 w-6" />}
+              subtitle="Cost to trips (not revenue)"
+            />
+            <SummaryCard
+              label="Total Litres"
+              value={`${totalLitres.toFixed(0)} L`}
+              icon={<Fuel className="h-6 w-6" />}
+              variant="warning"
+            />
+          </>
+        ) : (
+          <>
+            <SummaryCard
+              label="Total Sales"
+              value={filteredSales.length}
+              icon={<Fuel className="h-6 w-6" />}
+            />
+            <SummaryCard
+              label="External Revenue"
+              value={formatCurrency(externalRevenue)}
+              icon={<Fuel className="h-6 w-6" />}
+              variant="success"
+            />
+            <SummaryCard
+              label="Total Litres"
+              value={`${totalLitres.toFixed(0)} L`}
+              icon={<Fuel className="h-6 w-6" />}
+              variant="warning"
+            />
+          </>
+        )}
       </div>
 
       {/* Filters */}
