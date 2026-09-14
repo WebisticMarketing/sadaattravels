@@ -16,6 +16,9 @@ import FuelPurchasesPage from './pages/FuelPurchasesPage';
 import FuelPurchaseFormPage from './pages/FuelPurchaseFormPage';
 import FuelSalesPage from './pages/FuelSalesPage';
 import FuelSaleFormPage from './pages/FuelSaleFormPage';
+import PetrolPumpOverviewPage from './pages/PetrolPumpOverviewPage';
+import BusFuelRecordsPage from './pages/BusFuelRecordsPage';
+import ExternalSalesPage from './pages/ExternalSalesPage';
 import AddaPage from './pages/AddaPage';
 import AddaIncomeFormPage from './pages/AddaIncomeFormPage';
 import AddaExpenseFormPage from './pages/AddaExpenseFormPage';
@@ -93,7 +96,9 @@ export default function App() {
             <Route path="tyres/new" element={<Navigate to="/app/buses" replace />} />
             <Route path="tyres/:id" element={<Navigate to="/app/buses" replace />} />
             <Route path="tyres/:id/edit" element={<Navigate to="/app/buses" replace />} />
-            <Route path="petrol" element={<FuelSalesPage />} />
+            <Route path="petrol" element={<PetrolPumpOverviewPage />} />
+            <Route path="petrol/bus-fuel" element={<BusFuelRecordsPage />} />
+            <Route path="petrol/external-sales" element={<ExternalSalesPage />} />
             <Route path="petrol/purchases" element={<FuelPurchasesPage />} />
             <Route path="petrol/purchases/new" element={<FuelPurchaseFormPage />} />
             <Route path="petrol/sales" element={<FuelSalesPage />} />
