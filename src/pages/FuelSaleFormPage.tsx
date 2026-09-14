@@ -382,8 +382,8 @@ export default function FuelSaleFormPage() {
               </div>
             )}
 
-            {/* Total Amount Display */}
-            {totalAmount > 0 && (
+            {/* Total Amount Display - EXTERNAL_CUSTOMER only */}
+            {saleType === 'EXTERNAL_CUSTOMER' && totalAmount > 0 && (
               <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-blue-900">Total Amount:</span>
@@ -394,6 +394,33 @@ export default function FuelSaleFormPage() {
                 <p className="mt-1 text-xs text-blue-700">
                   {formData.litres} L × Rs. {parseFloat(formData.sale_price_per_litre || '0').toLocaleString('en-PK', { minimumFractionDigits: 2 })}
                 </p>
+              </div>
+            )}
+
+            {/* INTERNAL_BUS: Show voucher diesel amount and implied cost per litre */}
+            {saleType === 'INTERNAL_BUS' && selectedTripDieselAmount !== null && formData.litres && (
+              <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-green-900">Voucher Diesel Amount:</span>
+                    <span className="text-xl font-bold text-green-600">
+                      Rs. {selectedTripDieselAmount.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-green-800">Litres Issued:</span>
+                    <span className="font-medium text-green-900">{formData.litres} L</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-green-200">
+                    <span className="text-sm text-green-800">Implied Cost per Litre:</span>
+                    <span className="font-medium text-green-900">
+                      Rs. {(selectedTripDieselAmount / parseFloat(formData.litres)).toFixed(2)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-green-700 italic">
+                    This is the effective rate based on the voucher's actual diesel expense. For informational purposes only.
+                  </p>
+                </div>
               </div>
             )}
 
