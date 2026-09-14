@@ -3,7 +3,7 @@ import { cn } from '../../lib/utils';
 import type { Size, Variant } from '../../types';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: Variant;
+  variant?: Variant | 'outline';
   size?: Size;
   loading?: boolean;
   fullWidth?: boolean;
@@ -18,6 +18,8 @@ const variantStyles: Record<Variant, string> = {
   info: 'bg-sky-600 text-white hover:bg-sky-700 focus:ring-sky-500 border-transparent',
   ghost: 'bg-transparent text-gray-700 hover:bg-gray-100 focus:ring-gray-400 border-transparent',
 };
+
+const outlineStyles = 'bg-white text-gray-700 hover:bg-gray-50 focus:ring-gray-400 border-gray-300';
 
 const sizeStyles: Record<Size, string> = {
   sm: 'px-3 py-1.5 text-sm',
@@ -41,7 +43,7 @@ export function Button({
         'inline-flex items-center justify-center gap-2 rounded-lg border font-medium',
         'transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2',
         'disabled:opacity-50 disabled:cursor-not-allowed',
-        variantStyles[variant],
+        variant === 'outline' ? outlineStyles : variantStyles[variant],
         sizeStyles[size],
         fullWidth && 'w-full',
         className

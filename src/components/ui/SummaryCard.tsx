@@ -11,6 +11,7 @@ interface SummaryCardProps {
   };
   className?: string;
   variant?: 'default' | 'success' | 'warning' | 'danger';
+  subtitle?: string;
 }
 
 export function SummaryCard({
@@ -19,7 +20,8 @@ export function SummaryCard({
   icon,
   trend,
   className,
-  variant = 'default'
+  variant = 'default',
+  subtitle
 }: SummaryCardProps) {
   const variantStyles = {
     default: 'bg-white',
@@ -38,6 +40,9 @@ export function SummaryCard({
         <div className="flex-1">
           <p className="text-sm font-medium text-gray-600 mb-1">{label}</p>
           <p className="text-2xl font-bold text-gray-900">{value}</p>
+          {subtitle && (
+            <p className="mt-1 text-xs text-gray-500">{subtitle}</p>
+          )}
           {trend && (
             <div className="mt-2 flex items-center gap-1 text-xs">
               <span className={cn(

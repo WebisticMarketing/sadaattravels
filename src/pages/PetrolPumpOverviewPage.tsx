@@ -1,9 +1,8 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFuelSales } from '../hooks/useFuelSales';
 import { useFuelPurchases } from '../hooks/useFuelPurchases';
 import { formatCurrency } from '../lib/utils';
-import { Fuel, TrendingUp, TrendingDown, Package, Truck, Users } from 'lucide-react';
+import { Fuel, TrendingUp, Package, Truck, Users } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SummaryCard } from '../components/ui/SummaryCard';
 import { Button } from '../components/ui/Button';
