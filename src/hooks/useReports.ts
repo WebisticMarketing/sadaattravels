@@ -140,19 +140,41 @@ export function useOverallSummary(dateRange: DateRange) {
         const cargoExpenses = cargoRecords?.reduce((sum, c) => sum + c.expenses, 0) || 0;
         const cargoProfit = cargoRevenue - cargoExpenses;
 
-        // Fetch fuel profit (external sales only)
+        // Fetch ALL fuel sales (internal bus + external customer)
         const { data: fuelSales, error: fuelError } = await supabase
           .from('fuel_sales')
-          .select('total_amount, cost_price_per_litre, litres')
-          .eq('sale_type', 'EXTERNAL_CUSTOMER')
+          .select('total_amount, cost_price_per_litre, litres, sale_type, trip_id')
           .gte('sale_date', dateRange.startDate)
           .lte('sale_date', dateRange.endDate)
           .eq('status', 'active');
 
         if (fuelError) throw fuelError;
-        const fuelRevenue = fuelSales?.reduce((sum, s) => sum + s.total_amount, 0) || 0;
-        const fuelCost = fuelSales?.reduce((sum, s) => sum + (s.cost_price_per_litre * s.litres), 0) || 0;
-        const fuelProfit = fuelRevenue - fuelCost;
+        
+        // Calculate fuel profit from ALL sales
+        // For INTERNAL_BUS: revenue comes from linked voucher diesel expense
+        // For EXTERNAL_CUSTOMER: revenue is the sale total_amount
+        const fuelProfit = await Promise.all(
+          (fuelSales || []).map(async (sale) => {
+            const cost = (sale.cost_price_per_litre || 0) * (sale.litres || 0);
+            
+            if (sale.sale_type === 'INTERNAL_BUS' && sale.trip_id) {
+              // Get the actual diesel payment from the voucher's trip_expense
+              const { data: expenses } = await supabase
+                .from('trip_expenses')
+                .select('amount')
+                .eq('trip_id', sale.trip_id)
+                .eq('type', 'diesel')
+                .single();
+              
+              const revenue = expenses?.amount || 0;
+              return revenue - cost;
+            } else {
+              // EXTERNAL_CUSTOMER: use total_amount as revenue
+              const revenue = sale.total_amount || 0;
+              return revenue - cost;
+            }
+          })
+        ).then(results => results.reduce((sum, profit) => sum + profit, 0));
 
         // Fetch installment payments (taken only - these are expenses)
         const { data: installments, error: installmentsError } = await supabase

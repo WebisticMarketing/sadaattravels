@@ -251,23 +251,41 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
         // Add Cargo expenses to total expenses
         periodExpenses += cargoExpenses;
 
-        // Fetch Fuel sales profit for the selected period (external sales only)
+        // Fetch ALL Fuel sales (internal bus + external customer) for the selected period
         const { data: fuelSalesRecords, error: fuelSalesError } = await supabase
           .from('fuel_sales')
-          .select('total_amount, litres, cost_price_per_litre, sale_type')
+          .select('total_amount, litres, cost_price_per_litre, sale_type, trip_id')
           .gte('sale_date', periodStart)
           .lte('sale_date', periodEnd)
-          .eq('sale_type', 'EXTERNAL_CUSTOMER')
           .eq('status', 'active');
 
         if (fuelSalesError) throw fuelSalesError;
         
-        // Calculate fuel profit from external sales (not internal bus fuel)
-        const fuelProfit = fuelSalesRecords?.reduce((sum, sale) => {
-          const revenue = sale.total_amount || 0;
-          const cost = (sale.litres || 0) * (sale.cost_price_per_litre || 0);
-          return sum + (revenue - cost);
-        }, 0) || 0;
+        // Calculate fuel profit from ALL sales
+        // For INTERNAL_BUS: revenue comes from linked voucher diesel expense
+        // For EXTERNAL_CUSTOMER: revenue is the sale total_amount
+        const fuelProfit = await Promise.all(
+          (fuelSalesRecords || []).map(async (sale) => {
+            const cost = (sale.litres || 0) * (sale.cost_price_per_litre || 0);
+            
+            if (sale.sale_type === 'INTERNAL_BUS' && sale.trip_id) {
+              // Get the actual diesel payment from the voucher's trip_expense
+              const { data: expenses } = await supabase
+                .from('trip_expenses')
+                .select('amount')
+                .eq('trip_id', sale.trip_id)
+                .eq('type', 'diesel')
+                .single();
+              
+              const revenue = expenses?.amount || 0;
+              return revenue - cost;
+            } else {
+              // EXTERNAL_CUSTOMER: use total_amount as revenue
+              const revenue = sale.total_amount || 0;
+              return revenue - cost;
+            }
+          })
+        ).then(results => results.reduce((sum, profit) => sum + profit, 0));
 
         // Add Fuel profit to total revenue
         periodRevenue += fuelProfit;
