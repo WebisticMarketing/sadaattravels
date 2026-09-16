@@ -321,7 +321,8 @@ export async function addExpenseEntry(
   expenseType: string,
   amount: number,
   description?: string,
-  paidTo?: string
+  paidTo?: string,
+  dieselLitres?: number
 ): Promise<TripExpense> {
   const { data: entry, error } = await supabase
     .from('trip_expenses')
@@ -331,6 +332,7 @@ export async function addExpenseEntry(
       amount,
       description,
       paid_to: paidTo,
+      diesel_litres: dieselLitres || null,
       status: 'active',
     })
     .select()

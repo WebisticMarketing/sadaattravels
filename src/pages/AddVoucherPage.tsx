@@ -34,6 +34,7 @@ export default function AddVoucherPage() {
   const [notes, setNotes] = useState('');
   
   // Expenses
+  const [dieselLitres, setDieselLitres] = useState('');
   const [dieselExpense, setDieselExpense] = useState('');
   const [taExpense, setTaExpense] = useState('');
   const [teaExpense, setTeaExpense] = useState('');
@@ -187,11 +188,16 @@ export default function AddVoucherPage() {
 
       for (const [type, amount, desc] of expenseEntries) {
         if (amount > 0) {
+          // For diesel expense, pass the litres value
+          const litresForDiesel = type === 'diesel' && dieselLitres ? parseFloat(dieselLitres) : undefined;
+          
           await addExpenseEntry(
             trip.id,
             type,
             amount,
-            desc
+            desc,
+            undefined,
+            litresForDiesel
           );
         }
       }
@@ -369,14 +375,31 @@ export default function AddVoucherPage() {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Expenses</h2>
           <div className="grid gap-4 md:grid-cols-3">
             <Input
-              label="Diesel (Rs.)"
+              label="Diesel Litres (L)"
+              type="number"
+              value={dieselLitres}
+              onChange={(e) => setDieselLitres(e.target.value)}
+              min="0"
+              step="0.001"
+              placeholder="Fuel quantity in litres"
+            />
+            <Input
+              label="Diesel Payment (Rs.)"
               type="number"
               value={dieselExpense}
               onChange={(e) => setDieselExpense(e.target.value)}
               min="0"
               step="0.01"
-              placeholder="Fuel cost"
+              placeholder="Total fuel cost"
             />
+            {dieselLitres && dieselExpense && parseFloat(dieselLitres) > 0 && (
+              <div className="mt-6 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-xs text-blue-700 font-medium mb-1">Effective Price/Litre</p>
+                <p className="text-lg font-bold text-blue-900">
+                  Rs. {(parseFloat(dieselExpense) / parseFloat(dieselLitres)).toFixed(2)}
+                </p>
+              </div>
+            )}
             <Input
               label="TA (Rs.)"
               type="number"
