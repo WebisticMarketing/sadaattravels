@@ -188,6 +188,7 @@ export interface TripExpense {
   reversed_by: string | null;
   reversed_at: string | null;
   reversal_reason: string | null;
+  diesel_litres: number | null;
 }
 
 // ============================================================================
