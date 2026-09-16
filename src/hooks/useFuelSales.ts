@@ -184,7 +184,15 @@ export async function createFuelSale(data: {
       .select()
       .single();
 
-    if (saleError) throw saleError;
+    if (saleError) {
+      console.error('[FuelSale Debug] SUPABASE ERROR', saleError);
+      console.error('[FuelSale Debug] ERROR CODE', saleError.code);
+      console.error('[FuelSale Debug] ERROR MESSAGE', saleError.message);
+      console.error('[FuelSale Debug] ERROR DETAILS', saleError.details);
+      console.error('[FuelSale Debug] ERROR HINT', saleError.hint);
+      console.error('[FuelSale Debug] INSERT PAYLOAD', data);
+      throw saleError;
+    }
 
     // Create the fuel_sale_expense_links record
     const { error: linkError } = await supabase
