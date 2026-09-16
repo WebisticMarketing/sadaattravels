@@ -16,6 +16,7 @@ export default function FuelSaleFormPage() {
     status: 'active',
   });
   const [selectedTripDieselAmount, setSelectedTripDieselAmount] = useState<number | null>(null);
+  const [selectedTripDieselLitres, setSelectedTripDieselLitres] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     sale_date: formatDate(new Date()),
     litres: '',
@@ -37,18 +38,25 @@ export default function FuelSaleFormPage() {
     calculateWeightedAverageCost().then(setWeightedAvgCost);
   }, []);
 
-  // When trip selection changes, fetch its diesel expense amount
+  // When trip selection changes, fetch its diesel expense amount and litres
   useEffect(() => {
     if (saleType === 'INTERNAL_BUS' && formData.trip_id) {
       const selectedTrip = trips.find(t => t.id === formData.trip_id);
       if (selectedTrip && selectedTrip.expenseEntries) {
         const dieselExpense = selectedTrip.expenseEntries.find(e => e.expense_type === 'diesel');
         setSelectedTripDieselAmount(dieselExpense ? dieselExpense.amount : null);
+        setSelectedTripDieselLitres(dieselExpense ? dieselExpense.diesel_litres : null);
+        // Auto-populate litres from voucher for INTERNAL_BUS
+        if (dieselExpense && dieselExpense.diesel_litres) {
+          setFormData(prev => ({ ...prev, litres: dieselExpense.diesel_litres!.toString() }));
+        }
       } else {
         setSelectedTripDieselAmount(null);
+        setSelectedTripDieselLitres(null);
       }
     } else {
       setSelectedTripDieselAmount(null);
+      setSelectedTripDieselLitres(null);
     }
   }, [formData.trip_id, saleType, trips]);
 
@@ -63,8 +71,13 @@ export default function FuelSaleFormPage() {
       if (!formData.litres || parseFloat(formData.litres) <= 0) {
         throw new Error('Litres must be greater than 0');
       }
-      if (!formData.sale_price_per_litre || parseFloat(formData.sale_price_per_litre) < 0) {
-        throw new Error('Sale price per litre must be 0 or greater');
+      
+      // Only validate sale_price_per_litre for EXTERNAL_CUSTOMER
+      // For INTERNAL_BUS, the price is derived from voucher (no manual input needed)
+      if (saleType === 'EXTERNAL_CUSTOMER') {
+        if (!formData.sale_price_per_litre || parseFloat(formData.sale_price_per_litre) < 0) {
+          throw new Error('Sale price per litre must be 0 or greater');
+        }
       }
 
       if (saleType === 'INTERNAL_BUS' && !formData.bus_id) {
@@ -184,7 +197,7 @@ export default function FuelSaleFormPage() {
                 >
                   <p className="font-medium text-gray-900">Internal Bus</p>
                   <p className="mt-1 text-xs text-gray-500">
-                    Supply to Sadaat bus (no revenue, cost to trip)
+                    Supply to Sadaat bus (counts as Petrol Pump revenue)
                   </p>
                 </button>
               </div>
@@ -307,9 +320,15 @@ export default function FuelSaleFormPage() {
                   placeholder="0.00"
                   min="0"
                   step="0.01"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  disabled={saleType === 'INTERNAL_BUS'}
+                  className={`w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${saleType === 'INTERNAL_BUS' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   required
                 />
+                {saleType === 'INTERNAL_BUS' && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Auto-filled from voucher diesel litres
+                  </p>
+                )}
               </div>
 
               <div>
@@ -325,7 +344,7 @@ export default function FuelSaleFormPage() {
                   step="0.01"
                   disabled={saleType === 'INTERNAL_BUS'}
                   className={`w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${saleType === 'INTERNAL_BUS' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                  required
+                  required={saleType !== 'INTERNAL_BUS'}
                 />
                 {saleType === 'INTERNAL_BUS' && (
                   <p className="mt-1 text-xs text-gray-500">
