@@ -125,7 +125,7 @@ export default function PetrolPumpOverviewPage() {
                 <SummaryCard
                   label="Total Sold to Buses"
                   value={`${busFuelRecords.reduce((sum, s) => sum + s.litres, 0).toFixed(0)} L`}
-                  subtitle="PKR 0 revenue"
+                  subtitle={`PKR ${formatCurrency(busFuelRecords.reduce((sum, s) => sum + s.total_amount, 0)).replace('PKR ', '')} revenue`}
                   icon={<Truck className="h-6 w-6" />}
                   variant="default"
                 />
@@ -139,7 +139,7 @@ export default function PetrolPumpOverviewPage() {
                 <SummaryCard
                   label="Profit"
                   value={formatCurrency(petrolPumpProfit)}
-                  subtitle="External sales"
+                  subtitle="All fuel sales"
                   icon={<TrendingUp className="h-6 w-6" />}
                   variant={petrolPumpProfit >= 0 ? 'success' : 'danger'}
                 />
