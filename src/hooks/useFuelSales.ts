@@ -56,7 +56,7 @@ export function useFuelSales(filters?: {
           )
         `)
         .eq('status', 'active')
-        .order('sale_date', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (filters?.startDate) {
         query = query.gte('sale_date', filters.startDate);
