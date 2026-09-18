@@ -177,6 +177,19 @@ export async function createFuelSale(data: {
     // Reuse existing diesel expense - do NOT create a new one
     const tripExpenseId = existingExpenses.id;
 
+    // Check if this trip expense is already linked BEFORE creating a new fuel sale
+    if (linkToTripExpense && tripExpenseId) {
+      const { data: existingLink } = await supabase
+        .from('fuel_sale_expense_links')
+        .select('id')
+        .eq('trip_expense_id', tripExpenseId)
+        .maybeSingle();
+
+      if (existingLink) {
+        throw new Error('This voucher\'s diesel expense is already linked to another fuel sale. Please select a different voucher.');
+      }
+    }
+
     // First, create the fuel sale
     const { data: sale, error: saleError } = await supabase
       .from('fuel_sales')
@@ -204,7 +217,14 @@ export async function createFuelSale(data: {
         notes: 'Linked to existing diesel expense from voucher',
       });
 
-    if (linkError) throw linkError;
+    if (linkError) {
+      // Check if it's a duplicate key error (constraint violation)
+      if (linkError.code === '23505') {
+        // This should not happen due to the pre-check above, but handle it just in case
+        throw new Error('This voucher\'s diesel expense is already linked to another fuel sale. Please select a different voucher.');
+      }
+      throw linkError;
+    }
 
     return sale;
   }

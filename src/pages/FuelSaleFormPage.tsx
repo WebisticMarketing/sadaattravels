@@ -118,7 +118,7 @@ export default function FuelSaleFormPage() {
       // For INTERNAL_BUS, sale_price_per_litre must be 0 per database constraint
       const finalSalePrice = saleType === 'INTERNAL_BUS' ? 0 : parseFloat(formData.sale_price_per_litre);
       const finalTotalAmount = saleType === 'INTERNAL_BUS' 
-        ? parseFloat(formData.litres) * weightedAvgCost 
+        ? (selectedTripDieselAmount || 0) 
         : totalAmount;
 
       await createFuelSale({
