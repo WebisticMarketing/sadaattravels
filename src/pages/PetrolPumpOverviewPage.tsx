@@ -8,7 +8,7 @@ import { SummaryCard } from '../components/ui/SummaryCard';
 import { Button } from '../components/ui/Button';
 import { useState } from 'react';
 
-type TabType = 'overview' | 'bus-fuel' | 'purchases' | 'external-sales';
+type TabType = 'overview' | 'all-sales' | 'bus-fuel' | 'purchases' | 'external-sales';
 
 export default function PetrolPumpOverviewPage() {
   const navigate = useNavigate();
@@ -54,6 +54,16 @@ export default function PetrolPumpOverviewPage() {
             }`}
           >
             Overview
+          </button>
+          <button
+            onClick={() => setActiveTab('all-sales')}
+            className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium ${
+              activeTab === 'all-sales'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+            }`}
+          >
+            All Sales
           </button>
           <button
             onClick={() => setActiveTab('bus-fuel')}
@@ -272,7 +282,7 @@ export default function PetrolPumpOverviewPage() {
                             {purchase.litres.toFixed(0)} L
                           </td>
                           <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                            PKR {purchase.cost_price_per_litre.toFixed(2)}
+                            PKR {purchase.cost_per_litre.toFixed(2)}
                           </td>
                           <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                             {formatCurrency(purchase.total_cost)}
