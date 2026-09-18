@@ -150,31 +150,31 @@ export function useOverallSummary(dateRange: DateRange) {
 
         if (fuelError) throw fuelError;
         
-        // Calculate fuel profit from ALL sales
-        // For INTERNAL_BUS: revenue comes from linked voucher diesel expense
-        // For EXTERNAL_CUSTOMER: revenue is the sale total_amount
-        const fuelProfit = await Promise.all(
-          (fuelSales || []).map(async (sale) => {
-            const cost = (sale.cost_price_per_litre || 0) * (sale.litres || 0);
+        // Calculate fuel revenue and cost from ALL sales
+        let fuelRevenue = 0;
+        let fuelCost = 0;
+        
+        for (const sale of (fuelSales || [])) {
+          const cost = (sale.cost_price_per_litre || 0) * (sale.litres || 0);
+          fuelCost += cost;
+          
+          if (sale.sale_type === 'INTERNAL_BUS' && sale.trip_id) {
+            // Get the actual diesel payment from the voucher's trip_expense
+            const { data: expenses } = await supabase
+              .from('trip_expenses')
+              .select('amount')
+              .eq('trip_id', sale.trip_id)
+              .eq('type', 'diesel')
+              .single();
             
-            if (sale.sale_type === 'INTERNAL_BUS' && sale.trip_id) {
-              // Get the actual diesel payment from the voucher's trip_expense
-              const { data: expenses } = await supabase
-                .from('trip_expenses')
-                .select('amount')
-                .eq('trip_id', sale.trip_id)
-                .eq('type', 'diesel')
-                .single();
-              
-              const revenue = expenses?.amount || 0;
-              return revenue - cost;
-            } else {
-              // EXTERNAL_CUSTOMER: use total_amount as revenue
-              const revenue = sale.total_amount || 0;
-              return revenue - cost;
-            }
-          })
-        ).then(results => results.reduce((sum, profit) => sum + profit, 0));
+            fuelRevenue += expenses?.amount || 0;
+          } else {
+            // EXTERNAL_CUSTOMER: use total_amount as revenue
+            fuelRevenue += sale.total_amount || 0;
+          }
+        }
+        
+        const fuelProfit = fuelRevenue - fuelCost;
 
         // Fetch installment payments (taken only - these are expenses)
         const { data: installments, error: installmentsError } = await supabase

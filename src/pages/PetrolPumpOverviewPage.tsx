@@ -29,10 +29,10 @@ export default function PetrolPumpOverviewPage() {
   const totalSoldLitres = allSales.reduce((sum, s) => sum + s.litres, 0);
   const currentStock = totalPurchasedLitres - totalSoldLitres;
   
-  // Financial metrics (external sales only)
-  const externalRevenue = externalSales.reduce((sum, s) => sum + s.total_amount, 0);
-  const externalCost = externalSales.reduce((sum, s) => sum + (s.litres * s.cost_price_per_litre), 0);
-  const petrolPumpProfit = externalRevenue - externalCost;
+  // Financial metrics (ALL sales - internal bus + external customer)
+  const totalFuelRevenue = allSales.reduce((sum, s) => sum + s.total_amount, 0);
+  const totalFuelCost = allSales.reduce((sum, s) => sum + (s.litres * (s.cost_price_per_litre || 0)), 0);
+  const petrolPumpProfit = totalFuelRevenue - totalFuelCost;
   
   return (
     <div className="space-y-6">
