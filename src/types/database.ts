@@ -366,6 +366,24 @@ export interface FuelSaleExpenseLink {
 }
 
 // ============================================================================
+// PETROL PUMP SETTINGS
+// ============================================================================
+
+/**
+ * Centralized settings for Petrol Pump module.
+ * Currently stores universal diesel selling price per liter.
+ * 
+ * Single-row table enforced by database constraint.
+ */
+export interface PetrolPumpSettings {
+  id: string;
+  diesel_selling_price_per_litre: number;
+  updated_by: string | null;
+  updated_at: string;
+  notes: string | null;
+}
+
+// ============================================================================
 // ADDA
 // ============================================================================
 
