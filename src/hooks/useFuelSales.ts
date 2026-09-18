@@ -331,3 +331,23 @@ export async function calculateWeightedAverageCost() {
 
   return totalCost / totalStock;
 }
+
+/**
+ * Get the current universal diesel selling price per liter
+ * Returns 0 if settings are not loaded or unavailable
+ */
+export async function getUniversalDieselSellingPrice(): Promise<number> {
+  const SETTINGS_ID = '00000000-0000-0000-0000-000000000001';
+  
+  const { data, error } = await supabase
+    .from('petrol_pump_settings')
+    .select('diesel_selling_price_per_litre')
+    .eq('id', SETTINGS_ID)
+    .single();
+
+  if (error || !data) {
+    return 0;
+  }
+
+  return data.diesel_selling_price_per_litre;
+}

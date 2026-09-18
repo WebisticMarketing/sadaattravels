@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { useFuelSales } from '../hooks/useFuelSales';
 import { useFuelPurchases } from '../hooks/useFuelPurchases';
+import { usePetrolPumpSettings } from '../hooks/usePetrolPumpSettings';
 import { formatCurrency } from '../lib/utils';
-import { Fuel, TrendingUp, Package, Truck, Users, PlusCircle } from 'lucide-react';
+import { Fuel, TrendingUp, Package, Truck, Users, PlusCircle, Settings } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SummaryCard } from '../components/ui/SummaryCard';
 import { Button } from '../components/ui/Button';
@@ -13,12 +14,16 @@ type TabType = 'overview' | 'all-sales' | 'bus-fuel' | 'purchases' | 'external-s
 export default function PetrolPumpOverviewPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [editingPrice, setEditingPrice] = useState('');
   
   // Fetch all data
   const { sales: allSales, loading: salesLoading } = useFuelSales();
   const { purchases, loading: purchasesLoading } = useFuelPurchases();
   
-  const loading = salesLoading || purchasesLoading;
+  const { settings: petrolPumpSettings, loading: settingsLoading, updateDieselSellingPrice } = usePetrolPumpSettings();
+
+  const loading = salesLoading || purchasesLoading || settingsLoading;
   
   // Filter sales by type
   const busFuelRecords = allSales.filter(s => s.sale_type === 'INTERNAL_BUS');
@@ -141,7 +146,7 @@ export default function PetrolPumpOverviewPage() {
               </div>
 
               {/* Quick Actions */}
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="rounded-lg border border-gray-200 bg-white p-6">
                   <h3 className="mb-4 text-lg font-semibold text-gray-900">Purchases</h3>
                   <p className="mb-4 text-2xl font-bold text-gray-900">{purchases.length}</p>
@@ -166,6 +171,33 @@ export default function PetrolPumpOverviewPage() {
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Record Bus Fuel
                   </Button>
+                </div>
+
+                <div className="rounded-lg border border-gray-200 bg-white p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Diesel Selling Price</h3>
+                    <Settings className="h-5 w-5 text-gray-400" />
+                  </div>
+                  {petrolPumpSettings ? (
+                    <>
+                      <p className="mb-2 text-3xl font-bold text-blue-600">
+                        Rs. {petrolPumpSettings.diesel_selling_price_per_litre.toFixed(2)}
+                      </p>
+                      <p className="text-sm text-gray-500 mb-4">per litre</p>
+                      <Button
+                        onClick={() => {
+                          setEditingPrice(petrolPumpSettings.diesel_selling_price_per_litre.toString());
+                          setShowSettingsModal(true);
+                        }}
+                        className="w-full"
+                        variant="outline"
+                      >
+                        Edit Price
+                      </Button>
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-500">Loading...</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -438,6 +470,57 @@ export default function PetrolPumpOverviewPage() {
                   </table>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Settings Modal */}
+          {showSettingsModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+              <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+                <h3 className="mb-4 text-lg font-semibold text-gray-900">Edit Diesel Selling Price</h3>
+                
+                <div className="mb-4">
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                    Diesel Selling Price (Rs. per Litre)
+                  </label>
+                  <input
+                    type="number"
+                    value={editingPrice}
+                    onChange={(e) => setEditingPrice(e.target.value)}
+                    min="0"
+                    step="0.01"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    This is the standard selling price for external customer sales
+                  </p>
+                </div>
+
+                <div className="flex gap-3 justify-end">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setShowSettingsModal(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      try {
+                        const price = parseFloat(editingPrice);
+                        if (isNaN(price) || price < 0) {
+                          throw new Error('Please enter a valid price >= 0');
+                        }
+                        await updateDieselSellingPrice(price, `Updated diesel selling price to Rs. ${price.toFixed(2)}/L`);
+                        setShowSettingsModal(false);
+                      } catch (err) {
+                        alert(err instanceof Error ? err.message : 'Failed to update price');
+                      }
+                    }}
+                  >
+                    Save
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </>

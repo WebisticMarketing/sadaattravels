@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBuses } from '../hooks/useBuses';
 import { useTrips } from '../hooks/useTrips';
-import { createFuelSale, calculateWeightedAverageCost } from '../hooks/useFuelSales';
+import { createFuelSale, calculateWeightedAverageCost, getUniversalDieselSellingPrice } from '../hooks/useFuelSales';
 import { formatDate } from '../lib/utils';
 import { ArrowLeft, Info } from 'lucide-react';
 
@@ -30,12 +30,14 @@ export default function FuelSaleFormPage() {
   });
 
   const [weightedAvgCost, setWeightedAvgCost] = useState(0);
+  const [universalDieselPrice, setUniversalDieselPrice] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Calculate weighted average cost on mount
+    // Calculate weighted average cost and fetch universal diesel selling price on mount
     calculateWeightedAverageCost().then(setWeightedAvgCost);
+    getUniversalDieselSellingPrice().then(setUniversalDieselPrice);
   }, []);
 
   // When trip selection changes, fetch its diesel expense amount and litres
@@ -337,9 +339,9 @@ export default function FuelSaleFormPage() {
                 </label>
                 <input
                   type="number"
-                  value={saleType === 'INTERNAL_BUS' ? weightedAvgCost.toFixed(2) : formData.sale_price_per_litre}
+                  value={saleType === 'INTERNAL_BUS' ? weightedAvgCost.toFixed(2) : formData.sale_price_per_litre || universalDieselPrice.toFixed(2)}
                   onChange={(e) => setFormData({ ...formData, sale_price_per_litre: e.target.value })}
-                  placeholder="0.00"
+                  placeholder={universalDieselPrice > 0 ? `Default: ${universalDieselPrice.toFixed(2)}` : "0.00"}
                   min="0"
                   step="0.01"
                   disabled={saleType === 'INTERNAL_BUS'}
@@ -349,6 +351,11 @@ export default function FuelSaleFormPage() {
                 {saleType === 'INTERNAL_BUS' && (
                   <p className="mt-1 text-xs text-gray-500">
                     Auto-filled from weighted average cost for stock tracking. Actual expense comes from voucher.
+                  </p>
+                )}
+                {saleType === 'EXTERNAL_CUSTOMER' && universalDieselPrice > 0 && (
+                  <p className="mt-1 text-xs text-blue-600">
+                    Universal selling price: Rs. {universalDieselPrice.toFixed(2)}/L
                   </p>
                 )}
               </div>

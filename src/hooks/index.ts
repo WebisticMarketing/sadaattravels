@@ -63,3 +63,6 @@ export { useAuth, useHasRole, useHasPermission, useHasAnyRole, useHasAllPermissi
 
 // Re-export role helper functions
 export { isOwner, isManager, hasFullAccess } from '../services/auth';
+
+// Re-export petrol pump settings hook
+export { usePetrolPumpSettings, getUniversalDieselSellingPrice } from './usePetrolPumpSettings';
