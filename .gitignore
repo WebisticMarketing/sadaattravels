@@ -6,26 +6,45 @@ build/
 # Dependencies
 node_modules/
 
-# Logs and temp files
-*.log
-*.tmp
-
 # Environment
 .env
 .env.local
-.env.*
+*.env.*
 
 # Editors
 .vscode/
 .idea/
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
 
 # Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git/modules/
+*.sublime-workspace
+.pytest_cache/
+.mypy_cache/
 
-# Compiled files
+# Compiled and binary files
 *.class
 *.o
 *.obj
@@ -34,16 +53,18 @@ __pycache__/
 *.so
 *.a
 *.out
-
-# Compression
+*.dylib
+*.jar
+*.war
+*.ear
 *.zip
-*.gz
-*.tar
+*.tar.gz
 *.tgz
+*.rar
+*.7z
+*.gz
 *.bz2
 *.xz
-*.7z
-*.rar
 *.zst
 *.lz4
 *.lzh
@@ -54,17 +75,20 @@ __pycache__/
 *.Z
 *.lz
 *.lzo
-*.tar.gz
-*.tar.bz2
-*.tar.xz
-*.tar.zst
 
-# Coverage
-coverage/
-htmlcov/
-.coverage
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
 
-# Testing
-.mypy_cache/
-.pytest_cache/
+# IDE
+.vs/
+*.swp
+*.swo
+*~
 ```
