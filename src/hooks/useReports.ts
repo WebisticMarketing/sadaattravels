@@ -158,20 +158,9 @@ export function useOverallSummary(dateRange: DateRange) {
           const cost = (sale.cost_price_per_litre || 0) * (sale.litres || 0);
           fuelCost += cost;
           
-          if (sale.sale_type === 'INTERNAL_BUS' && sale.trip_id) {
-            // Get the actual diesel payment from the voucher's trip_expense
-            const { data: expenses } = await supabase
-              .from('trip_expenses')
-              .select('amount')
-              .eq('trip_id', sale.trip_id)
-              .eq('type', 'diesel')
-              .single();
-            
-            fuelRevenue += expenses?.amount || 0;
-          } else {
-            // EXTERNAL_CUSTOMER: use total_amount as revenue
-            fuelRevenue += sale.total_amount || 0;
-          }
+          // Both INTERNAL_BUS and EXTERNAL_CUSTOMER use sale.total_amount
+          // This now stores litres × universal selling price for both types
+          fuelRevenue += sale.total_amount || 0;
         }
         
         const fuelProfit = fuelRevenue - fuelCost;
