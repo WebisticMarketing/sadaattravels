@@ -213,7 +213,7 @@ export default function PetrolPumpOverviewPage() {
                             {new Date(sale.created_at).toLocaleDateString()}
                           </td>
                           <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                            BUS-{sale.bus_id?.substring(0, 8) || 'Unknown'}
+                            {sale.buses?.registration_number || 'Unknown'}
                           </td>
                           <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                             {sale.litres.toFixed(0)} L
@@ -279,7 +279,7 @@ export default function PetrolPumpOverviewPage() {
                           </td>
                           <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                             {sale.sale_type === 'INTERNAL_BUS' 
-                              ? `BUS-${sale.bus_id?.substring(0, 8) || 'Unknown'}`
+                              ? sale.buses?.registration_number || 'Unknown'
                               : sale.customer_name || 'N/A'}
                           </td>
                           <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
