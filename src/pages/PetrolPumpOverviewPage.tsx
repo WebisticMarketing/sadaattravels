@@ -233,6 +233,75 @@ export default function PetrolPumpOverviewPage() {
             </div>
           )}
 
+          {/* All Sales Tab */}
+          {activeTab === 'all-sales' && (
+            <div className="space-y-4">
+              <div className="flex justify-end">
+                <Button onClick={() => navigate('/app/petrol/sales')}>
+                  <Users className="mr-2 h-4 w-4" />
+                  View All Sales
+                </Button>
+              </div>
+              
+              {allSales.length === 0 ? (
+                <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
+                  <Fuel className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-4 text-lg font-medium text-gray-900">No fuel sales yet</h3>
+                  <p className="mt-2 text-sm text-gray-500">Record fuel sold to buses or external customers</p>
+                </div>
+              ) : (
+                <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Type</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Customer/Bus</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Litres</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Total Amount</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 bg-white">
+                      {allSales.map((sale) => (
+                        <tr key={sale.id} className="hover:bg-gray-50">
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                            {new Date(sale.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                              sale.sale_type === 'INTERNAL_BUS' 
+                                ? 'bg-blue-100 text-blue-800' 
+                                : 'bg-green-100 text-green-800'
+                            }`}>
+                              {sale.sale_type === 'INTERNAL_BUS' ? 'Internal Bus' : 'External Customer'}
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                            {sale.sale_type === 'INTERNAL_BUS' 
+                              ? `BUS-${sale.bus_id?.substring(0, 8) || 'Unknown'}`
+                              : sale.customer_name || 'N/A'}
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                            {sale.litres.toFixed(0)} L
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                            PKR {formatCurrency(sale.total_amount).replace('PKR ', '')}
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                            <Button variant="ghost" size="sm" onClick={() => navigate(`/app/petrol/sales/${sale.id}`)}>
+                              View
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Purchases Tab */}
           {activeTab === 'purchases' && (
             <div className="space-y-4">
