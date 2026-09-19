@@ -16,7 +16,6 @@ export default function FuelSaleFormPage() {
     status: 'active',
   });
   const [selectedTripDieselAmount, setSelectedTripDieselAmount] = useState<number | null>(null);
-  const [selectedTripDieselLitres, setSelectedTripDieselLitres] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     sale_date: formatDate(new Date()),
     litres: '',
@@ -47,18 +46,15 @@ export default function FuelSaleFormPage() {
       if (selectedTrip && selectedTrip.expenseEntries) {
         const dieselExpense = selectedTrip.expenseEntries.find(e => e.expense_type === 'diesel');
         setSelectedTripDieselAmount(dieselExpense ? dieselExpense.amount : null);
-        setSelectedTripDieselLitres(dieselExpense ? dieselExpense.diesel_litres : null);
         // Auto-populate litres from voucher for INTERNAL_BUS
         if (dieselExpense && dieselExpense.diesel_litres) {
           setFormData(prev => ({ ...prev, litres: dieselExpense.diesel_litres!.toString() }));
         }
       } else {
         setSelectedTripDieselAmount(null);
-        setSelectedTripDieselLitres(null);
       }
     } else {
       setSelectedTripDieselAmount(null);
-      setSelectedTripDieselLitres(null);
     }
   }, [formData.trip_id, saleType, trips]);
 
@@ -117,11 +113,23 @@ export default function FuelSaleFormPage() {
       const [day, month, year] = formData.sale_date.split('/');
       const isoDate = `${year}-${month}-${day}`;
 
-      // For INTERNAL_BUS, sale_price_per_litre must be 0 per database constraint
-      const finalSalePrice = saleType === 'INTERNAL_BUS' ? 0 : parseFloat(formData.sale_price_per_litre);
-      const finalTotalAmount = saleType === 'INTERNAL_BUS' 
-        ? (selectedTripDieselAmount || 0) 
-        : totalAmount;
+      // For INTERNAL_BUS, use voucher diesel amount as total_amount
+      // For EXTERNAL_CUSTOMER, use universal selling price
+      let finalSalePrice: number;
+      let finalTotalAmount: number;
+      
+      if (saleType === 'INTERNAL_BUS') {
+        // Internal Bus: revenue = voucher diesel amount
+        finalTotalAmount = selectedTripDieselAmount || 0;
+        // Calculate effective price per litre from voucher amount
+        finalSalePrice = parseFloat(formData.litres) > 0 
+          ? finalTotalAmount / parseFloat(formData.litres) 
+          : 0;
+      } else {
+        // External Customer: use universal selling price
+        finalSalePrice = parseFloat(formData.sale_price_per_litre) || universalDieselPrice;
+        finalTotalAmount = parseFloat(formData.litres) * finalSalePrice;
+      }
 
       await createFuelSale({
         sale_date: isoDate,
@@ -335,11 +343,15 @@ export default function FuelSaleFormPage() {
 
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                  {saleType === 'INTERNAL_BUS' ? 'Cost Price per Litre (Rs.) - Informational Only' : 'Sale Price per Litre (Rs.) *'}
+                  {saleType === 'INTERNAL_BUS' ? 'Effective Price per Litre (Rs.) - Calculated from Voucher' : 'Sale Price per Litre (Rs.) *'}
                 </label>
                 <input
                   type="number"
-                  value={saleType === 'INTERNAL_BUS' ? weightedAvgCost.toFixed(2) : formData.sale_price_per_litre || universalDieselPrice.toFixed(2)}
+                  value={saleType === 'INTERNAL_BUS' 
+                    ? (selectedTripDieselAmount !== null && parseFloat(formData.litres) > 0 
+                        ? (selectedTripDieselAmount / parseFloat(formData.litres)).toFixed(2) 
+                        : '0.00')
+                    : formData.sale_price_per_litre || universalDieselPrice.toFixed(2)}
                   onChange={(e) => setFormData({ ...formData, sale_price_per_litre: e.target.value })}
                   placeholder={universalDieselPrice > 0 ? `Default: ${universalDieselPrice.toFixed(2)}` : "0.00"}
                   min="0"
@@ -349,8 +361,8 @@ export default function FuelSaleFormPage() {
                   required={saleType !== 'INTERNAL_BUS'}
                 />
                 {saleType === 'INTERNAL_BUS' && (
-                  <p className="mt-1 text-xs text-gray-500">
-                    Auto-filled from weighted average cost for stock tracking. Actual expense comes from voucher.
+                  <p className="mt-1 text-xs text-blue-600">
+                    Calculated from voucher amount ÷ litres
                   </p>
                 )}
                 {saleType === 'EXTERNAL_CUSTOMER' && universalDieselPrice > 0 && (
@@ -423,28 +435,46 @@ export default function FuelSaleFormPage() {
               </div>
             )}
 
-            {/* INTERNAL_BUS: Show voucher diesel amount and implied cost per litre */}
+            {/* INTERNAL_BUS: Show Petrol Pump revenue, cost, and profit alongside voucher diesel amount */}
             {saleType === 'INTERNAL_BUS' && selectedTripDieselAmount !== null && formData.litres && (
               <div className="rounded-lg border border-green-200 bg-green-50 p-4">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-green-900">Voucher Diesel Amount:</span>
+                    <span className="text-sm font-medium text-green-900">Bus Operational Expense:</span>
                     <span className="text-xl font-bold text-green-600">
                       Rs. {selectedTripDieselAmount.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-green-800">Litres Issued:</span>
+                    <span className="text-sm text-green-800">Diesel Issued:</span>
                     <span className="font-medium text-green-900">{formData.litres} L</span>
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t border-green-200">
-                    <span className="text-sm text-green-800">Implied Cost per Litre:</span>
+                    <span className="text-sm font-medium text-green-900">Internal Fuel Sale Amount:</span>
+                    <span className="text-lg font-bold text-green-600">
+                      Rs. {selectedTripDieselAmount.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-green-800">Effective Price per Litre:</span>
                     <span className="font-medium text-green-900">
-                      Rs. {(selectedTripDieselAmount / parseFloat(formData.litres)).toFixed(2)}
+                      Rs. {(selectedTripDieselAmount / parseFloat(formData.litres)).toLocaleString('en-PK', { minimumFractionDigits: 2 })}/L
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-green-200">
+                    <span className="text-sm text-green-800">Petrol Pump Inventory Cost:</span>
+                    <span className="font-medium text-green-900">
+                      Rs. {(parseFloat(formData.litres) * weightedAvgCost).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-green-800">Petrol Pump Profit:</span>
+                    <span className={`font-bold ${((selectedTripDieselAmount - (parseFloat(formData.litres) * weightedAvgCost)) >= 0 ? 'text-green-700' : 'text-red-600')}`}>
+                      Rs. {(selectedTripDieselAmount - (parseFloat(formData.litres) * weightedAvgCost)).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                   <p className="text-xs text-green-700 italic">
-                    This is the effective rate based on the voucher's actual diesel expense. For informational purposes only.
+                    Internal bus fuel is recorded at the amount charged on the selected voucher. The universal diesel price applies to external customer sales.
                   </p>
                 </div>
               </div>

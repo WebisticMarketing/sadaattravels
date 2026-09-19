@@ -265,14 +265,22 @@ export interface FuelPurchase {
  *
  * EXTERNAL_CUSTOMER: Sold to outside customers.
  *   - bus_id is NULL
+ *   - Uses current universal diesel selling price
  *   - Counts as Petrol Pump revenue
  *   - Counts as consolidated company revenue
  *
  * INTERNAL_BUS: Supplied to Sadaat buses.
  *   - bus_id is NOT NULL
- *   - Does NOT count as Petrol Pump revenue
- *   - Does NOT count as consolidated revenue
- *   - Fuel cost is recorded once as bus's diesel expense via trip_expenses
+ *   - trip_id is associated with the originating trip
+ *   - diesel litres originate from the voucher/trip expense
+ *   - total_amount = voucher diesel amount (source of truth)
+ *   - sale_price_per_litre = voucher amount / litres (calculated effective price)
+ *   - Counts as Petrol Pump revenue (at voucher amount)
+ *   - Counts as consolidated company revenue
+ *   - Petrol Pump cost uses stored cost_price_per_litre (WAC at time of sale)
+ *   - Petrol Pump profit = total_amount - (litres × cost_price_per_litre)
+ *   - Bus operational diesel expense remains separately recorded in trip_expenses
+ *   - Universal diesel price applies only to EXTERNAL_CUSTOMER sales
  */
 export interface FuelSale {
   id: string;
