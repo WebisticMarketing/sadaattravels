@@ -7,7 +7,7 @@ import { Fuel, TrendingUp, Package, Truck, Users, PlusCircle, Settings } from 'l
 import { PageHeader } from '../components/ui/PageHeader';
 import { SummaryCard } from '../components/ui/SummaryCard';
 import { Button } from '../components/ui/Button';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 type TabType = 'overview' | 'all-sales' | 'bus-fuel' | 'purchases' | 'external-sales';
 
@@ -17,6 +17,12 @@ export default function PetrolPumpOverviewPage() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [editingPrice, setEditingPrice] = useState('');
   
+  // Date period filters
+  const currentMonth = new Date().getMonth().toString();
+  const currentYear = new Date().getFullYear().toString();
+  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const [selectedYear, setSelectedYear] = useState<string>('all');
+  
   // Fetch all data
   const { sales: allSales, loading: salesLoading } = useFuelSales();
   const { purchases, loading: purchasesLoading } = useFuelPurchases();
@@ -25,19 +31,52 @@ export default function PetrolPumpOverviewPage() {
 
   const loading = salesLoading || purchasesLoading || settingsLoading;
   
-  // Filter sales by type
-  const busFuelRecords = allSales.filter(s => s.sale_type === 'INTERNAL_BUS');
-  const externalSales = allSales.filter(s => s.sale_type === 'EXTERNAL_CUSTOMER');
+  // Filter sales by date period
+  const filteredSales = useMemo(() => {
+    if (selectedMonth === 'all' && selectedYear === 'all') {
+      return allSales;
+    }
+    
+    return allSales.filter(sale => {
+      const saleDate = new Date(sale.created_at);
+      const matchesMonth = selectedMonth === 'all' || saleDate.getMonth().toString() === selectedMonth;
+      const matchesYear = selectedYear === 'all' || saleDate.getFullYear().toString() === selectedYear;
+      return matchesMonth && matchesYear;
+    });
+  }, [allSales, selectedMonth, selectedYear]);
+  
+  // Filter purchases by date period
+  const filteredPurchases = useMemo(() => {
+    if (selectedMonth === 'all' && selectedYear === 'all') {
+      return purchases;
+    }
+    
+    return purchases.filter(purchase => {
+      const purchaseDate = new Date(purchase.purchase_date);
+      const matchesMonth = selectedMonth === 'all' || purchaseDate.getMonth().toString() === selectedMonth;
+      const matchesYear = selectedYear === 'all' || purchaseDate.getFullYear().toString() === selectedYear;
+      return matchesMonth && matchesYear;
+    });
+  }, [purchases, selectedMonth, selectedYear]);
+  
+  // Filter sales by type (using filtered data)
+  const busFuelRecords = filteredSales.filter(s => s.sale_type === 'INTERNAL_BUS');
+  const externalSales = filteredSales.filter(s => s.sale_type === 'EXTERNAL_CUSTOMER');
   
   // Calculate stock (always current, not period-based)
   const totalPurchasedLitres = purchases.reduce((sum, p) => sum + p.litres, 0);
   const totalSoldLitres = allSales.reduce((sum, s) => sum + s.litres, 0);
   const currentStock = totalPurchasedLitres - totalSoldLitres;
   
-  // Financial metrics (ALL sales - internal bus + external customer)
+  // Financial metrics (ALL sales - internal bus + external customer) - always current, not period-based
   const totalFuelRevenue = allSales.reduce((sum, s) => sum + s.total_amount, 0);
   const totalFuelCost = allSales.reduce((sum, s) => sum + (s.litres * (s.cost_price_per_litre || 0)), 0);
   const petrolPumpProfit = totalFuelRevenue - totalFuelCost;
+  
+  // Period-based financial metrics for display
+  const periodFuelRevenue = filteredSales.reduce((sum, s) => sum + s.total_amount, 0);
+  const periodFuelCost = filteredSales.reduce((sum, s) => sum + (s.litres * (s.cost_price_per_litre || 0)), 0);
+  const periodPetrolPumpProfit = periodFuelRevenue - periodFuelCost;
   
   return (
     <div className="space-y-6">
@@ -47,7 +86,55 @@ export default function PetrolPumpOverviewPage() {
         description="Track diesel purchases and bus fuel consumption"
       />
 
-      {/* Tabs */}
+      {/* Date Period Filter */}
+      <div className="flex items-center gap-4 bg-white p-4 rounded-lg border border-gray-200">
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-gray-700">Filter by:</label>
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="all">All Months</option>
+            <option value="0">January</option>
+            <option value="1">February</option>
+            <option value="2">March</option>
+            <option value="3">April</option>
+            <option value="4">May</option>
+            <option value="5">June</option>
+            <option value="6">July</option>
+            <option value="7">August</option>
+            <option value="8">September</option>
+            <option value="9">October</option>
+            <option value="10">November</option>
+            <option value="11">December</option>
+          </select>
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="all">All Years</option>
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+          </select>
+          <button
+            onClick={() => { setSelectedMonth('all'); setSelectedYear('all'); }}
+            className="px-3 py-2 text-sm text-blue-600 hover:text-blue-800 hover:underline"
+          >
+            All Time
+          </button>
+          <button
+            onClick={() => { setSelectedMonth(currentMonth); setSelectedYear(currentYear); }}
+            className="px-3 py-2 text-sm text-blue-600 hover:text-blue-800 hover:underline"
+          >
+            This Month
+          </button>
+        </div>
+      </div>
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
           <button
@@ -268,10 +355,13 @@ export default function PetrolPumpOverviewPage() {
           {/* All Sales Tab */}
           {activeTab === 'all-sales' && (
             <div className="space-y-4">
-              <div className="flex justify-end">
-                <Button onClick={() => navigate('/app/petrol/sales')}>
-                  <Users className="mr-2 h-4 w-4" />
-                  View All Sales
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-gray-600">
+                  Showing {filteredSales.length} sale{filteredSales.length !== 1 ? 's' : ''} for the selected period
+                </p>
+                <Button onClick={() => navigate('/app/petrol/sales/new')}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  New Fuel Sale
                 </Button>
               </div>
               
@@ -371,7 +461,7 @@ export default function PetrolPumpOverviewPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
-                      {purchases.map((purchase) => (
+                      {filteredPurchases.map((purchase) => (
                         <tr key={purchase.id} className="hover:bg-gray-50">
                           <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                             {new Date(purchase.purchase_date).toLocaleDateString()}
