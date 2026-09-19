@@ -146,7 +146,7 @@ export default function FuelSaleFormPage() {
         notes: formData.notes.trim() || undefined,
       }, { linkToTripExpense: saleType === 'INTERNAL_BUS' });
 
-      navigate('/app/petrol/sales');
+      navigate('/app/petrol');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create fuel sale');
       setLoading(false);
@@ -158,7 +158,7 @@ export default function FuelSaleFormPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
-          onClick={() => navigate('/app/petrol/sales')}
+          onClick={() => navigate('/app/petrol')}
           className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -519,7 +519,7 @@ export default function FuelSaleFormPage() {
             <div className="flex gap-3 pt-4">
               <button
                 type="button"
-                onClick={() => navigate('/app/petrol/sales')}
+                onClick={() => navigate('/app/petrol')}
                 className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
                 Cancel

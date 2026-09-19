@@ -24,7 +24,7 @@ export default function FuelSaleDetailPage() {
       <div className="space-y-6">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate('/app/petrol/sales')}
+            onClick={() => navigate('/app/petrol')}
             className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -44,7 +44,7 @@ export default function FuelSaleDetailPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate('/app/petrol/sales')}
+            onClick={() => navigate('/app/petrol')}
             className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
           >
             <ArrowLeft className="h-4 w-4" />
