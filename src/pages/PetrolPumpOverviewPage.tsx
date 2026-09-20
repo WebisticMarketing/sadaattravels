@@ -11,18 +11,28 @@ import { useState, useMemo } from 'react';
 
 type TabType = 'overview' | 'all-sales' | 'bus-fuel' | 'purchases' | 'external-sales';
 
+const CURRENT_YEAR = new Date().getFullYear();
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
 export default function PetrolPumpOverviewPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [editingPrice, setEditingPrice] = useState('');
-  
-  // Date period filters
-  const currentMonth = new Date().getMonth().toString();
-  const currentYear = new Date().getFullYear().toString();
-  const [selectedMonth, setSelectedMonth] = useState<string>('all');
-  const [selectedYear, setSelectedYear] = useState<string>('all');
-  
+
+  // Independent month/year state for each tab
+  const [allSalesMonth, setAllSalesMonth] = useState<number>(new Date().getMonth());
+  const [allSalesYear, setAllSalesYear] = useState<number>(CURRENT_YEAR);
+  const [busFuelMonth, setBusFuelMonth] = useState<number>(new Date().getMonth());
+  const [busFuelYear, setBusFuelYear] = useState<number>(CURRENT_YEAR);
+  const [purchasesMonth, setPurchasesMonth] = useState<number>(new Date().getMonth());
+  const [purchasesYear, setPurchasesYear] = useState<number>(CURRENT_YEAR);
+  const [externalSalesMonth, setExternalSalesMonth] = useState<number>(new Date().getMonth());
+  const [externalSalesYear, setExternalSalesYear] = useState<number>(CURRENT_YEAR);
+
   // Fetch all data
   const { sales: allSales, loading: salesLoading } = useFuelSales();
   const { purchases, loading: purchasesLoading } = useFuelPurchases();
