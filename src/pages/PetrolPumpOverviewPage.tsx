@@ -17,6 +17,12 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December"
 ];
 
+const CURRENT_YEAR = new Date().getFullYear();
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
 export default function PetrolPumpOverviewPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
