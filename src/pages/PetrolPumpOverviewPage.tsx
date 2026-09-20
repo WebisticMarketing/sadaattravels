@@ -9,6 +9,12 @@ import { SummaryCard } from '../components/ui/SummaryCard';
 import { Button } from '../components/ui/Button';
 import { useState, useMemo } from 'react';
 
+const CURRENT_YEAR = new Date().getFullYear();
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
 type TabType = 'overview' | 'all-sales' | 'bus-fuel' | 'purchases' | 'external-sales';
 
 export default function PetrolPumpOverviewPage() {
@@ -17,11 +23,18 @@ export default function PetrolPumpOverviewPage() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [editingPrice, setEditingPrice] = useState('');
   
-  // Date period filters
-  const currentMonth = new Date().getMonth().toString();
-  const currentYear = new Date().getFullYear().toString();
-  const [selectedMonth, setSelectedMonth] = useState<string>('all');
-  const [selectedYear, setSelectedYear] = useState<string>('all');
+  // Independent date period filters for each tab
+  const [allSalesMonth, setAllSalesMonth] = useState<string>('all');
+  const [allSalesYear, setAllSalesYear] = useState<string>('all');
+
+  const [busFuelMonth, setBusFuelMonth] = useState<string>('all');
+  const [busFuelYear, setBusFuelYear] = useState<string>('all');
+
+  const [purchasesMonth, setPurchasesMonth] = useState<string>('all');
+  const [purchasesYear, setPurchasesYear] = useState<string>('all');
+
+  const [externalSalesMonth, setExternalSalesMonth] = useState<string>('all');
+  const [externalSalesYear, setExternalSalesYear] = useState<string>('all');
   
   // Fetch all data
   const { sales: allSales, loading: salesLoading } = useFuelSales();
@@ -31,37 +44,64 @@ export default function PetrolPumpOverviewPage() {
 
   const loading = salesLoading || purchasesLoading || settingsLoading;
   
-  // Filter sales by date period
-  const filteredSales = useMemo(() => {
-    if (selectedMonth === 'all' && selectedYear === 'all') {
+  // Filter all sales by date period (for All Sales tab)
+  const filteredAllSales = useMemo(() => {
+    if (allSalesMonth === 'all' && allSalesYear === 'all') {
       return allSales;
     }
     
     return allSales.filter(sale => {
       const saleDate = new Date(sale.created_at);
-      const matchesMonth = selectedMonth === 'all' || saleDate.getMonth().toString() === selectedMonth;
-      const matchesYear = selectedYear === 'all' || saleDate.getFullYear().toString() === selectedYear;
+      const matchesMonth = allSalesMonth === 'all' || saleDate.getMonth().toString() === allSalesMonth;
+      const matchesYear = allSalesYear === 'all' || saleDate.getFullYear().toString() === allSalesYear;
       return matchesMonth && matchesYear;
     });
-  }, [allSales, selectedMonth, selectedYear]);
+  }, [allSales, allSalesMonth, allSalesYear]);
   
-  // Filter purchases by date period
-  const filteredPurchases = useMemo(() => {
-    if (selectedMonth === 'all' && selectedYear === 'all') {
+  
       return purchases;
     }
     
     return purchases.filter(purchase => {
       const purchaseDate = new Date(purchase.purchase_date);
-      const matchesMonth = selectedMonth === 'all' || purchaseDate.getMonth().toString() === selectedMonth;
-      const matchesYear = selectedYear === 'all' || purchaseDate.getFullYear().toString() === selectedYear;
+      const matchesMonth = purchasesMonth === 'all' || purchaseDate.getMonth().toString() === purchasesMonth;
+      const matchesYear = purchasesYear === 'all' || purchaseDate.getFullYear().toString() === purchasesYear;
       return matchesMonth && matchesYear;
     });
-  }, [purchases, selectedMonth, selectedYear]);
+  }, [purchases, purchasesMonth, purchasesYear]);
   
-  // Filter sales by type (using filtered data)
-  const busFuelRecords = filteredSales.filter(s => s.sale_type === 'INTERNAL_BUS');
-  const externalSales = filteredSales.filter(s => s.sale_type === 'EXTERNAL_CUSTOMER');
+  });
+
+  // Filter bus fuel records by date period (for Bus Fuel Records tab)
+  const filteredBusFuelRecords = useMemo(() => {
+    const busFuelRecords = allSales.filter(s => s.sale_type === 'INTERNAL_BUS');
+    if (busFuelMonth === 'all' && busFuelYear === 'all') {
+      return busFuelRecords;
+    }
+
+    return busFuelRecords.filter(sale => {
+      const saleDate = new Date(sale.created_at);
+      const matchesMonth = busFuelMonth === 'all' || saleDate.getMonth().toString() === busFuelMonth;
+      const matchesYear = busFuelYear === 'all' || saleDate.getFullYear().toString() === busFuelYear;
+      return matchesMonth && matchesYear;
+    });
+  }, [allSales, busFuelMonth, busFuelYear]);
+
+  // Filter purchases by date period (for Purchases tab)
+  // Filter external sales by date period (for External Sales tab)
+  const filteredExternalSales = useMemo(() => {
+    const externalSales = allSales.filter(s => s.sale_type === 'EXTERNAL_CUSTOMER');
+    if (externalSalesMonth === 'all' && externalSalesYear === 'all') {
+      return externalSales;
+    }
+
+    return externalSales.filter(sale => {
+      const saleDate = new Date(sale.created_at);
+      const matchesMonth = externalSalesMonth === 'all' || saleDate.getMonth().toString() === externalSalesMonth;
+      const matchesYear = externalSalesYear === 'all' || saleDate.getFullYear().toString() === externalSalesYear;
+      return matchesMonth && matchesYear;
+    });
+  }, [allSales, externalSalesMonth, externalSalesYear]);
   
   // Calculate stock (always current, not period-based)
   const totalPurchasedLitres = purchases.reduce((sum, p) => sum + p.litres, 0);
@@ -86,55 +126,7 @@ export default function PetrolPumpOverviewPage() {
         description="Track diesel purchases and bus fuel consumption"
       />
 
-      {/* Date Period Filter */}
-      <div className="flex items-center gap-4 bg-white p-4 rounded-lg border border-gray-200">
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-gray-700">Filter by:</label>
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="all">All Months</option>
-            <option value="0">January</option>
-            <option value="1">February</option>
-            <option value="2">March</option>
-            <option value="3">April</option>
-            <option value="4">May</option>
-            <option value="5">June</option>
-            <option value="6">July</option>
-            <option value="7">August</option>
-            <option value="8">September</option>
-            <option value="9">October</option>
-            <option value="10">November</option>
-            <option value="11">December</option>
-          </select>
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="all">All Years</option>
-            <option value="2024">2024</option>
-            <option value="2025">2025</option>
-            <option value="2026">2026</option>
-            <option value="2027">2027</option>
-            <option value="2028">2028</option>
-          </select>
-          <button
-            onClick={() => { setSelectedMonth('all'); setSelectedYear('all'); }}
-            className="px-3 py-2 text-sm text-blue-600 hover:text-blue-800 hover:underline"
-          >
-            All Time
-          </button>
-          <button
-            onClick={() => { setSelectedMonth(currentMonth); setSelectedYear(currentYear); }}
-            className="px-3 py-2 text-sm text-blue-600 hover:text-blue-800 hover:underline"
-          >
-            This Month
-          </button>
-        </div>
-      </div>
+
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
           <button
@@ -326,7 +318,7 @@ export default function PetrolPumpOverviewPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
-                      {busFuelRecords.map((sale) => (
+                      {filteredBusFuelRecords.map((sale) => (
                         <tr key={sale.id} className="hover:bg-gray-50">
                           <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                             {new Date(sale.created_at).toLocaleDateString()}
@@ -355,11 +347,30 @@ export default function PetrolPumpOverviewPage() {
           {/* All Sales Tab */}
           {activeTab === 'all-sales' && (
             <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-600">
-                  Showing {filteredSales.length} sale{filteredSales.length !== 1 ? 's' : ''} for the selected period
-                </p>
-                <Button onClick={() => navigate('/app/petrol/sales/new')}>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <h2 className="text-xl font-semibold text-gray-900">All Sales</h2>
+                <div className="flex flex-wrap items-center gap-4">
+                  <select
+                    value={allSalesMonth}
+                    onChange={(e) => setAllSalesMonth(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  >
+                    <option value="all">All Months</option>
+                    {MONTHS.map((month, index) => (
+                      <option key={index} value={index.toString()}>{month}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={allSalesYear}
+                    onChange={(e) => setAllSalesYear(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  >
+                    <option value="all">All Years</option>
+                    {Array.from({ length: 5 }, (_, i) => CURRENT_YEAR - 2 + i).map(year => (
+                      <option key={year} value={year.toString()}>{year}</option>
+                    ))}
+                  </select>
+                  <Button onClick={() => navigate('/app/petrol/sales/new')}>
                   <PlusCircle className="mr-2 h-4 w-4" />
                   New Fuel Sale
                 </Button>
@@ -385,7 +396,7 @@ export default function PetrolPumpOverviewPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
-                      {allSales.map((sale) => (
+                      {filteredAllSales.map((sale) => (
                         <tr key={sale.id} className="hover:bg-gray-50">
                           <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                             {new Date(sale.created_at).toLocaleDateString()}
@@ -528,7 +539,7 @@ export default function PetrolPumpOverviewPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
-                      {externalSales.map((sale) => {
+                      {filteredExternalSales.map((sale) => {
                         const profit = sale.total_amount - (sale.litres * sale.cost_price_per_litre);
                         return (
                           <tr key={sale.id} className="hover:bg-gray-50">

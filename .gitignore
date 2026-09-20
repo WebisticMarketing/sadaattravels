@@ -1,5 +1,59 @@
 ```
+# Dependencies
+node_modules/
+
 # Build artifacts
 dist/
 build/
+*.js.map
+*.tsbuildinfo
+
+# Logs and temp files
+*.log
+*.tmp
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Coverage
+.coverage
+coverage/
+htmlcov/
+
+# Testing
+.nyc_output/
+coverage-final.json
+
+# OS generated
+.DS_Store
+Thumbs.db
+
+# Compiled/Binary
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.a
+*.out
 ```
