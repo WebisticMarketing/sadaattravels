@@ -9,6 +9,63 @@ import { SummaryCard } from '../components/ui/SummaryCard';
 import { Button } from '../components/ui/Button';
 import { useState, useMemo } from 'react';
 
+// Month/Year Filter Component
+interface MonthYearFilterProps {
+  month: string;
+  year: string;
+  onMonthChange: (value: string) => void;
+  onYearChange: (value: string) => void;
+}
+
+const MonthYearFilter: React.FC<MonthYearFilterProps> = ({ month, year, onMonthChange, onYearChange }) => (
+  <div className="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+    <label className="text-sm font-medium text-gray-700">Filter by:</label>
+    <select
+      value={month}
+      onChange={(e) => onMonthChange(e.target.value)}
+      className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+    >
+      <option value="all">All Months</option>
+      <option value="0">January</option>
+      <option value="1">February</option>
+      <option value="2">March</option>
+      <option value="3">April</option>
+      <option value="4">May</option>
+      <option value="5">June</option>
+      <option value="6">July</option>
+      <option value="7">August</option>
+      <option value="8">September</option>
+      <option value="9">October</option>
+      <option value="10">November</option>
+      <option value="11">December</option>
+    </select>
+    <select
+      value={year}
+      onChange={(e) => onYearChange(e.target.value)}
+      className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+    >
+      <option value="all">All Years</option>
+      <option value="2024">2024</option>
+      <option value="2025">2025</option>
+      <option value="2026">2026</option>
+      <option value="2027">2027</option>
+      <option value="2028">2028</option>
+    </select>
+    <button
+      onClick={() => { onMonthChange('all'); onYearChange('all'); }}
+      className="px-3 py-2 text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium"
+    >
+      All Time
+    </button>
+    <button
+      onClick={() => { onMonthChange(new Date().getMonth().toString()); onYearChange(new Date().getFullYear().toString()); }}
+      className="px-3 py-2 text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium"
+    >
+      This Month
+    </button>
+  </div>
+);
+
 type TabType = 'overview' | 'all-sales' | 'bus-fuel' | 'purchases' | 'external-sales';
 
 export default function PetrolPumpOverviewPage() {
@@ -283,6 +340,12 @@ export default function PetrolPumpOverviewPage() {
           {/* Bus Fuel Records Tab */}
           {activeTab === 'bus-fuel' && (
             <div className="space-y-4">
+              <MonthYearFilter
+                month={busFuelMonth}
+                year={busFuelYear}
+                onMonthChange={setBusFuelMonth}
+                onYearChange={setBusFuelYear}
+              />
               <div className="flex justify-end">
                 <Button onClick={() => navigate('/app/petrol/sales/new?saleType=INTERNAL_BUS')}>
                   <PlusCircle className="mr-2 h-4 w-4" />
@@ -345,6 +408,12 @@ export default function PetrolPumpOverviewPage() {
           {/* All Sales Tab */}
           {activeTab === 'all-sales' && (
             <div className="space-y-4">
+              <MonthYearFilter
+                month={allSalesMonth}
+                year={allSalesYear}
+                onMonthChange={setAllSalesMonth}
+                onYearChange={setAllSalesYear}
+              />
               <div className="flex justify-between items-center">
                 <p className="text-sm text-gray-600">
                   Showing {filteredAllSales.length} sale{filteredAllSales.length !== 1 ? 's' : ''} for the selected period
@@ -417,6 +486,12 @@ export default function PetrolPumpOverviewPage() {
           {/* Purchases Tab */}
           {activeTab === 'purchases' && (
             <div className="space-y-4">
+              <MonthYearFilter
+                month={purchasesMonth}
+                year={purchasesYear}
+                onMonthChange={setPurchasesMonth}
+                onYearChange={setPurchasesYear}
+              />
               <div className="flex justify-end">
                 <Button onClick={() => navigate('/app/petrol/purchases/new')}>
                   <PlusCircle className="mr-2 h-4 w-4" />
@@ -483,6 +558,12 @@ export default function PetrolPumpOverviewPage() {
           {/* External Sales Tab */}
           {activeTab === 'external-sales' && (
             <div className="space-y-4">
+              <MonthYearFilter
+                month={externalSalesMonth}
+                year={externalSalesYear}
+                onMonthChange={setExternalSalesMonth}
+                onYearChange={setExternalSalesYear}
+              />
               <div className="flex justify-end">
                 <Button onClick={() => navigate('/app/petrol/sales/new?saleType=EXTERNAL_CUSTOMER')}>
                   <PlusCircle className="mr-2 h-4 w-4" />
