@@ -345,26 +345,29 @@ export async function reverseFuelSale(id: string, reason: string) {
  * When inventory reaches 0, the next purchase establishes a fresh cost basis.
  */
 export async function calculateWeightedAverageCost(): Promise<number> {
-  // Get all active purchases ordered by date
+  // Get all active purchases ordered by date and created_at for precise ordering
   const { data: purchases } = await supabase
     .from('fuel_purchases')
     .select('litres, cost_per_litre, purchase_date, created_at')
     .eq('status', 'active')
-    .order('purchase_date', { ascending: true });
+    .order('purchase_date', { ascending: true })
+    .order('created_at', { ascending: true });
 
-  // Get all active sales ordered by date/time
+  // Get all active sales ordered by date/time and created_at for precise ordering
   const { data: sales } = await supabase
     .from('fuel_sales')
     .select('litres, sale_date, created_at')
     .eq('status', 'active')
-    .order('sale_date', { ascending: true });
+    .order('sale_date', { ascending: true })
+    .order('created_at', { ascending: true });
 
-  // Get all active adjustments ordered by date
+  // Get all active adjustments ordered by date and created_at for precise ordering
   const { data: adjustments } = await supabase
     .from('fuel_stock_adjustments')
     .select('litres, cost_per_litre, adjustment_date, created_at')
     .eq('status', 'active')
-    .order('adjustment_date', { ascending: true });
+    .order('adjustment_date', { ascending: true })
+    .order('created_at', { ascending: true });
 
   // Build a combined timeline of all transactions
   interface InventoryEvent {
@@ -372,54 +375,54 @@ export async function calculateWeightedAverageCost(): Promise<number> {
     date: Date;
     litres: number;
     costPerLitre?: number;
-    sortOrder: number;
+    createdAt: Date;
   }
 
   const events: InventoryEvent[] = [];
 
   // Add purchases
   if (purchases) {
-    purchases.forEach((p, index) => {
+    purchases.forEach((p) => {
       events.push({
         type: 'purchase',
         date: new Date(p.purchase_date),
         litres: p.litres,
         costPerLitre: p.cost_per_litre,
-        sortOrder: index,
+        createdAt: new Date(p.created_at),
       });
     });
   }
 
   // Add sales (sales don't change WAC, they just reduce quantity)
   if (sales) {
-    sales.forEach((s, index) => {
+    sales.forEach((s) => {
       events.push({
         type: 'sale',
         date: new Date(s.sale_date),
         litres: s.litres,
-        sortOrder: 10000 + index, // Sales processed after purchases on same day
+        createdAt: new Date(s.created_at),
       });
     });
   }
 
   // Add adjustments
   if (adjustments) {
-    adjustments.forEach((a, index) => {
+    adjustments.forEach((a) => {
       events.push({
         type: 'adjustment',
         date: new Date(a.adjustment_date),
         litres: a.litres,
         costPerLitre: a.cost_per_litre,
-        sortOrder: 5000 + index,
+        createdAt: new Date(a.created_at),
       });
     });
   }
 
-  // Sort events chronologically, then by sortOrder for tie-breaking
+  // Sort events chronologically by date, then by created_at for tie-breaking
   events.sort((a, b) => {
     const dateDiff = a.date.getTime() - b.date.getTime();
     if (dateDiff !== 0) return dateDiff;
-    return a.sortOrder - b.sortOrder;
+    return a.createdAt.getTime() - b.createdAt.getTime();
   });
 
   // Process events using perpetual weighted-average costing
