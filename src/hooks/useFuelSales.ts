@@ -135,6 +135,55 @@ export function useFuelSale(id: string | null) {
 /**
  * Create a fuel sale and optionally link it to a trip expense
  */
+/**
+ * Calculate current available diesel stock
+ * Returns total purchased - total sold (all sales)
+ */
+export async function calculateCurrentStock(): Promise<number> {
+  // Get all active purchases
+  const { data: purchases } = await supabase
+    .from('fuel_purchases')
+    .select('litres')
+    .eq('status', 'active');
+
+  // Get all active sales (both INTERNAL_BUS and EXTERNAL_CUSTOMER)
+  const { data: sales } = await supabase
+    .from('fuel_sales')
+    .select('litres')
+    .eq('status', 'active');
+
+  // Get all active adjustments
+  const { data: adjustments } = await supabase
+    .from('fuel_stock_adjustments')
+    .select('litres')
+    .eq('status', 'active');
+
+  let totalStock = 0;
+
+  // Add purchases
+  if (purchases) {
+    for (const p of purchases) {
+      totalStock += p.litres;
+    }
+  }
+
+  // Subtract sales
+  if (sales) {
+    for (const s of sales) {
+      totalStock -= s.litres;
+    }
+  }
+
+  // Add adjustments
+  if (adjustments) {
+    for (const a of adjustments) {
+      totalStock += a.litres;
+    }
+  }
+
+  return totalStock;
+}
+
 export async function createFuelSale(data: {
   sale_date: string;
   sale_type: 'EXTERNAL_CUSTOMER' | 'INTERNAL_BUS';
@@ -153,6 +202,14 @@ export async function createFuelSale(data: {
   linkToTripExpense?: boolean;
 }) {
   const { linkToTripExpense = true } = options || {};
+  
+  // STOCK VALIDATION: Check if sufficient stock exists before creating any sale
+  const currentStock = await calculateCurrentStock();
+  if (data.litres > currentStock) {
+    throw new Error(
+      `Insufficient diesel stock. Available stock: ${currentStock.toFixed(2)} L. Requested: ${data.litres.toFixed(2)} L.`
+    );
+  }
   
   // For INTERNAL_BUS sales with trip_id, validate that a diesel expense already exists
   if (linkToTripExpense && data.sale_type === 'INTERNAL_BUS' && data.trip_id) {
