@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBuses } from '../hooks/useBuses';
 import { useTrips } from '../hooks/useTrips';
-import { createFuelSale, calculateWeightedAverageCost, getUniversalDieselSellingPrice } from '../hooks/useFuelSales';
+import { createFuelSale, calculateWeightedAverageCost, getUniversalDieselSellingPrice, calculateCurrentStock } from '../hooks/useFuelSales';
 import { formatDate } from '../lib/utils';
 import { ArrowLeft, Info } from 'lucide-react';
 
@@ -19,6 +19,7 @@ export default function FuelSaleFormPage() {
   const [formData, setFormData] = useState({
     sale_date: formatDate(new Date()),
     litres: '',
+    payment_amount: '', // For EXTERNAL_CUSTOMER - payment amount in Rs.
     sale_price_per_litre: '',
     bus_id: '',
     trip_id: '',
@@ -30,17 +31,20 @@ export default function FuelSaleFormPage() {
 
   const [weightedAvgCost, setWeightedAvgCost] = useState(0);
   const [universalDieselPrice, setUniversalDieselPrice] = useState(0);
+  const [currentStock, setCurrentStock] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Calculate weighted average cost and fetch universal diesel selling price on mount
+    // Calculate weighted average cost, fetch universal diesel selling price, and current stock on mount
     Promise.all([
       calculateWeightedAverageCost(),
-      getUniversalDieselSellingPrice()
-    ]).then(([avgCost, universalPrice]) => {
+      getUniversalDieselSellingPrice(),
+      calculateCurrentStock()
+    ]).then(([avgCost, universalPrice, stock]) => {
       setWeightedAvgCost(avgCost);
       setUniversalDieselPrice(universalPrice);
+      setCurrentStock(stock);
       // Pre-populate sale_price_per_litre with universal diesel price for EXTERNAL_CUSTOMER
       if (saleType === 'EXTERNAL_CUSTOMER' && universalPrice > 0) {
         setFormData(prev => ({ ...prev, sale_price_per_litre: universalPrice.toString() }));
@@ -67,7 +71,14 @@ export default function FuelSaleFormPage() {
     }
   }, [formData.trip_id, saleType, trips]);
 
-  const totalAmount = parseFloat(formData.litres || '0') * parseFloat(formData.sale_price_per_litre || '0');
+  // Calculate litres from payment amount for EXTERNAL_CUSTOMER
+  const calculatedLitres = saleType === 'EXTERNAL_CUSTOMER' && formData.payment_amount && universalDieselPrice > 0
+    ? parseFloat(formData.payment_amount) / universalDieselPrice
+    : 0;
+
+  // For display: use calculated litres for EXTERNAL_CUSTOMER, formData.litres for INTERNAL_BUS
+  const displayLitres = saleType === 'EXTERNAL_CUSTOMER' ? calculatedLitres : (parseFloat(formData.litres) || 0);
+  const totalAmount = displayLitres * parseFloat(formData.sale_price_per_litre || '0');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,8 +86,33 @@ export default function FuelSaleFormPage() {
     setLoading(true);
 
     try {
-      if (!formData.litres || parseFloat(formData.litres) <= 0) {
-        throw new Error('Litres must be greater than 0');
+      // For EXTERNAL_CUSTOMER: validate payment_amount and use calculated litres
+      // For INTERNAL_BUS: validate litres directly
+      let litresToUse: number;
+      
+      if (saleType === 'EXTERNAL_CUSTOMER') {
+        if (!formData.payment_amount || parseFloat(formData.payment_amount) <= 0) {
+          throw new Error('Payment amount must be greater than 0');
+        }
+        if (!formData.sale_price_per_litre || parseFloat(formData.sale_price_per_litre) <= 0) {
+          throw new Error('Sale price per litre must be greater than 0');
+        }
+        // Calculate litres from payment amount
+        litresToUse = parseFloat(formData.payment_amount) / parseFloat(formData.sale_price_per_litre);
+      } else {
+        // INTERNAL_BUS
+        if (!formData.litres || parseFloat(formData.litres) <= 0) {
+          throw new Error('Litres must be greater than 0');
+        }
+        litresToUse = parseFloat(formData.litres);
+      }
+      
+      // STOCK VALIDATION: Check if sufficient stock exists before creating any sale
+      // This is a client-side check; the authoritative check happens in createFuelSale()
+      if (litresToUse > currentStock) {
+        throw new Error(
+          `Insufficient diesel stock. Available stock: ${currentStock.toFixed(2)} L. Requested: ${litresToUse.toFixed(2)} L.`
+        );
       }
       
       // Only validate sale_price_per_litre for EXTERNAL_CUSTOMER
@@ -123,7 +159,7 @@ export default function FuelSaleFormPage() {
       const isoDate = `${year}-${month}-${day}`;
 
       // For INTERNAL_BUS, use voucher diesel amount as total_amount
-      // For EXTERNAL_CUSTOMER, use universal selling price
+      // For EXTERNAL_CUSTOMER, use payment amount as total_amount
       let finalSalePrice: number;
       let finalTotalAmount: number;
       
@@ -131,19 +167,19 @@ export default function FuelSaleFormPage() {
         // Internal Bus: revenue = voucher diesel amount
         finalTotalAmount = selectedTripDieselAmount || 0;
         // Calculate effective price per litre from voucher amount
-        finalSalePrice = parseFloat(formData.litres) > 0 
-          ? finalTotalAmount / parseFloat(formData.litres) 
+        finalSalePrice = litresToUse > 0 
+          ? finalTotalAmount / litresToUse 
           : 0;
       } else {
-        // External Customer: use universal selling price
+        // External Customer: payment amount is the total_amount
+        finalTotalAmount = parseFloat(formData.payment_amount);
         finalSalePrice = parseFloat(formData.sale_price_per_litre) || universalDieselPrice;
-        finalTotalAmount = parseFloat(formData.litres) * finalSalePrice;
       }
 
       await createFuelSale({
         sale_date: isoDate,
         sale_type: saleType,
-        litres: parseFloat(formData.litres),
+        litres: litresToUse,
         sale_price_per_litre: finalSalePrice,
         cost_price_per_litre: weightedAvgCost,
         total_amount: finalTotalAmount,
@@ -326,60 +362,95 @@ export default function FuelSaleFormPage() {
               </>
             )}
 
-            {/* Litres and Price */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                  Litres *
-                </label>
-                <input
-                  type="number"
-                  value={formData.litres}
-                  onChange={(e) => setFormData({ ...formData, litres: e.target.value })}
-                  placeholder="0.00"
-                  min="0"
-                  step="0.01"
-                  disabled={saleType === 'INTERNAL_BUS'}
-                  className={`w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${saleType === 'INTERNAL_BUS' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                  required
-                />
-                {saleType === 'INTERNAL_BUS' && (
-                  <p className="mt-1 text-xs text-gray-500">
-                    Auto-filled from voucher diesel litres
+            {/* Payment Amount (EXTERNAL_CUSTOMER) or Litres (INTERNAL_BUS) and Price */}
+            {saleType === 'EXTERNAL_CUSTOMER' ? (
+              <>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                    Payment Amount (Rs.) *
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.payment_amount}
+                    onChange={(e) => setFormData({ ...formData, payment_amount: e.target.value })}
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                    Calculated Diesel (L)
+                  </label>
+                  <input
+                    type="text"
+                    value={calculatedLitres > 0 ? calculatedLitres.toFixed(4) : '0.0000'}
+                    disabled
+                    className="w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-600 cursor-not-allowed"
+                  />
+                  <p className="mt-1 text-xs text-blue-600">
+                    Calculated from payment ÷ selling price
                   </p>
-                )}
-              </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                    Litres *
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.litres}
+                    onChange={(e) => setFormData({ ...formData, litres: e.target.value })}
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
+                    disabled={saleType === 'INTERNAL_BUS'}
+                    className={`w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${saleType === 'INTERNAL_BUS' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                    required
+                  />
+                  {saleType === 'INTERNAL_BUS' && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Auto-filled from voucher diesel litres
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
 
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                  {saleType === 'INTERNAL_BUS' ? 'Effective Price per Litre (Rs.) - Calculated from Voucher' : 'Sale Price per Litre (Rs.) *'}
-                </label>
-                <input
-                  type="number"
-                  value={saleType === 'INTERNAL_BUS' 
-                    ? (selectedTripDieselAmount !== null && parseFloat(formData.litres) > 0 
-                        ? (selectedTripDieselAmount / parseFloat(formData.litres)).toFixed(2) 
-                        : '0.00')
-                    : formData.sale_price_per_litre || universalDieselPrice.toFixed(2)}
-                  onChange={(e) => setFormData({ ...formData, sale_price_per_litre: e.target.value })}
-                  placeholder={universalDieselPrice > 0 ? `Default: ${universalDieselPrice.toFixed(2)}` : "0.00"}
-                  min="0"
-                  step="0.01"
-                  disabled={saleType === 'INTERNAL_BUS'}
-                  className={`w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${saleType === 'INTERNAL_BUS' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                  required={saleType !== 'INTERNAL_BUS'}
-                />
-                {saleType === 'INTERNAL_BUS' && (
-                  <p className="mt-1 text-xs text-blue-600">
-                    Calculated from voucher amount ÷ litres
-                  </p>
-                )}
-                {saleType === 'EXTERNAL_CUSTOMER' && universalDieselPrice > 0 && (
-                  <p className="mt-1 text-xs text-blue-600">
-                    Universal selling price: Rs. {universalDieselPrice.toFixed(2)}/L
-                  </p>
-                )}
-              </div>
+            {/* Sale Price per Litre */}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                {saleType === 'INTERNAL_BUS' ? 'Effective Price per Litre (Rs.) - Calculated from Voucher' : 'Sale Price per Litre (Rs.) *'}
+              </label>
+              <input
+                type="number"
+                value={saleType === 'INTERNAL_BUS' 
+                  ? (selectedTripDieselAmount !== null && parseFloat(formData.litres) > 0 
+                      ? (selectedTripDieselAmount / parseFloat(formData.litres)).toFixed(2) 
+                      : '0.00')
+                  : formData.sale_price_per_litre || universalDieselPrice.toFixed(2)}
+                onChange={(e) => setFormData({ ...formData, sale_price_per_litre: e.target.value })}
+                placeholder={universalDieselPrice > 0 ? `Default: ${universalDieselPrice.toFixed(2)}` : "0.00"}
+                min="0"
+                step="0.01"
+                disabled={saleType === 'INTERNAL_BUS'}
+                className={`w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${saleType === 'INTERNAL_BUS' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                required={saleType !== 'INTERNAL_BUS'}
+              />
+              {saleType === 'INTERNAL_BUS' && (
+                <p className="mt-1 text-xs text-blue-600">
+                  Calculated from voucher amount ÷ litres
+                </p>
+              )}
+              {saleType === 'EXTERNAL_CUSTOMER' && universalDieselPrice > 0 && (
+                <p className="mt-1 text-xs text-blue-600">
+                  Universal selling price: Rs. {universalDieselPrice.toFixed(2)}/L
+                </p>
+              )}
             </div>
 
             {/* Voucher Diesel Amount Display (for INTERNAL_BUS) */}
