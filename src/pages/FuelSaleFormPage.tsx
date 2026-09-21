@@ -35,8 +35,17 @@ export default function FuelSaleFormPage() {
 
   useEffect(() => {
     // Calculate weighted average cost and fetch universal diesel selling price on mount
-    calculateWeightedAverageCost().then(setWeightedAvgCost);
-    getUniversalDieselSellingPrice().then(setUniversalDieselPrice);
+    Promise.all([
+      calculateWeightedAverageCost(),
+      getUniversalDieselSellingPrice()
+    ]).then(([avgCost, universalPrice]) => {
+      setWeightedAvgCost(avgCost);
+      setUniversalDieselPrice(universalPrice);
+      // Pre-populate sale_price_per_litre with universal diesel price for EXTERNAL_CUSTOMER
+      if (saleType === 'EXTERNAL_CUSTOMER' && universalPrice > 0) {
+        setFormData(prev => ({ ...prev, sale_price_per_litre: universalPrice.toString() }));
+      }
+    });
   }, []);
 
   // When trip selection changes, fetch its diesel expense amount and litres
