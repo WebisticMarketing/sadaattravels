@@ -9,7 +9,7 @@ import { SummaryCard } from '../components/ui/SummaryCard';
 import { Button } from '../components/ui/Button';
 import { useState, useMemo } from 'react';
 
-// Month/Year Filter Component
+// Compact Month/Year Filter Component
 interface MonthYearFilterProps {
   month: string;
   year: string;
@@ -18,14 +18,13 @@ interface MonthYearFilterProps {
 }
 
 const MonthYearFilter: React.FC<MonthYearFilterProps> = ({ month, year, onMonthChange, onYearChange }) => (
-  <div className="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-    <label className="text-sm font-medium text-gray-700">Filter by:</label>
+  <div className="flex flex-wrap items-center gap-2 mb-4">
+    <span className="text-sm text-gray-500">Period:</span>
     <select
       value={month}
       onChange={(e) => onMonthChange(e.target.value)}
-      className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+      className="px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
     >
-      <option value="all">All Months</option>
       <option value="0">January</option>
       <option value="1">February</option>
       <option value="2">March</option>
@@ -42,27 +41,14 @@ const MonthYearFilter: React.FC<MonthYearFilterProps> = ({ month, year, onMonthC
     <select
       value={year}
       onChange={(e) => onYearChange(e.target.value)}
-      className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+      className="px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
     >
-      <option value="all">All Years</option>
       <option value="2024">2024</option>
       <option value="2025">2025</option>
       <option value="2026">2026</option>
       <option value="2027">2027</option>
       <option value="2028">2028</option>
     </select>
-    <button
-      onClick={() => { onMonthChange('all'); onYearChange('all'); }}
-      className="px-3 py-2 text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium"
-    >
-      All Time
-    </button>
-    <button
-      onClick={() => { onMonthChange(new Date().getMonth().toString()); onYearChange(new Date().getFullYear().toString()); }}
-      className="px-3 py-2 text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium"
-    >
-      This Month
-    </button>
   </div>
 );
 
@@ -74,25 +60,25 @@ export default function PetrolPumpOverviewPage() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [editingPrice, setEditingPrice] = useState('');
   
-  // Date period filters - independent per tab
+  // Date period filters - independent per tab (default to current month/year)
   const currentMonth = new Date().getMonth().toString();
   const currentYear = new Date().getFullYear().toString();
   
   // All Sales tab filters
-  const [allSalesMonth, setAllSalesMonth] = useState<string>('all');
-  const [allSalesYear, setAllSalesYear] = useState<string>('all');
+  const [allSalesMonth, setAllSalesMonth] = useState<string>(currentMonth);
+  const [allSalesYear, setAllSalesYear] = useState<string>(currentYear);
   
   // Bus Fuel Records tab filters
-  const [busFuelMonth, setBusFuelMonth] = useState<string>('all');
-  const [busFuelYear, setBusFuelYear] = useState<string>('all');
+  const [busFuelMonth, setBusFuelMonth] = useState<string>(currentMonth);
+  const [busFuelYear, setBusFuelYear] = useState<string>(currentYear);
   
   // Purchases tab filters
-  const [purchasesMonth, setPurchasesMonth] = useState<string>('all');
-  const [purchasesYear, setPurchasesYear] = useState<string>('all');
+  const [purchasesMonth, setPurchasesMonth] = useState<string>(currentMonth);
+  const [purchasesYear, setPurchasesYear] = useState<string>(currentYear);
   
   // External Sales tab filters
-  const [externalSalesMonth, setExternalSalesMonth] = useState<string>('all');
-  const [externalSalesYear, setExternalSalesYear] = useState<string>('all');
+  const [externalSalesMonth, setExternalSalesMonth] = useState<string>(currentMonth);
+  const [externalSalesYear, setExternalSalesYear] = useState<string>(currentYear);
   
   // Fetch all data
   const { sales: allSales, loading: salesLoading } = useFuelSales();
@@ -103,59 +89,39 @@ export default function PetrolPumpOverviewPage() {
   const loading = salesLoading || purchasesLoading || settingsLoading;
   // Filter All Sales by date period
   const filteredAllSales = useMemo(() => {
-    if (allSalesMonth === 'all' && allSalesYear === 'all') {
-      return allSales;
-    }
-
     return allSales.filter(sale => {
       const saleDate = new Date(sale.created_at);
-      const matchesMonth = allSalesMonth === 'all' || saleDate.getMonth().toString() === allSalesMonth;
-      const matchesYear = allSalesYear === 'all' || saleDate.getFullYear().toString() === allSalesYear;
-      return matchesMonth && matchesYear;
+      return saleDate.getMonth().toString() === allSalesMonth && 
+             saleDate.getFullYear().toString() === allSalesYear;
     });
   }, [allSales, allSalesMonth, allSalesYear]);
 
   // Filter Bus Fuel Records (INTERNAL_BUS sales) by date period
   const filteredBusFuelRecords = useMemo(() => {
     const busFuelSales = allSales.filter(s => s.sale_type === 'INTERNAL_BUS');
-    if (busFuelMonth === 'all' && busFuelYear === 'all') {
-      return busFuelSales;
-    }
-
     return busFuelSales.filter(sale => {
       const saleDate = new Date(sale.created_at);
-      const matchesMonth = busFuelMonth === 'all' || saleDate.getMonth().toString() === busFuelMonth;
-      const matchesYear = busFuelYear === 'all' || saleDate.getFullYear().toString() === busFuelYear;
-      return matchesMonth && matchesYear;
+      return saleDate.getMonth().toString() === busFuelMonth && 
+             saleDate.getFullYear().toString() === busFuelYear;
     });
   }, [allSales, busFuelMonth, busFuelYear]);
 
   // Filter Purchases by date period
   const filteredPurchases = useMemo(() => {
-    if (purchasesMonth === 'all' && purchasesYear === 'all') {
-      return purchases;
-    }
-
     return purchases.filter(purchase => {
       const purchaseDate = new Date(purchase.purchase_date);
-      const matchesMonth = purchasesMonth === 'all' || purchaseDate.getMonth().toString() === purchasesMonth;
-      const matchesYear = purchasesYear === 'all' || purchaseDate.getFullYear().toString() === purchasesYear;
-      return matchesMonth && matchesYear;
+      return purchaseDate.getMonth().toString() === purchasesMonth && 
+             purchaseDate.getFullYear().toString() === purchasesYear;
     });
   }, [purchases, purchasesMonth, purchasesYear]);
 
   // Filter External Sales (EXTERNAL_CUSTOMER sales) by date period
   const filteredExternalSales = useMemo(() => {
     const externalCustomerSales = allSales.filter(s => s.sale_type === 'EXTERNAL_CUSTOMER');
-    if (externalSalesMonth === 'all' && externalSalesYear === 'all') {
-      return externalCustomerSales;
-    }
-
     return externalCustomerSales.filter(sale => {
       const saleDate = new Date(sale.created_at);
-      const matchesMonth = externalSalesMonth === 'all' || saleDate.getMonth().toString() === externalSalesMonth;
-      const matchesYear = externalSalesYear === 'all' || saleDate.getFullYear().toString() === externalSalesYear;
-      return matchesMonth && matchesYear;
+      return saleDate.getMonth().toString() === externalSalesMonth && 
+             saleDate.getFullYear().toString() === externalSalesYear;
     });
   }, [allSales, externalSalesMonth, externalSalesYear]);
 
@@ -356,7 +322,7 @@ export default function PetrolPumpOverviewPage() {
               {filteredBusFuelRecords.length === 0 ? (
                 <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
                   <Truck className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-4 text-lg font-medium text-gray-900">No fuel records yet</h3>
+                  <h3 className="mt-4 text-lg font-medium text-gray-900">No bus fuel records found for the selected period</h3>
                   <p className="mt-2 text-sm text-gray-500">Record diesel issued to Sadaat buses</p>
                   <Button 
                     onClick={() => navigate('/app/petrol/sales/new?saleType=INTERNAL_BUS')} 
@@ -424,10 +390,10 @@ export default function PetrolPumpOverviewPage() {
                 </Button>
               </div>
               
-              {allSales.length === 0 ? (
+              {filteredAllSales.length === 0 ? (
                 <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
                   <Fuel className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-4 text-lg font-medium text-gray-900">No fuel sales yet</h3>
+                  <h3 className="mt-4 text-lg font-medium text-gray-900">No sales found for the selected period</h3>
                   <p className="mt-2 text-sm text-gray-500">Record fuel sold to buses or external customers</p>
                 </div>
               ) : (
@@ -444,7 +410,7 @@ export default function PetrolPumpOverviewPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
-                      {allSales.map((sale) => (
+                      {filteredAllSales.map((sale) => (
                         <tr key={sale.id} className="hover:bg-gray-50">
                           <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                             {new Date(sale.created_at).toLocaleDateString()}
@@ -499,10 +465,10 @@ export default function PetrolPumpOverviewPage() {
                 </Button>
               </div>
               
-              {purchases.length === 0 ? (
+              {filteredPurchases.length === 0 ? (
                 <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
                   <Package className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-4 text-lg font-medium text-gray-900">No purchase records yet</h3>
+                  <h3 className="mt-4 text-lg font-medium text-gray-900">No purchases found for the selected period</h3>
                   <p className="mt-2 text-sm text-gray-500">Record diesel purchased for the pump</p>
                   <Button 
                     onClick={() => navigate('/app/petrol/purchases/new')} 
@@ -574,7 +540,7 @@ export default function PetrolPumpOverviewPage() {
               {filteredExternalSales.length === 0 ? (
                 <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
                   <Users className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-4 text-lg font-medium text-gray-900">No external sales yet</h3>
+                  <h3 className="mt-4 text-lg font-medium text-gray-900">No external sales found for the selected period</h3>
                   <p className="mt-2 text-sm text-gray-500">Record fuel sold to outside customers</p>
                   <Button 
                     onClick={() => navigate('/app/petrol/sales/new?saleType=EXTERNAL_CUSTOMER')} 
