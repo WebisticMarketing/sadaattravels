@@ -334,59 +334,152 @@ export async function reverseFuelSale(id: string, reason: string) {
   if (error) throw error;
 }
 
-export async function calculateWeightedAverageCost() {
-  // Get all active purchases
+/**
+ * Calculate current weighted-average cost using perpetual weighted-average costing.
+ * 
+ * This processes all transactions chronologically to maintain correct inventory layers:
+ * - Purchases add to inventory and recalculate the weighted-average cost
+ * - Sales reduce inventory at the current weighted-average cost (no cost change)
+ * - Adjustments add/subtract inventory at specified cost or current WAC
+ * 
+ * When inventory reaches 0, the next purchase establishes a fresh cost basis.
+ */
+export async function calculateWeightedAverageCost(): Promise<number> {
+  // Get all active purchases ordered by date
   const { data: purchases } = await supabase
     .from('fuel_purchases')
-    .select('litres, cost_per_litre')
-    .eq('status', 'active');
+    .select('litres, cost_per_litre, purchase_date, created_at')
+    .eq('status', 'active')
+    .order('purchase_date', { ascending: true });
 
-  // Get all active sales
+  // Get all active sales ordered by date/time
   const { data: sales } = await supabase
     .from('fuel_sales')
-    .select('litres, cost_price_per_litre')
-    .eq('status', 'active');
+    .select('litres, sale_date, created_at')
+    .eq('status', 'active')
+    .order('sale_date', { ascending: true });
 
-  // Get all active adjustments
+  // Get all active adjustments ordered by date
   const { data: adjustments } = await supabase
     .from('fuel_stock_adjustments')
-    .select('litres, cost_per_litre')
-    .eq('status', 'active');
+    .select('litres, cost_per_litre, adjustment_date, created_at')
+    .eq('status', 'active')
+    .order('adjustment_date', { ascending: true });
 
-  // Calculate total stock and total cost
-  let totalStock = 0;
-  let totalCost = 0;
+  // Build a combined timeline of all transactions
+  interface InventoryEvent {
+    type: 'purchase' | 'sale' | 'adjustment';
+    date: Date;
+    litres: number;
+    costPerLitre?: number;
+    sortOrder: number;
+  }
+
+  const events: InventoryEvent[] = [];
 
   // Add purchases
   if (purchases) {
-    for (const p of purchases) {
-      totalStock += p.litres;
-      totalCost += p.litres * p.cost_per_litre;
-    }
+    purchases.forEach((p, index) => {
+      events.push({
+        type: 'purchase',
+        date: new Date(p.purchase_date),
+        litres: p.litres,
+        costPerLitre: p.cost_per_litre,
+        sortOrder: index,
+      });
+    });
   }
 
-  // Subtract sales
+  // Add sales (sales don't change WAC, they just reduce quantity)
   if (sales) {
-    for (const s of sales) {
-      totalStock -= s.litres;
-      totalCost -= s.litres * s.cost_price_per_litre;
-    }
+    sales.forEach((s, index) => {
+      events.push({
+        type: 'sale',
+        date: new Date(s.sale_date),
+        litres: s.litres,
+        sortOrder: 10000 + index, // Sales processed after purchases on same day
+      });
+    });
   }
 
   // Add adjustments
   if (adjustments) {
-    for (const a of adjustments) {
-      totalStock += a.litres;
-      totalCost += a.litres * a.cost_per_litre;
+    adjustments.forEach((a, index) => {
+      events.push({
+        type: 'adjustment',
+        date: new Date(a.adjustment_date),
+        litres: a.litres,
+        costPerLitre: a.cost_per_litre,
+        sortOrder: 5000 + index,
+      });
+    });
+  }
+
+  // Sort events chronologically, then by sortOrder for tie-breaking
+  events.sort((a, b) => {
+    const dateDiff = a.date.getTime() - b.date.getTime();
+    if (dateDiff !== 0) return dateDiff;
+    return a.sortOrder - b.sortOrder;
+  });
+
+  // Process events using perpetual weighted-average costing
+  let currentStock = 0;
+  let currentTotalCost = 0;
+  let currentWAC = 0;
+
+  for (const event of events) {
+    if (event.type === 'purchase') {
+      // Purchase: add litres and recalculate WAC
+      const purchaseCost = event.litres * (event.costPerLitre || 0);
+      currentStock += event.litres;
+      currentTotalCost += purchaseCost;
+      
+      // Recalculate WAC
+      if (currentStock > 0) {
+        currentWAC = currentTotalCost / currentStock;
+      }
+    } else if (event.type === 'sale') {
+      // Sale: reduce stock at current WAC (WAC doesn't change)
+      // Ensure we don't go negative (should be prevented by validation, but handle gracefully)
+      const saleLitres = Math.min(event.litres, currentStock);
+      const saleCost = saleLitres * currentWAC;
+      
+      currentStock -= saleLitres;
+      currentTotalCost -= saleCost;
+      
+      // WAC remains the same after a sale (perpetual method)
+      // But if stock reaches 0, reset
+      if (currentStock <= 0) {
+        currentStock = 0;
+        currentTotalCost = 0;
+        currentWAC = 0;
+      }
+    } else if (event.type === 'adjustment') {
+      // Adjustment: add/subtract litres
+      // If cost_per_litre is provided, use it; otherwise use current WAC
+      const adjCostPerLitre = event.costPerLitre !== undefined && event.costPerLitre !== null
+        ? event.costPerLitre
+        : currentWAC;
+      
+      const adjCost = event.litres * adjCostPerLitre;
+      currentStock += event.litres;
+      currentTotalCost += adjCost;
+      
+      // Recalculate WAC
+      if (currentStock > 0) {
+        currentWAC = currentTotalCost / currentStock;
+      }
+      
+      // Handle negative stock from adjustment
+      if (currentStock <= 0) {
+        currentStock = 0;
+        currentTotalCost = 0;
+        currentWAC = 0;
+      }
     }
   }
 
-  // Calculate weighted average cost
-  if (totalStock <= 0) {
-    return 0;
-  }
-
-  return totalCost / totalStock;
+  return currentWAC;
 }
 
 /**
