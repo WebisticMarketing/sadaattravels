@@ -20,8 +20,7 @@ export function MonthYearFilter({
   onYearChange,
   className
 }: MonthYearFilterProps) {
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
+  const years = Array.from({ length: 16 }, (_, i) => 2020 + i); // 2020-2035
 
   return (
     <div className={cn('flex items-center gap-2', className)}>
