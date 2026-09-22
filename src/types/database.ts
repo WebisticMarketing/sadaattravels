@@ -432,6 +432,44 @@ export interface AddaExpense {
 }
 
 // ============================================================================
+// PETROL PUMP EXPENSES
+// ============================================================================
+
+export type PumpExpenseType = 
+  | 'ELECTRICITY'
+  | 'STAFF_SALARY'
+  | 'PUMP_REPAIR'
+  | 'GENERATOR'
+  | 'CLEANING'
+  | 'EQUIPMENT'
+  | 'OTHER';
+
+/**
+ * Petrol Pump operating expense record.
+ * Tracks expenses specific to pump operations (electricity, staff salary, repairs, etc.).
+ * These are SEPARATE from fuel COGS (which is tracked via WAC in fuel_sales).
+ * Pump Net Profit = Fuel Revenue - Fuel COGS - Pump Operating Expenses
+ */
+export interface PumpExpense {
+  id: string;
+  expense_date: string;
+  expense_type: PumpExpenseType;
+  description: string | null;
+  amount: number;
+  paid_to: string | null;
+  receipt_number: string | null;
+  notes: string | null;
+  status: RecordStatus;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+  reversed_by: string | null;
+  reversed_at: string | null;
+  reversal_reason: string | null;
+}
+
+// ============================================================================
 // CARGO
 // ============================================================================
 
@@ -684,6 +722,11 @@ export interface Database {
         Row: PersonalExpense;
         Insert: Omit<PersonalExpense, 'id' | 'created_at' | 'updated_at'>;
         Update: Partial<Omit<PersonalExpense, 'id' | 'created_at' | 'updated_at'>>;
+      };
+      pump_expenses: {
+        Row: PumpExpense;
+        Insert: Omit<PumpExpense, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<PumpExpense, 'id' | 'created_at' | 'updated_at'>>;
       };
       audit_logs: {
         Row: AuditLog;

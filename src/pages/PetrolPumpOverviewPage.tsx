@@ -50,7 +50,7 @@ const MonthYearFilter: React.FC<MonthYearFilterProps> = ({ month, year, onMonthC
   </div>
 );
 
-type TabType = 'overview' | 'all-sales' | 'bus-fuel' | 'purchases' | 'external-sales' | 'reports';
+type TabType = 'overview' | 'all-sales' | 'bus-fuel' | 'purchases' | 'external-sales' | 'expenses' | 'reports';
 
 export default function PetrolPumpOverviewPage() {
   const navigate = useNavigate();
@@ -197,6 +197,16 @@ export default function PetrolPumpOverviewPage() {
             }`}
           >
             External Sales
+          </button>
+          <button
+            onClick={() => setActiveTab('expenses')}
+            className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium ${
+              activeTab === 'expenses'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+            }`}
+          >
+            Expenses
           </button>
           <button
             onClick={() => navigate('/app/petrol/reports')}
@@ -658,6 +668,31 @@ export default function PetrolPumpOverviewPage() {
               </div>
             </div>
           )}
+
+          {/* Expenses Tab */}
+          {activeTab === 'expenses' && (
+            <div className="space-y-4">
+              <MonthYearFilter
+                month={externalSalesMonth}
+                year={externalSalesYear}
+                onMonthChange={setExternalSalesMonth}
+                onYearChange={setExternalSalesYear}
+              />
+              <div className="flex justify-end">
+                <Button onClick={() => navigate('/app/petrol/expenses/new')}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add Expense
+                </Button>
+              </div>
+              
+              <div className="rounded-lg border border-gray-200 bg-white p-6">
+                <p className="text-sm text-gray-500">Pump operating expenses list will be displayed here.</p>
+                <p className="mt-2 text-xs text-gray-400">Use the "Add Expense" button above to record electricity, salary, repairs, and other pump operating costs.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Reports Tab - navigates to dedicated reports page */}
         </>
       )}
     </div>
