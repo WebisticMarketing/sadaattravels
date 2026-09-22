@@ -81,7 +81,7 @@ export default function PetrolPumpReportsPage() {
               onChange={(e) => setSelectedYear(Number(e.target.value))}
               className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
             >
-              {[2024, 2025, 2026, 2027, 2028].map(year => (
+              {Array.from({ length: 16 }, (_, i) => 2020 + i).map(year => (
                 <option key={year} value={year}>{year}</option>
               ))}
             </select>

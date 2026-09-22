@@ -43,11 +43,9 @@ const MonthYearFilter: React.FC<MonthYearFilterProps> = ({ month, year, onMonthC
       onChange={(e) => onYearChange(e.target.value)}
       className="px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
     >
-      <option value="2024">2024</option>
-      <option value="2025">2025</option>
-      <option value="2026">2026</option>
-      <option value="2027">2027</option>
-      <option value="2028">2028</option>
+      {Array.from({ length: 16 }, (_, i) => 2020 + i).map(y => (
+        <option key={y} value={y}>{y}</option>
+      ))}
     </select>
   </div>
 );
