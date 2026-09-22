@@ -23,12 +23,14 @@ export function formatCurrency(amount: number): string {
 
 /**
  * Format a Date into DD/MM/YYYY.
+ * Accepts either a Date object or an ISO date string.
  */
-export function formatDate(date: Date): string {
-  const d = date.getDate().toString().padStart(2, '0');
-  const m = (date.getMonth() + 1).toString().padStart(2, '0');
-  const y = date.getFullYear();
-  return `${d}/${m}/${y}`;
+export function formatDate(date: Date | string): string {
+  const d = date instanceof Date ? date : new Date(date);
+  const day = d.getDate().toString().padStart(2, '0');
+  const m = (d.getMonth() + 1).toString().padStart(2, '0');
+  const y = d.getFullYear();
+  return `${day}/${m}/${y}`;
 }
 
 /**
