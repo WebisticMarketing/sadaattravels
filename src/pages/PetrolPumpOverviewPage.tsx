@@ -52,7 +52,7 @@ const MonthYearFilter: React.FC<MonthYearFilterProps> = ({ month, year, onMonthC
   </div>
 );
 
-type TabType = 'overview' | 'all-sales' | 'bus-fuel' | 'purchases' | 'external-sales';
+type TabType = 'overview' | 'all-sales' | 'bus-fuel' | 'purchases' | 'external-sales' | 'reports';
 
 export default function PetrolPumpOverviewPage() {
   const navigate = useNavigate();
@@ -199,6 +199,16 @@ export default function PetrolPumpOverviewPage() {
             }`}
           >
             External Sales
+          </button>
+          <button
+            onClick={() => navigate('/app/petrol/reports')}
+            className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium ${
+              activeTab === 'reports'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+            }`}
+          >
+            Reports
           </button>
         </nav>
       </div>
