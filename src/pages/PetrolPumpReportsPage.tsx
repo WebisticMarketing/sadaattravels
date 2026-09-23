@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { usePetrolPumpReport } from '../hooks/usePetrolPumpReport';
+import { usePumpExpenses } from '../hooks/usePumpExpenses';
 import { formatCurrency, formatDate, formatDateTime } from '../lib/utils';
 import { PageHeader } from '../components/ui/PageHeader';
 import { PrintButton } from '../components/ui/PrintButton';
@@ -12,7 +13,26 @@ export default function PetrolPumpReportsPage() {
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
 
-  const { report, loading, error } = usePetrolPumpReport(selectedYear, selectedMonth);
+  const { report, loading: reportLoading, error: reportError } = usePetrolPumpReport(selectedYear, selectedMonth);
+
+  // Calculate date range for pump expenses
+  const expensesStartDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
+  const lastDayOfMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+  const expensesEndDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(lastDayOfMonth).padStart(2, '0')}`;
+
+  const { expenses: pumpExpenses, loading: expensesLoading, error: expensesError } = usePumpExpenses({
+    startDate: expensesStartDate,
+    endDate: expensesEndDate,
+  });
+
+  const loading = reportLoading || expensesLoading;
+  const error = reportError || expensesError;
+
+  // Calculate total operating expenses for the period
+  const totalOperatingExpenses = pumpExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+  // Calculate Net Pump Profit (Gross Profit - Operating Expenses)
+  const netPumpProfit = report.sales.grossProfit - totalOperatingExpenses;
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -192,9 +212,75 @@ export default function PetrolPumpReportsPage() {
                   {formatCurrency(report.externalSales.grossProfit)}
                 </td>
               </tr>
+              <tr className="bg-blue-50 hover:bg-blue-100">
+                <td className="px-4 py-3 text-sm font-medium text-gray-900">Pump Operating Expenses</td>
+                <td className="px-4 py-3 text-right text-sm text-gray-500">-</td>
+                <td className="px-4 py-3 text-right text-sm text-gray-500">-</td>
+                <td className="px-4 py-3 text-right text-sm font-semibold text-red-600">{formatCurrency(totalOperatingExpenses)}</td>
+                <td className="px-4 py-3 text-right text-sm font-bold text-red-600">-{formatCurrency(totalOperatingExpenses)}</td>
+              </tr>
+              <tr className="bg-gray-100">
+                <td className="px-4 py-3 text-sm font-bold text-gray-900">Net Pump Profit</td>
+                <td className="px-4 py-3 text-right text-sm text-gray-500">-</td>
+                <td className="px-4 py-3 text-right text-sm text-gray-500">-</td>
+                <td className="px-4 py-3 text-right text-sm text-gray-500">-</td>
+                <td className={`px-4 py-3 text-right text-sm font-bold ${netPumpProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(netPumpProfit)}
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Pump Operating Expenses Detail */}
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">
+          Pump Operating Expenses ({pumpExpenses.length} records)
+        </h2>
+        {pumpExpenses.length === 0 ? (
+          <p className="text-sm text-gray-500 py-4">No operating expenses in this period</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Description</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Paid To</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Receipt #</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Amount</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Notes</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {pumpExpenses.map(expense => (
+                  <tr key={expense.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{formatDate(expense.expense_date)}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {expense.expense_type.replace(/_/g, ' ')}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">{expense.description || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{expense.paid_to || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{expense.receipt_number || '-'}</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-gray-900 text-right">{formatCurrency(expense.amount)}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">{expense.notes || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="bg-gray-50">
+                <tr>
+                  <td colSpan={5} className="px-4 py-3 text-sm font-semibold text-gray-900">Total</td>
+                  <td className="px-4 py-3 text-right text-sm font-bold text-red-600">{formatCurrency(totalOperatingExpenses)}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Purchases Detail */}
