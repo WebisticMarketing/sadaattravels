@@ -261,31 +261,18 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
 
         if (fuelSalesError) throw fuelSalesError;
         
-        // Calculate fuel profit from ALL sales
-        // For INTERNAL_BUS: revenue comes from linked voucher diesel expense
-        // For EXTERNAL_CUSTOMER: revenue is the sale total_amount
-        const fuelProfit = await Promise.all(
-          (fuelSalesRecords || []).map(async (sale) => {
-            const cost = (sale.litres || 0) * (sale.cost_price_per_litre || 0);
-            
-            if (sale.sale_type === 'INTERNAL_BUS' && sale.trip_id) {
-              // Get the actual diesel payment from the voucher's trip_expense
-              const { data: expenses } = await supabase
-                .from('trip_expenses')
-                .select('amount')
-                .eq('trip_id', sale.trip_id)
-                .eq('type', 'diesel')
-                .single();
-              
-              const revenue = expenses?.amount || 0;
-              return revenue - cost;
-            } else {
-              // EXTERNAL_CUSTOMER: use total_amount as revenue
-              const revenue = sale.total_amount || 0;
-              return revenue - cost;
-            }
-          })
-        ).then(results => results.reduce((sum, profit) => sum + profit, 0));
+        // Calculate fuel profit from ALL sales using stored total_amount
+        // This matches the calculation in useReports.ts for consistency
+        let fuelRevenue = 0;
+        let fuelCost = 0;
+
+        for (const sale of (fuelSalesRecords || [])) {
+          const cost = (sale.cost_price_per_litre || 0) * (sale.litres || 0);
+          fuelCost += cost;
+          fuelRevenue += sale.total_amount || 0;
+        }
+
+        const fuelProfit = fuelRevenue - fuelCost;
 
         // Fetch pump operating expenses
         const { data: pumpExpensesRecords, error: pumpExpensesError } = await supabase
