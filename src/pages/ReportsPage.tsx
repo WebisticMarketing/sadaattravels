@@ -100,56 +100,124 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          {/* Detailed Breakdown */}
+          {/* Gross, additive breakdown — every line comes from the shared
+              company accounting engine and sums exactly to the totals above. */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            {/* Revenue section */}
+            <div className="rounded-lg border border-gray-200 bg-white p-6">
+              <h2 className="mb-4 text-lg font-semibold text-gray-900">Revenue Breakdown</h2>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <span className="text-sm font-medium text-gray-700">Trip Revenue</span>
+                  <span className="text-sm font-semibold text-green-600">{formatCurrency(summary.tripRevenue)}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <span className="text-sm font-medium text-gray-700">Petrol Pump — External Sales</span>
+                  <span className="text-sm font-semibold text-green-600">{formatCurrency(summary.pumpExternalRevenue)}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <span className="text-sm font-medium text-gray-700">Petrol Pump — Internal Bus Sales</span>
+                  <span className="text-sm font-semibold text-green-600">{formatCurrency(summary.pumpInternalRevenue)}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <span className="text-sm font-medium text-gray-700">Adda Income</span>
+                  <span className="text-sm font-semibold text-green-600">{formatCurrency(summary.addaIncome)}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <span className="text-sm font-medium text-gray-700">Cargo Revenue</span>
+                  <span className="text-sm font-semibold text-green-600">{formatCurrency(summary.cargoRevenue)}</span>
+                </div>
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-sm font-bold text-gray-900">Total Revenue</span>
+                  <span className="text-sm font-bold text-green-600">{formatCurrency(summary.totalRevenue)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Costs / Expenses section */}
+            <div className="rounded-lg border border-gray-200 bg-white p-6">
+              <h2 className="mb-4 text-lg font-semibold text-gray-900">Costs &amp; Expenses Breakdown</h2>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <span className="text-sm font-medium text-gray-700">Trip Expenses</span>
+                  <span className="text-sm font-semibold text-red-600">{formatCurrency(summary.tripExpenses)}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <span className="text-sm font-medium text-gray-700">Maintenance</span>
+                  <span className="text-sm font-semibold text-red-600">{formatCurrency(summary.maintenanceCost)}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <span className="text-sm font-medium text-gray-700">Tyres</span>
+                  <span className="text-sm font-semibold text-red-600">{formatCurrency(summary.tyreCost)}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <span className="text-sm font-medium text-gray-700">Adda Expenses</span>
+                  <span className="text-sm font-semibold text-red-600">{formatCurrency(summary.addaExpenses)}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <span className="text-sm font-medium text-gray-700">Cargo Expenses</span>
+                  <span className="text-sm font-semibold text-red-600">{formatCurrency(summary.cargoExpenses)}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <span className="text-sm font-medium text-gray-700">Petrol Pump COGS (WAC)</span>
+                  <span className="text-sm font-semibold text-red-600">{formatCurrency(summary.pumpCogsWac)}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <span className="text-sm font-medium text-gray-700">Petrol Pump Operating Expenses</span>
+                  <span className="text-sm font-semibold text-red-600">{formatCurrency(summary.pumpOperatingExpenses)}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <span className="text-sm font-medium text-gray-700">Loan Installment Payments (Taken)</span>
+                  <span className="text-sm font-semibold text-red-600">{formatCurrency(summary.installmentPayments)}</span>
+                </div>
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-sm font-bold text-gray-900">Total Expenses</span>
+                  <span className="text-sm font-bold text-red-600">{formatCurrency(summary.totalExpenses)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Business Unit Profitability — informational; nets reconcile to Company Net Profit */}
           <div className="rounded-lg border border-gray-200 bg-white p-6">
-            <h2 className="mb-4 text-lg font-semibold text-gray-900">Revenue & Expense Breakdown</h2>
+            <h2 className="mb-1 text-lg font-semibold text-gray-900">Business Unit Profitability</h2>
+            <p className="mb-4 text-xs text-gray-500">
+              Each unit&apos;s net profit reconciles to the company Net Profit above
+              (Transport + Petrol Pump + Adda + Cargo − Loan Installment Payments).
+            </p>
             <div className="space-y-3">
               <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                <span className="text-sm font-medium text-gray-700">Trip Revenue</span>
-                <span className="text-sm font-semibold text-green-600">
-                  {formatCurrency(summary.tripRevenue)}
+                <span className="text-sm font-medium text-gray-700">Transport Net Profit (Trips − Expenses − Maintenance − Tyres)</span>
+                <span className={`text-sm font-semibold ${summary.accounting.units.transport.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(summary.accounting.units.transport.netProfit)}
                 </span>
               </div>
               <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                <span className="text-sm font-medium text-gray-700">Trip Expenses</span>
-                <span className="text-sm font-semibold text-red-600">
-                  {formatCurrency(summary.tripExpenses)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                <span className="text-sm font-medium text-gray-700">Maintenance Cost</span>
-                <span className="text-sm font-semibold text-red-600">
-                  {formatCurrency(summary.maintenanceCost)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                <span className="text-sm font-medium text-gray-700">Tyre Cost</span>
-                <span className="text-sm font-semibold text-red-600">
-                  {formatCurrency(summary.tyreCost)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                <span className="text-sm font-medium text-gray-700">Adda Profit</span>
-                <span className={`text-sm font-semibold ${summary.addaProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(summary.addaProfit)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                <span className="text-sm font-medium text-gray-700">Cargo Profit</span>
-                <span className={`text-sm font-semibold ${summary.cargoProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(summary.cargoProfit)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                <span className="text-sm font-medium text-gray-700">Pump Net Profit</span>
+                <span className="text-sm font-medium text-gray-700">Petrol Pump Net Profit (Revenue − WAC COGS − OpEx)</span>
                 <span className={`text-sm font-semibold ${summary.pumpNetProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {formatCurrency(summary.pumpNetProfit)}
                 </span>
               </div>
               <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                <span className="text-sm font-medium text-gray-700">Installment Payments (Expenses)</span>
-                <span className="text-sm font-semibold text-red-600">
-                  {formatCurrency(summary.installmentPayments)}
+                <span className="text-sm font-medium text-gray-700">Adda Net Profit</span>
+                <span className={`text-sm font-semibold ${summary.accounting.units.adda.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(summary.accounting.units.adda.netProfit)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                <span className="text-sm font-medium text-gray-700">Cargo Net Profit</span>
+                <span className={`text-sm font-semibold ${summary.accounting.units.cargo.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(summary.accounting.units.cargo.netProfit)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                <span className="text-sm font-medium text-gray-700">Loan Installment Payments (legacy expense treatment)</span>
+                <span className="text-sm font-semibold text-red-600">{formatCurrency(-summary.installmentPayments)}</span>
+              </div>
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-sm font-bold text-gray-900">Company Net Profit</span>
+                <span className={`text-sm font-bold ${summary.totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(summary.totalProfit)}
                 </span>
               </div>
             </div>
