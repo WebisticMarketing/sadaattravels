@@ -28,12 +28,6 @@ export default function PetrolPumpReportsPage() {
   const loading = reportLoading || expensesLoading;
   const error = reportError || expensesError;
 
-  // Calculate total operating expenses for the period
-  const totalOperatingExpenses = pumpExpenses.reduce((sum, e) => sum + e.amount, 0);
-
-  // Calculate Net Pump Profit (Gross Profit - Operating Expenses)
-  const netPumpProfit = report.sales.grossProfit - totalOperatingExpenses;
-
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
@@ -69,6 +63,12 @@ export default function PetrolPumpReportsPage() {
       </div>
     );
   }
+
+  // Calculate total operating expenses for the period (after null checks)
+  const totalOperatingExpenses = pumpExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+  // Calculate Net Pump Profit (Gross Profit - Operating Expenses)
+  const netPumpProfit = report.sales.grossProfit - totalOperatingExpenses;
 
   const periodLabel = `${monthNames[selectedMonth]} ${selectedYear}`;
 
