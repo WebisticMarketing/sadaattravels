@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useFuelSales } from '../hooks/useFuelSales';
 import { useFuelPurchases } from '../hooks/useFuelPurchases';
 import { usePetrolPumpSettings } from '../hooks/usePetrolPumpSettings';
+import { usePumpExpenses } from '../hooks/usePumpExpenses';
 import { formatCurrency } from '../lib/utils';
 import { Fuel, TrendingUp, Package, Truck, Users, PlusCircle, Settings } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -78,13 +79,37 @@ export default function PetrolPumpOverviewPage() {
   const [externalSalesMonth, setExternalSalesMonth] = useState<string>(currentMonth);
   const [externalSalesYear, setExternalSalesYear] = useState<string>(currentYear);
   
+  // Expenses tab filters
+  const [expensesMonth, setExpensesMonth] = useState<string>(currentMonth);
+  const [expensesYear, setExpensesYear] = useState<string>(currentYear);
+  
   // Fetch all data
   const { sales: allSales, loading: salesLoading } = useFuelSales();
   const { purchases, loading: purchasesLoading } = useFuelPurchases();
   
   const { settings: petrolPumpSettings, loading: settingsLoading, updateDieselSellingPrice } = usePetrolPumpSettings();
+  
+  // Calculate date range for expenses
+  const expensesStartDate = useMemo(() => {
+    const year = parseInt(expensesYear, 10);
+    const month = parseInt(expensesMonth, 10);
+    return `${year}-${String(month + 1).padStart(2, '0')}-01`;
+  }, [expensesYear, expensesMonth]);
+  
+  const expensesEndDate = useMemo(() => {
+    const year = parseInt(expensesYear, 10);
+    const month = parseInt(expensesMonth, 10);
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    return `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  }, [expensesYear, expensesMonth]);
+  
+  // Fetch pump expenses with date filter
+  const { expenses: allExpenses, loading: expensesLoading, error: expensesError, refetch: refetchExpenses } = usePumpExpenses({
+    startDate: expensesStartDate,
+    endDate: expensesEndDate,
+  });
 
-  const loading = salesLoading || purchasesLoading || settingsLoading;
+  const loading = salesLoading || purchasesLoading || settingsLoading || expensesLoading;
   // Filter All Sales by date period
   const filteredAllSales = useMemo(() => {
     return allSales.filter(sale => {
@@ -673,22 +698,119 @@ export default function PetrolPumpOverviewPage() {
           {activeTab === 'expenses' && (
             <div className="space-y-4">
               <MonthYearFilter
-                month={externalSalesMonth}
-                year={externalSalesYear}
-                onMonthChange={setExternalSalesMonth}
-                onYearChange={setExternalSalesYear}
+                month={expensesMonth}
+                year={expensesYear}
+                onMonthChange={setExpensesMonth}
+                onYearChange={setExpensesYear}
               />
-              <div className="flex justify-end">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Pump Operating Expenses
+                </h3>
                 <Button onClick={() => navigate('/app/petrol/expenses/new')}>
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Add Expense
                 </Button>
               </div>
               
-              <div className="rounded-lg border border-gray-200 bg-white p-6">
-                <p className="text-sm text-gray-500">Pump operating expenses list will be displayed here.</p>
-                <p className="mt-2 text-xs text-gray-400">Use the "Add Expense" button above to record electricity, salary, repairs, and other pump operating costs.</p>
+              {/* Summary Card */}
+              <div className="rounded-lg border border-gray-200 bg-white p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Total Operating Expenses</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {formatCurrency(allExpenses.reduce((sum, e) => sum + e.amount, 0))}
+                    </p>
+                  </div>
+                  <div className="text-right text-sm text-gray-500">
+                    <p>{allExpenses.length} record{allExpenses.length !== 1 ? 's' : ''}</p>
+                  </div>
+                </div>
               </div>
+
+              {/* Error State */}
+              {expensesError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+                  <p className="text-sm text-red-800">{expensesError}</p>
+                </div>
+              )}
+
+              {/* Empty State */}
+              {!expensesLoading && allExpenses.length === 0 && !expensesError && (
+                <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
+                  <Users className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-4 text-lg font-medium text-gray-900">No pump expenses found for the selected period</h3>
+                  <p className="mt-2 text-sm text-gray-500">Record electricity, salary, repairs, and other pump operating costs</p>
+                  <Button 
+                    onClick={() => navigate('/app/petrol/expenses/new')} 
+                    className="mt-4"
+                  >
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Expense
+                  </Button>
+                </div>
+              )}
+
+              {/* Expenses Table */}
+              {!expensesLoading && allExpenses.length > 0 && (
+                <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Date</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Type</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Description</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Paid To</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Receipt #</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Amount</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 bg-white">
+                      {allExpenses.map(expense => (
+                        <tr key={expense.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                            {new Date(expense.expense_date).toLocaleDateString('en-GB', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              {expense.expense_type.replace(/_/g, ' ')}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">
+                            {expense.description || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {expense.paid_to || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {expense.receipt_number || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm font-semibold text-gray-900 text-right">
+                            {formatCurrency(expense.amount)}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">
+                            {expense.notes || '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-gray-50">
+                      <tr>
+                        <td colSpan={5} className="px-4 py-3 text-sm font-semibold text-gray-900">Total</td>
+                        <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">
+                          {formatCurrency(allExpenses.reduce((sum, e) => sum + e.amount, 0))}
+                        </td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 

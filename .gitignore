@@ -6,18 +6,18 @@ build/
 # Dependencies
 node_modules/
 
+# Logs and temp files
+*.log
+*.tmp
+
 # Environment
 .env
 .env.local
-*.env.*
+.env.*
 
 # Editors
 .vscode/
 .idea/
-
-# Logs and temp files
-*.log
-*.tmp
 
 # Python
 __pycache__/
@@ -25,47 +25,25 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Compiled files
+# Compiled
 *.o
 *.obj
-*.exe
-*.dll
 *.so
 *.a
+*.dll
+*.exe
 *.out
 
-# OS
-.DS_Store
-Thumbs.db
-
-# Testing and coverage
-.coverage
+# Coverage
 coverage/
 htmlcov/
-.mypy_cache/
+.coverage
+
+# Testing
 .pytest_cache/
+.mypy_cache/
 
-# Java/Maven/Gradle
-target/
-.gradle/
-
-# Compressed files
-*.zip
-*.gz
-*.tar
-*.tgz
-*.bz2
-*.xz
-*.7z
-*.rar
-*.zst
-*.lz4
-*.lzh
-*.cab
-*.arj
-*.rpm
-*.deb
-*.Z
-*.lz
-*.lzo
+# System
+.DS_Store
+Thumbs.db
 ```
