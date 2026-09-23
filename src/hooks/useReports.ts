@@ -203,9 +203,9 @@ export function useOverallSummary(dateRange: DateRange) {
           installmentPayments = payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
         }
 
-        // Calculate totals
-        const totalRevenue = tripRevenue + addaIncomeTotal + cargoRevenue + fuelRevenue;
-        const totalExpenses = tripExpenses + maintenanceCost + tyreCost + addaExpensesTotal + cargoExpenses + fuelCost + installmentPayments;
+        // Calculate totals - Pump Net Profit is the final contribution (revenue - COGS - expenses already included)
+        const totalRevenue = tripRevenue + addaIncomeTotal + cargoRevenue + (pumpNetProfit > 0 ? pumpNetProfit : 0);
+        const totalExpenses = tripExpenses + maintenanceCost + tyreCost + installmentPayments + (pumpNetProfit < 0 ? Math.abs(pumpNetProfit) : 0);
         const totalProfit = totalRevenue - totalExpenses;
 
         setSummary({
