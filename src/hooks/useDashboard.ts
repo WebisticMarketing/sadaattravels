@@ -287,8 +287,22 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
           })
         ).then(results => results.reduce((sum, profit) => sum + profit, 0));
 
-        // Add Fuel profit to total revenue
-        periodRevenue += fuelProfit;
+        // Fetch pump operating expenses
+        const { data: pumpExpensesRecords, error: pumpExpensesError } = await supabase
+          .from('pump_expenses')
+          .select('amount')
+          .gte('expense_date', periodStart)
+          .lte('expense_date', periodEnd)
+          .eq('status', 'active');
+
+        if (pumpExpensesError) throw pumpExpensesError;
+        const pumpOperatingExpenses = pumpExpensesRecords?.reduce((sum, e) => sum + e.amount, 0) || 0;
+        
+        // Calculate Pump Net Profit (final contribution after operating expenses)
+        const pumpNetProfit = fuelProfit - pumpOperatingExpenses;
+
+        // Add Pump Net Profit to total revenue
+        periodRevenue += pumpNetProfit;
 
         // Fetch previous period for comparison
         const { data: prevPeriodTrips, error: prevPeriodError } = await supabase
@@ -394,17 +408,35 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
           prevPeriodExpenses += prevCargoExpenses;
         }
 
-        // Fetch previous period Fuel sales profit
+        // Fetch previous period Fuel sales profit with pump operating expenses
         const { data: prevFuelSalesRecords, error: prevFuelSalesError } = await supabase
           .from('fuel_sales')
-          .select('total_amount')
+          .select('total_amount, litres, cost_price_per_litre')
           .gte('sale_date', prevPeriodStart)
           .lte('sale_date', prevPeriodEnd)
           .eq('status', 'active');
 
         if (!prevFuelSalesError) {
-          const prevFuelProfit = prevFuelSalesRecords?.reduce((sum, s) => sum + (s.total_amount || 0), 0) || 0;
-          prevPeriodRevenue += prevFuelProfit;
+          let prevFuelProfit = 0;
+          for (const sale of (prevFuelSalesRecords || [])) {
+            const cost = (sale.litres || 0) * (sale.cost_price_per_litre || 0);
+            const revenue = sale.total_amount || 0;
+            prevFuelProfit += revenue - cost;
+          }
+          
+          // Fetch previous period pump operating expenses
+          const { data: prevPumpExpenses, error: prevPumpExpensesError } = await supabase
+            .from('pump_expenses')
+            .select('amount')
+            .gte('expense_date', prevPeriodStart)
+            .lte('expense_date', prevPeriodEnd)
+            .eq('status', 'active');
+          
+          if (!prevPumpExpensesError) {
+            const prevPumpOperatingExpenses = prevPumpExpenses?.reduce((sum, e) => sum + e.amount, 0) || 0;
+            const prevPumpNetProfit = prevFuelProfit - prevPumpOperatingExpenses;
+            prevPeriodRevenue += prevPumpNetProfit;
+          }
         }
 
         // Fetch bus counts
