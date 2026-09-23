@@ -7,6 +7,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { logError } from '../utils/errors';
+import { calculateFuelCogsUsingWac, buildWacEvents } from '../lib/petrolPumpAccounting';
+import type { FuelPurchase, FuelSale, FuelStockAdjustment } from '../types/database';
 
 export interface DashboardMetrics {
   selectedPeriod: {
@@ -251,28 +253,97 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
         // Add Cargo expenses to total expenses
         periodExpenses += cargoExpenses;
 
-        // Fetch ALL Fuel sales (internal bus + external customer) for the selected period
-        const { data: fuelSalesRecords, error: fuelSalesError } = await supabase
+        // Fetch ALL fuel purchases, sales, and adjustments for WAC calculation
+        // This matches the perpetual WAC method used in Petrol Pump Reports
+        const { data: allFuelPurchases, error: fuelPurchasesError } = await supabase
+          .from('fuel_purchases')
+          .select('*')
+          .order('purchase_date', { ascending: true });
+
+        if (fuelPurchasesError) throw fuelPurchasesError;
+
+        const { data: allFuelSales, error: allFuelSalesError } = await supabase
           .from('fuel_sales')
-          .select('total_amount, litres, cost_price_per_litre, sale_type, trip_id')
-          .gte('sale_date', periodStart)
-          .lte('sale_date', periodEnd)
-          .eq('status', 'active');
+          .select('*')
+          .order('sale_date', { ascending: true });
 
-        if (fuelSalesError) throw fuelSalesError;
-        
-        // Calculate fuel profit from ALL sales using stored total_amount
-        // This matches the calculation in useReports.ts for consistency
-        let fuelRevenue = 0;
-        let fuelCost = 0;
+        if (allFuelSalesError) throw allFuelSalesError;
 
-        for (const sale of (fuelSalesRecords || [])) {
-          const cost = (sale.cost_price_per_litre || 0) * (sale.litres || 0);
-          fuelCost += cost;
-          fuelRevenue += sale.total_amount || 0;
+        const { data: allFuelAdjustments, error: fuelAdjustmentsError } = await supabase
+          .from('fuel_stock_adjustments')
+          .select('*')
+          .order('adjustment_date', { ascending: true });
+
+        if (fuelAdjustmentsError) throw fuelAdjustmentsError;
+
+        // Build events and calculate opening stock from pre-period transactions
+        const { prePeriodEvents, periodEvents } = buildWacEvents(
+          allFuelPurchases || [],
+          allFuelSales || [],
+          allFuelAdjustments || [],
+          periodStart,
+          periodEnd
+        );
+
+        // Calculate opening stock by processing pre-period events
+        let openingStockLitres = 0;
+        let openingStockValue = 0;
+        let wac = 0;
+
+        for (const event of prePeriodEvents) {
+          if (event.type === 'purchase') {
+            const purchaseCost = event.litres * (event.costPerLitre || 0);
+            openingStockLitres += event.litres;
+            openingStockValue += purchaseCost;
+            if (openingStockLitres > 0) {
+              wac = openingStockValue / openingStockLitres;
+            }
+          } else if (event.type === 'sale') {
+            const saleLitres = Math.min(event.litres, openingStockLitres);
+            const saleCost = saleLitres * wac;
+            openingStockLitres -= saleLitres;
+            openingStockValue -= saleCost;
+            if (openingStockLitres <= 0) {
+              openingStockLitres = 0;
+              openingStockValue = 0;
+              wac = 0;
+            }
+          } else if (event.type === 'adjustment') {
+            const adjCostPerLitre = event.costPerLitre !== undefined ? event.costPerLitre : wac;
+            const adjCost = event.litres * adjCostPerLitre;
+            openingStockLitres += event.litres;
+            openingStockValue += adjCost;
+            if (openingStockLitres > 0) {
+              wac = openingStockValue / openingStockLitres;
+            }
+            if (openingStockLitres <= 0) {
+              openingStockLitres = 0;
+              openingStockValue = 0;
+              wac = 0;
+            }
+          }
         }
 
-        const fuelProfit = fuelRevenue - fuelCost;
+        // Calculate fuel COGS using perpetual WAC method (matches Petrol Pump Reports)
+        const wacResult = calculateFuelCogsUsingWac(
+          openingStockLitres,
+          openingStockValue,
+          periodEvents
+        );
+
+        const fuelCogs = wacResult.totalCost;
+
+        // Calculate fuel revenue from active sales in period
+        const activePeriodSales = (allFuelSales || []).filter(s => {
+          const sDate = new Date(s.sale_date);
+          return sDate >= new Date(periodStart) && 
+                 sDate <= new Date(periodEnd) && 
+                 s.status === 'active';
+        });
+
+        const fuelRevenue = activePeriodSales.reduce((sum, s) => sum + (s.total_amount || 0), 0);
+
+        const fuelProfit = fuelRevenue - fuelCogs;
 
         // Fetch pump operating expenses
         const { data: pumpExpensesRecords, error: pumpExpensesError } = await supabase
@@ -396,20 +467,90 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
         }
 
         // Fetch previous period Fuel sales profit with pump operating expenses
-        const { data: prevFuelSalesRecords, error: prevFuelSalesError } = await supabase
-          .from('fuel_sales')
-          .select('total_amount, litres, cost_price_per_litre')
-          .gte('sale_date', prevPeriodStart)
-          .lte('sale_date', prevPeriodEnd)
-          .eq('status', 'active');
+        // Using same perpetual WAC method as current period for consistency
+        const { data: prevAllFuelPurchases, error: prevFuelPurchasesError } = await supabase
+          .from('fuel_purchases')
+          .select('*')
+          .order('purchase_date', { ascending: true });
 
-        if (!prevFuelSalesError) {
-          let prevFuelProfit = 0;
-          for (const sale of (prevFuelSalesRecords || [])) {
-            const cost = (sale.litres || 0) * (sale.cost_price_per_litre || 0);
-            const revenue = sale.total_amount || 0;
-            prevFuelProfit += revenue - cost;
+        const { data: prevAllFuelSales, error: prevAllFuelSalesError } = await supabase
+          .from('fuel_sales')
+          .select('*')
+          .order('sale_date', { ascending: true });
+
+        const { data: prevAllFuelAdjustments, error: prevFuelAdjustmentsError } = await supabase
+          .from('fuel_stock_adjustments')
+          .select('*')
+          .order('adjustment_date', { ascending: true });
+
+        if (!prevFuelPurchasesError && !prevAllFuelSalesError && !prevFuelAdjustmentsError) {
+          // Build events and calculate opening stock for previous period
+          const { prePeriodEvents: prevPreEvents, periodEvents: prevPeriodEvents } = buildWacEvents(
+            prevAllFuelPurchases || [],
+            prevAllFuelSales || [],
+            prevAllFuelAdjustments || [],
+            prevPeriodStart,
+            prevPeriodEnd
+          );
+
+          // Calculate opening stock for previous period
+          let prevOpeningStockLitres = 0;
+          let prevOpeningStockValue = 0;
+          let prevWac = 0;
+
+          for (const event of prevPreEvents) {
+            if (event.type === 'purchase') {
+              const purchaseCost = event.litres * (event.costPerLitre || 0);
+              prevOpeningStockLitres += event.litres;
+              prevOpeningStockValue += purchaseCost;
+              if (prevOpeningStockLitres > 0) {
+                prevWac = prevOpeningStockValue / prevOpeningStockLitres;
+              }
+            } else if (event.type === 'sale') {
+              const saleLitres = Math.min(event.litres, prevOpeningStockLitres);
+              const saleCost = saleLitres * prevWac;
+              prevOpeningStockLitres -= saleLitres;
+              prevOpeningStockValue -= saleCost;
+              if (prevOpeningStockLitres <= 0) {
+                prevOpeningStockLitres = 0;
+                prevOpeningStockValue = 0;
+                prevWac = 0;
+              }
+            } else if (event.type === 'adjustment') {
+              const adjCostPerLitre = event.costPerLitre !== undefined ? event.costPerLitre : prevWac;
+              const adjCost = event.litres * adjCostPerLitre;
+              prevOpeningStockLitres += event.litres;
+              prevOpeningStockValue += adjCost;
+              if (prevOpeningStockLitres > 0) {
+                prevWac = prevOpeningStockValue / prevOpeningStockLitres;
+              }
+              if (prevOpeningStockLitres <= 0) {
+                prevOpeningStockLitres = 0;
+                prevOpeningStockValue = 0;
+                prevWac = 0;
+              }
+            }
           }
+
+          // Calculate fuel COGS using perpetual WAC method
+          const prevWacResult = calculateFuelCogsUsingWac(
+            prevOpeningStockLitres,
+            prevOpeningStockValue,
+            prevPeriodEvents
+          );
+
+          const prevFuelCogs = prevWacResult.totalCost;
+
+          // Calculate fuel revenue from active sales in previous period
+          const prevActiveSales = (prevAllFuelSales || []).filter(s => {
+            const sDate = new Date(s.sale_date);
+            return sDate >= new Date(prevPeriodStart) && 
+                   sDate <= new Date(prevPeriodEnd) && 
+                   s.status === 'active';
+          });
+
+          const prevFuelRevenue = prevActiveSales.reduce((sum, s) => sum + (s.total_amount || 0), 0);
+          const prevFuelProfit = prevFuelRevenue - prevFuelCogs;
           
           // Fetch previous period pump operating expenses
           const { data: prevPumpExpenses, error: prevPumpExpensesError } = await supabase
