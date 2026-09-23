@@ -158,6 +158,10 @@ export default function PetrolPumpOverviewPage() {
   const totalFuelCost = allSales.reduce((sum, s) => sum + (s.litres * (s.cost_price_per_litre || 0)), 0);
   const petrolPumpProfit = totalFuelRevenue - totalFuelCost;
   
+  // Calculate Net Profit (Gross Profit - All Pump Operating Expenses)
+  const totalPumpExpenses = allExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const petrolPumpNetProfit = petrolPumpProfit - totalPumpExpenses;
+  
   // Period-based financial metrics for display
   const periodFuelRevenue = filteredAllSales.reduce((sum, s) => sum + s.total_amount, 0);
   const periodFuelCost = filteredAllSales.reduce((sum, s) => sum + (s.litres * (s.cost_price_per_litre || 0)), 0);
@@ -259,13 +263,6 @@ export default function PetrolPumpOverviewPage() {
               {/* Key Metrics */}
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <SummaryCard
-                  label="Total Purchased"
-                  value={`${totalPurchasedLitres.toFixed(0)} L`}
-                  subtitle={`PKR ${formatCurrency(purchases.reduce((sum, p) => sum + p.total_cost, 0)).replace('PKR ', '')} cost`}
-                  icon={<Package className="h-6 w-6" />}
-                  variant="default"
-                />
-                <SummaryCard
                   label="Total Sold"
                   value={`${totalSoldLitres.toFixed(0)} L`}
                   subtitle={`PKR ${formatCurrency(totalFuelRevenue).replace('PKR ', '')} revenue`}
@@ -285,6 +282,13 @@ export default function PetrolPumpOverviewPage() {
                   subtitle="All fuel sales"
                   icon={<TrendingUp className="h-6 w-6" />}
                   variant={petrolPumpProfit >= 0 ? 'success' : 'danger'}
+                />
+                <SummaryCard
+                  label="Net Profit"
+                  value={formatCurrency(petrolPumpNetProfit)}
+                  subtitle="After pump expenses"
+                  icon={<TrendingUp className="h-6 w-6" />}
+                  variant={petrolPumpNetProfit >= 0 ? 'success' : 'danger'}
                 />
               </div>
 
