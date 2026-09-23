@@ -141,9 +141,9 @@ export default function ReportsPage() {
                 </span>
               </div>
               <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                <span className="text-sm font-medium text-gray-700">Fuel Profit</span>
-                <span className={`text-sm font-semibold ${summary.fuelProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(summary.fuelProfit)}
+                <span className="text-sm font-medium text-gray-700">Pump Net Profit</span>
+                <span className={`text-sm font-semibold ${summary.pumpNetProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(summary.pumpNetProfit)}
                 </span>
               </div>
               <div className="flex items-center justify-between border-b border-gray-100 pb-2">

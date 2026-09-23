@@ -13,6 +13,8 @@ export interface OverallSummary {
   addaProfit: number;
   cargoProfit: number;
   fuelProfit: number;
+  pumpOperatingExpenses: number;
+  pumpNetProfit: number;
   installmentPayments: number;
 }
 
@@ -165,6 +167,18 @@ export function useOverallSummary(dateRange: DateRange) {
         
         const fuelProfit = fuelRevenue - fuelCost;
 
+        // Fetch pump operating expenses
+        const { data: pumpExpenses, error: pumpExpensesError } = await supabase
+          .from('pump_expenses')
+          .select('amount')
+          .gte('expense_date', dateRange.startDate)
+          .lte('expense_date', dateRange.endDate)
+          .eq('status', 'active');
+
+        if (pumpExpensesError) throw pumpExpensesError;
+        const pumpOperatingExpenses = pumpExpenses?.reduce((sum, e) => sum + e.amount, 0) || 0;
+        const pumpNetProfit = fuelProfit - pumpOperatingExpenses;
+
         // Fetch installment payments (taken only - these are expenses)
         const { data: installments, error: installmentsError } = await supabase
           .from('installments')
@@ -205,6 +219,8 @@ export function useOverallSummary(dateRange: DateRange) {
           addaProfit,
           cargoProfit,
           fuelProfit,
+          pumpOperatingExpenses,
+          pumpNetProfit,
           installmentPayments,
         });
 
