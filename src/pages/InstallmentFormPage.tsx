@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createInstallment } from '../hooks/useInstallments';
+import { createInstallment, extractErrorMessage } from '../hooks/useInstallments';
 import { formatDate } from '../lib/utils';
 import { ArrowLeft } from 'lucide-react';
 
@@ -48,7 +48,7 @@ export default function InstallmentFormPage() {
 
       navigate('/app/installments');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create installment');
+      setError(extractErrorMessage(err, 'Failed to create installment'));
       setLoading(false);
     }
   };

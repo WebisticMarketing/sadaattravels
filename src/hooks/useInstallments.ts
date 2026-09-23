@@ -154,6 +154,41 @@ export function useInstallment(installmentId: string | null) {
 }
 
 /**
+ * Build the installments.title value (DB column is TEXT NOT NULL).
+ * The application never displays or searches by title, so we derive it
+ * deterministically from user-entered fields.
+ */
+export function buildInstallmentTitle(data: {
+  person_name: string;
+  description?: string;
+}): string {
+  const name = data.person_name.trim();
+  const desc = data.description?.trim();
+  return desc ? `${name} - ${desc}` : name;
+}
+
+/**
+ * Extract a user-safe message from a thrown value.
+ * Supabase/PostgREST errors are plain objects ({ message, code, details, hint }),
+ * not Error instances, so `err instanceof Error` misses them.
+ */
+export function extractErrorMessage(err: unknown, fallback: string): string {
+  if (err && typeof err === 'object') {
+    const e = err as { message?: unknown; code?: unknown };
+    if (typeof e.message === 'string' && e.message.trim()) {
+      // Constraint violations leak internal schema details; show a friendly message.
+      const code = typeof e.code === 'string' ? e.code : '';
+      if (code === '23502' || code === '23514' || code === 'PGRST204') {
+        return 'Invalid or missing data for this record. Please check the form and try again.';
+      }
+      return e.message;
+    }
+  }
+  if (typeof err === 'string' && err.trim()) return err;
+  return fallback;
+}
+
+/**
  * Create a new installment
  */
 export async function createInstallment(data: {
@@ -169,6 +204,7 @@ export async function createInstallment(data: {
     .from('installments')
     .insert({
       ...data,
+      title: buildInstallmentTitle(data),
       status: 'active',
     })
     .select()
