@@ -1,14 +1,25 @@
 /**
  * Dashboard data fetching hooks
- * 
- * Fetches and calculates dashboard metrics from Supabase
+ *
+ * Fetches and calculates dashboard metrics from Supabase.
+ *
+ * FINANCIAL ACCOUNTING NOTE: All company-wide financial totals on the
+ * Dashboard (Revenue / Expenses / Net Profit, current AND previous period)
+ * are produced by the shared company accounting engine in
+ * src/lib/companyAccounting.ts — the single source of truth also consumed
+ * by Main Reports. No page-level accounting formulas may live here.
  */
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { logError } from '../utils/errors';
-import { calculateFuelCogsUsingWac, buildWacEvents } from '../lib/petrolPumpAccounting';
-import type { FuelPurchase, FuelSale, FuelStockAdjustment } from '../types/database';
+import {
+  computeCompanyAccounting,
+  fetchCompanyAccountingData,
+  monthPeriod,
+  previousMonthPeriod,
+} from '../lib/companyAccounting';
+import type { CompanyAccountingResult } from '../lib/companyAccounting';
 
 export interface DashboardMetrics {
   selectedPeriod: {
@@ -23,6 +34,8 @@ export interface DashboardMetrics {
     expenses: number;
     profit: number;
   };
+  /** Full engine result for the selected period (for any additional display). */
+  accounting: CompanyAccountingResult;
   buses: {
     total: number;
     active: number;
@@ -74,6 +87,21 @@ function formatTimeAgo(timestamp: string): string {
 }
 
 /**
+ * Count active trips inside a period from the already-fetched trip rows
+ * (trips are fetched from period.start onwards by the shared fetcher).
+ */
+function countActiveTrips(
+  trips: Array<{ trip_date: string; status: string }>,
+  start: string,
+  end: string
+): number {
+  return trips.filter(t => {
+    const d = (t.trip_date || '').slice(0, 10);
+    return t.status === 'active' && d >= start && d <= end;
+  }).length;
+}
+
+/**
  * Fetch dashboard metrics from database for a specific period
  */
 export function useDashboardMetrics(selectedMonth?: string, selectedYear?: string) {
@@ -86,44 +114,47 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
       try {
         setLoading(true);
         setError(null);
-        
-        // Calculate selected period date range
+
+        // Calculate selected period date range (inclusive ISO dates)
         const now = new Date();
         const month = selectedMonth ? parseInt(selectedMonth) : now.getMonth() + 1;
         const year = selectedYear ? parseInt(selectedYear) : now.getFullYear();
-        
-        // Selected period: first day to last day of selected month
-        const periodStart = `${year}-${String(month).padStart(2, '0')}-01`;
-        const lastDay = new Date(year, month, 0).getDate();
-        const periodEnd = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-        
-        // Previous period for comparison
-        const prevMonth = month === 1 ? 12 : month - 1;
-        const prevYear = month === 1 ? year - 1 : year;
-        const prevPeriodStart = `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`;
-        const prevLastDay = new Date(prevYear, prevMonth, 0).getDate();
-        const prevPeriodEnd = `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(prevLastDay).padStart(2, '0')}`;
 
-        // Fetch selected period trips
-        const { data: periodTrips, error: periodError } = await supabase
-          .from('trips')
-          .select('id, trip_date, status, bus_id')
-          .gte('trip_date', periodStart)
-          .lte('trip_date', periodEnd)
-          .eq('status', 'active');
+        const period = monthPeriod(year, month);
+        const prevPeriod = previousMonthPeriod(period);
 
-        if (periodError) throw periodError;
+        // ============================================================
+        // COMPANY-WIDE ACCOUNTING via the SHARED ENGINE (single source
+        // of truth used identically by Main Reports). Both the current
+        // and previous periods run through the same pure computation.
+        // ============================================================
+        const [currentData, previousData] = await Promise.all([
+          fetchCompanyAccountingData(supabase, period),
+          fetchCompanyAccountingData(supabase, prevPeriod),
+        ]);
 
-        // Fetch selected period revenue and expenses
-        let periodRevenue = 0;
-        let periodExpenses = 0;
+        const accounting = computeCompanyAccounting(period, currentData);
+        const prevAccounting = computeCompanyAccounting(prevPeriod, previousData);
+
+        const periodTripsCount = countActiveTrips(currentData.trips, period.start, period.end);
+        const prevPeriodTripsCount = countActiveTrips(previousData.trips, prevPeriod.start, prevPeriod.end);
+
+        // ============================================================
+        // Occupancy inputs (operational metric — not P&L)
+        // ============================================================
+        const activePeriodTripIds = currentData.trips
+          .filter(t => {
+            const d = (t.trip_date || '').slice(0, 10);
+            return t.status === 'active' && d >= period.start && d <= period.end;
+          })
+          .map(t => ({ id: t.id, bus_id: t.bus_id ?? null }));
+
         let totalSeatsBooked = 0;
         let totalCapacity = 0;
 
-        if (periodTrips && periodTrips.length > 0) {
-          const tripIds = periodTrips.map(t => t.id);
+        if (activePeriodTripIds.length > 0) {
+          const tripIds = activePeriodTripIds.map(t => t.id);
 
-          // Revenue
           const { data: revenueData, error: revenueError } = await supabase
             .from('trip_revenue_entries')
             .select('amount, entry_type, quantity, trip_id')
@@ -132,25 +163,11 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
 
           if (revenueError) throw revenueError;
 
-          periodRevenue = revenueData?.reduce((sum, r) => sum + r.amount, 0) || 0;
-          
-          // Calculate occupancy rate from seat bookings
           const seatBookings = revenueData?.filter(r => r.entry_type === 'seat_booking') || [];
           totalSeatsBooked = seatBookings.reduce((sum, r) => sum + (r.quantity || 0), 0);
 
-          // Expenses
-          const { data: expenseData, error: expenseError } = await supabase
-            .from('trip_expenses')
-            .select('amount')
-            .in('trip_id', tripIds)
-            .eq('status', 'active');
-
-          if (expenseError) throw expenseError;
-          periodExpenses = expenseData?.reduce((sum, e) => sum + e.amount, 0) || 0;
-
-          // Get bus capacities for occupancy calculation
-          // For each trip, get the bus capacity and sum it (so if a bus runs multiple trips, its capacity is counted multiple times)
-          const busIdsForTrips = periodTrips.map(t => t.bus_id).filter(id => id != null);
+          // Bus capacities per trip (a bus running multiple trips counts its capacity each trip)
+          const busIdsForTrips = activePeriodTripIds.map(t => t.bus_id).filter(id => id != null);
           if (busIdsForTrips.length > 0) {
             const { data: busesData, error: busesError } = await supabase
               .from('buses')
@@ -158,416 +175,20 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
               .in('id', busIdsForTrips);
 
             if (!busesError && busesData) {
-              // Create a map of bus_id to capacity
               const busCapacityMap = new Map(busesData.map(b => [b.id, b.capacity]));
-              // For each trip, add the capacity of its bus (so capacity is counted per trip, not per unique bus)
-              totalCapacity = periodTrips.reduce((sum, trip) => {
-                const capacity = busCapacityMap.get(trip.bus_id) || 0;
+              totalCapacity = activePeriodTripIds.reduce((sum, trip) => {
+                const capacity = trip.bus_id ? busCapacityMap.get(trip.bus_id) || 0 : 0;
                 return sum + capacity;
               }, 0);
             }
           }
         }
 
-        // Fetch maintenance costs for the selected period
-        const { data: maintenanceRecords, error: maintenanceError } = await supabase
-          .from('maintenance_records')
-          .select('cost')
-          .gte('maintenance_date', periodStart)
-          .lte('maintenance_date', periodEnd)
-          .eq('status', 'active');
+        // ============================================================
+        // Non-financial KPIs
+        // ============================================================
 
-        if (maintenanceError) throw maintenanceError;
-        const maintenanceCost = maintenanceRecords?.reduce((sum, m) => sum + m.cost, 0) || 0;
-
-        // Add maintenance to total expenses
-        periodExpenses += maintenanceCost;
-
-        // Fetch tyre costs for the selected period
-        const { data: tyreRecords, error: tyreError } = await supabase
-          .from('tyre_records')
-          .select('total_cost')
-          .gte('purchase_date', periodStart)
-          .lte('purchase_date', periodEnd)
-          .eq('status', 'active');
-
-        if (tyreError) throw tyreError;
-        const tyreCost = tyreRecords?.reduce((sum, t) => sum + t.total_cost, 0) || 0;
-
-        // Add tyre cost to total expenses
-        periodExpenses += tyreCost;
-
-        // Fetch Adda income for the selected period
-        const { data: addaIncomeRecords, error: addaIncomeError } = await supabase
-          .from('adda_income')
-          .select('amount')
-          .gte('income_date', periodStart)
-          .lte('income_date', periodEnd)
-          .eq('status', 'active');
-
-        if (addaIncomeError) throw addaIncomeError;
-        const addaIncome = addaIncomeRecords?.reduce((sum, r) => sum + r.amount, 0) || 0;
-
-        // Add Adda income to total revenue
-        periodRevenue += addaIncome;
-
-        // Fetch Adda expenses for the selected period
-        const { data: addaExpenseRecords, error: addaExpenseError } = await supabase
-          .from('adda_expenses')
-          .select('amount')
-          .gte('expense_date', periodStart)
-          .lte('expense_date', periodEnd)
-          .eq('status', 'active');
-
-        if (addaExpenseError) throw addaExpenseError;
-        const addaExpenses = addaExpenseRecords?.reduce((sum, r) => sum + r.amount, 0) || 0;
-
-        // Add Adda expenses to total expenses
-        periodExpenses += addaExpenses;
-
-        // Fetch Cargo revenue for the selected period
-        const { data: cargoRecords, error: cargoError } = await supabase
-          .from('cargo_records')
-          .select('revenue')
-          .gte('shipment_date', periodStart)
-          .lte('shipment_date', periodEnd)
-          .eq('status', 'active');
-
-        if (cargoError) throw cargoError;
-        const cargoRevenue = cargoRecords?.reduce((sum, r) => sum + r.revenue, 0) || 0;
-
-        // Add Cargo revenue to total revenue
-        periodRevenue += cargoRevenue;
-
-        // Fetch Cargo expenses for the selected period
-        const { data: cargoExpenseRecords, error: cargoExpenseError } = await supabase
-          .from('cargo_records')
-          .select('expenses')
-          .gte('shipment_date', periodStart)
-          .lte('shipment_date', periodEnd)
-          .eq('status', 'active');
-
-        if (cargoExpenseError) throw cargoExpenseError;
-        const cargoExpenses = cargoExpenseRecords?.reduce((sum, r) => sum + r.expenses, 0) || 0;
-
-        // Add Cargo expenses to total expenses
-        periodExpenses += cargoExpenses;
-
-        // Fetch ALL fuel purchases, sales, and adjustments for WAC calculation
-        // This matches the perpetual WAC method used in Petrol Pump Reports
-        const { data: allFuelPurchases, error: fuelPurchasesError } = await supabase
-          .from('fuel_purchases')
-          .select('*')
-          .order('purchase_date', { ascending: true });
-
-        if (fuelPurchasesError) throw fuelPurchasesError;
-
-        const { data: allFuelSales, error: allFuelSalesError } = await supabase
-          .from('fuel_sales')
-          .select('*')
-          .order('sale_date', { ascending: true });
-
-        if (allFuelSalesError) throw allFuelSalesError;
-
-        const { data: allFuelAdjustments, error: fuelAdjustmentsError } = await supabase
-          .from('fuel_stock_adjustments')
-          .select('*')
-          .order('adjustment_date', { ascending: true });
-
-        if (fuelAdjustmentsError) throw fuelAdjustmentsError;
-
-        // Build events and calculate opening stock from pre-period transactions
-        const { prePeriodEvents, periodEvents } = buildWacEvents(
-          allFuelPurchases || [],
-          allFuelSales || [],
-          allFuelAdjustments || [],
-          periodStart,
-          periodEnd
-        );
-
-        // Calculate opening stock by processing pre-period events
-        let openingStockLitres = 0;
-        let openingStockValue = 0;
-        let wac = 0;
-
-        for (const event of prePeriodEvents) {
-          if (event.type === 'purchase') {
-            const purchaseCost = event.litres * (event.costPerLitre || 0);
-            openingStockLitres += event.litres;
-            openingStockValue += purchaseCost;
-            if (openingStockLitres > 0) {
-              wac = openingStockValue / openingStockLitres;
-            }
-          } else if (event.type === 'sale') {
-            const saleLitres = Math.min(event.litres, openingStockLitres);
-            const saleCost = saleLitres * wac;
-            openingStockLitres -= saleLitres;
-            openingStockValue -= saleCost;
-            if (openingStockLitres <= 0) {
-              openingStockLitres = 0;
-              openingStockValue = 0;
-              wac = 0;
-            }
-          } else if (event.type === 'adjustment') {
-            const adjCostPerLitre = event.costPerLitre !== undefined ? event.costPerLitre : wac;
-            const adjCost = event.litres * adjCostPerLitre;
-            openingStockLitres += event.litres;
-            openingStockValue += adjCost;
-            if (openingStockLitres > 0) {
-              wac = openingStockValue / openingStockLitres;
-            }
-            if (openingStockLitres <= 0) {
-              openingStockLitres = 0;
-              openingStockValue = 0;
-              wac = 0;
-            }
-          }
-        }
-
-        // Calculate fuel COGS using perpetual WAC method (matches Petrol Pump Reports)
-        const wacResult = calculateFuelCogsUsingWac(
-          openingStockLitres,
-          openingStockValue,
-          periodEvents
-        );
-
-        const fuelCogs = wacResult.totalCost;
-
-        // Calculate fuel revenue from active sales in period
-        const activePeriodSales = (allFuelSales || []).filter(s => {
-          const sDate = new Date(s.sale_date);
-          return sDate >= new Date(periodStart) && 
-                 sDate <= new Date(periodEnd) && 
-                 s.status === 'active';
-        });
-
-        const fuelRevenue = activePeriodSales.reduce((sum, s) => sum + (s.total_amount || 0), 0);
-
-        const fuelProfit = fuelRevenue - fuelCogs;
-
-        // Fetch pump operating expenses
-        const { data: pumpExpensesRecords, error: pumpExpensesError } = await supabase
-          .from('pump_expenses')
-          .select('amount')
-          .gte('expense_date', periodStart)
-          .lte('expense_date', periodEnd)
-          .eq('status', 'active');
-
-        if (pumpExpensesError) throw pumpExpensesError;
-        const pumpOperatingExpenses = pumpExpensesRecords?.reduce((sum, e) => sum + e.amount, 0) || 0;
-        
-        // Calculate Pump Net Profit (final contribution after operating expenses)
-        const pumpNetProfit = fuelProfit - pumpOperatingExpenses;
-
-        // Add Pump Net Profit to total revenue
-        periodRevenue += pumpNetProfit;
-
-        // Fetch previous period for comparison
-        const { data: prevPeriodTrips, error: prevPeriodError } = await supabase
-          .from('trips')
-          .select('id')
-          .gte('trip_date', prevPeriodStart)
-          .lte('trip_date', prevPeriodEnd)
-          .eq('status', 'active');
-
-        if (prevPeriodError) throw prevPeriodError;
-
-        let prevPeriodRevenue = 0;
-        let prevPeriodExpenses = 0;
-
-        if (prevPeriodTrips && prevPeriodTrips.length > 0) {
-          const prevTripIds = prevPeriodTrips.map(t => t.id);
-
-          const { data: prevRevenueData, error: prevRevenueError } = await supabase
-            .from('trip_revenue_entries')
-            .select('amount')
-            .in('trip_id', prevTripIds)
-            .eq('status', 'active');
-
-          if (!prevRevenueError) {
-            prevPeriodRevenue = prevRevenueData?.reduce((sum, r) => sum + r.amount, 0) || 0;
-          }
-
-          const { data: prevExpenseData, error: prevExpenseError } = await supabase
-            .from('trip_expenses')
-            .select('amount')
-            .in('trip_id', prevTripIds)
-            .eq('status', 'active');
-
-          if (!prevExpenseError) {
-            prevPeriodExpenses = prevExpenseData?.reduce((sum, e) => sum + e.amount, 0) || 0;
-          }
-        }
-
-        // Fetch previous period maintenance costs
-        const { data: prevMaintenanceRecords, error: prevMaintenanceError } = await supabase
-          .from('maintenance_records')
-          .select('cost')
-          .gte('maintenance_date', prevPeriodStart)
-          .lte('maintenance_date', prevPeriodEnd)
-          .eq('status', 'active');
-
-        if (!prevMaintenanceError) {
-          const prevMaintenanceCost = prevMaintenanceRecords?.reduce((sum, m) => sum + m.cost, 0) || 0;
-          prevPeriodExpenses += prevMaintenanceCost;
-        }
-
-        // Fetch previous period tyre costs
-        const { data: prevTyreRecords, error: prevTyreError } = await supabase
-          .from('tyre_records')
-          .select('total_cost')
-          .gte('purchase_date', prevPeriodStart)
-          .lte('purchase_date', prevPeriodEnd)
-          .eq('status', 'active');
-
-        if (!prevTyreError) {
-          const prevTyreCost = prevTyreRecords?.reduce((sum, t) => sum + t.total_cost, 0) || 0;
-          prevPeriodExpenses += prevTyreCost;
-        }
-
-        // Fetch previous period Adda income
-        const { data: prevAddaIncomeRecords, error: prevAddaIncomeError } = await supabase
-          .from('adda_income')
-          .select('amount')
-          .gte('income_date', prevPeriodStart)
-          .lte('income_date', prevPeriodEnd)
-          .eq('status', 'active');
-
-        if (!prevAddaIncomeError) {
-          const prevAddaIncome = prevAddaIncomeRecords?.reduce((sum, r) => sum + r.amount, 0) || 0;
-          prevPeriodRevenue += prevAddaIncome;
-        }
-
-        // Fetch previous period Adda expenses
-        const { data: prevAddaExpenseRecords, error: prevAddaExpenseError } = await supabase
-          .from('adda_expenses')
-          .select('amount')
-          .gte('expense_date', prevPeriodStart)
-          .lte('expense_date', prevPeriodEnd)
-          .eq('status', 'active');
-
-        if (!prevAddaExpenseError) {
-          const prevAddaExpenses = prevAddaExpenseRecords?.reduce((sum, r) => sum + r.amount, 0) || 0;
-          prevPeriodExpenses += prevAddaExpenses;
-        }
-
-        // Fetch previous period Cargo revenue and expenses
-        const { data: prevCargoRecords, error: prevCargoError } = await supabase
-          .from('cargo_records')
-          .select('revenue, expenses')
-          .gte('shipment_date', prevPeriodStart)
-          .lte('shipment_date', prevPeriodEnd)
-          .eq('status', 'active');
-
-        if (!prevCargoError && prevCargoRecords) {
-          const prevCargoRevenue = prevCargoRecords.reduce((sum, r) => sum + (r.revenue || 0), 0);
-          const prevCargoExpenses = prevCargoRecords.reduce((sum, r) => sum + (r.expenses || 0), 0);
-          prevPeriodRevenue += prevCargoRevenue;
-          prevPeriodExpenses += prevCargoExpenses;
-        }
-
-        // Fetch previous period Fuel sales profit with pump operating expenses
-        // Using same perpetual WAC method as current period for consistency
-        const { data: prevAllFuelPurchases, error: prevFuelPurchasesError } = await supabase
-          .from('fuel_purchases')
-          .select('*')
-          .order('purchase_date', { ascending: true });
-
-        const { data: prevAllFuelSales, error: prevAllFuelSalesError } = await supabase
-          .from('fuel_sales')
-          .select('*')
-          .order('sale_date', { ascending: true });
-
-        const { data: prevAllFuelAdjustments, error: prevFuelAdjustmentsError } = await supabase
-          .from('fuel_stock_adjustments')
-          .select('*')
-          .order('adjustment_date', { ascending: true });
-
-        if (!prevFuelPurchasesError && !prevAllFuelSalesError && !prevFuelAdjustmentsError) {
-          // Build events and calculate opening stock for previous period
-          const { prePeriodEvents: prevPreEvents, periodEvents: prevPeriodEvents } = buildWacEvents(
-            prevAllFuelPurchases || [],
-            prevAllFuelSales || [],
-            prevAllFuelAdjustments || [],
-            prevPeriodStart,
-            prevPeriodEnd
-          );
-
-          // Calculate opening stock for previous period
-          let prevOpeningStockLitres = 0;
-          let prevOpeningStockValue = 0;
-          let prevWac = 0;
-
-          for (const event of prevPreEvents) {
-            if (event.type === 'purchase') {
-              const purchaseCost = event.litres * (event.costPerLitre || 0);
-              prevOpeningStockLitres += event.litres;
-              prevOpeningStockValue += purchaseCost;
-              if (prevOpeningStockLitres > 0) {
-                prevWac = prevOpeningStockValue / prevOpeningStockLitres;
-              }
-            } else if (event.type === 'sale') {
-              const saleLitres = Math.min(event.litres, prevOpeningStockLitres);
-              const saleCost = saleLitres * prevWac;
-              prevOpeningStockLitres -= saleLitres;
-              prevOpeningStockValue -= saleCost;
-              if (prevOpeningStockLitres <= 0) {
-                prevOpeningStockLitres = 0;
-                prevOpeningStockValue = 0;
-                prevWac = 0;
-              }
-            } else if (event.type === 'adjustment') {
-              const adjCostPerLitre = event.costPerLitre !== undefined ? event.costPerLitre : prevWac;
-              const adjCost = event.litres * adjCostPerLitre;
-              prevOpeningStockLitres += event.litres;
-              prevOpeningStockValue += adjCost;
-              if (prevOpeningStockLitres > 0) {
-                prevWac = prevOpeningStockValue / prevOpeningStockLitres;
-              }
-              if (prevOpeningStockLitres <= 0) {
-                prevOpeningStockLitres = 0;
-                prevOpeningStockValue = 0;
-                prevWac = 0;
-              }
-            }
-          }
-
-          // Calculate fuel COGS using perpetual WAC method
-          const prevWacResult = calculateFuelCogsUsingWac(
-            prevOpeningStockLitres,
-            prevOpeningStockValue,
-            prevPeriodEvents
-          );
-
-          const prevFuelCogs = prevWacResult.totalCost;
-
-          // Calculate fuel revenue from active sales in previous period
-          const prevActiveSales = (prevAllFuelSales || []).filter(s => {
-            const sDate = new Date(s.sale_date);
-            return sDate >= new Date(prevPeriodStart) && 
-                   sDate <= new Date(prevPeriodEnd) && 
-                   s.status === 'active';
-          });
-
-          const prevFuelRevenue = prevActiveSales.reduce((sum, s) => sum + (s.total_amount || 0), 0);
-          const prevFuelProfit = prevFuelRevenue - prevFuelCogs;
-          
-          // Fetch previous period pump operating expenses
-          const { data: prevPumpExpenses, error: prevPumpExpensesError } = await supabase
-            .from('pump_expenses')
-            .select('amount')
-            .gte('expense_date', prevPeriodStart)
-            .lte('expense_date', prevPeriodEnd)
-            .eq('status', 'active');
-          
-          if (!prevPumpExpensesError) {
-            const prevPumpOperatingExpenses = prevPumpExpenses?.reduce((sum, e) => sum + e.amount, 0) || 0;
-            const prevPumpNetProfit = prevFuelProfit - prevPumpOperatingExpenses;
-            prevPeriodRevenue += prevPumpNetProfit;
-          }
-        }
-
-        // Fetch bus counts
+        // Bus counts
         const { data: buses, error: busesError } = await supabase
           .from('buses')
           .select('id, status');
@@ -577,7 +198,7 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
         const totalBuses = buses?.length || 0;
         const activeBuses = buses?.filter(b => b.status === 'active').length || 0;
 
-        // Fetch fuel stock
+        // Current fuel stock (litres) — operational, purchases - sales + adjustments
         const { data: fuelPurchases, error: purchasesError } = await supabase
           .from('fuel_purchases')
           .select('litres')
@@ -604,10 +225,10 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
         const totalAdjustments = fuelAdjustments?.reduce((sum, a) => sum + a.litres, 0) || 0;
         const currentStock = totalPurchases - totalSales + totalAdjustments;
 
-        // Calculate occupancy rate
+        // Occupancy rate
         const occupancyRate = totalCapacity > 0 ? Math.min(100, Math.round((totalSeatsBooked / totalCapacity) * 100)) : null;
 
-        // Fetch pending maintenance (overdue)
+        // Pending maintenance (overdue)
         const today = getTodayPKT();
         const { data: overdueMaintenanceRecords, error: overdueMaintenanceError } = await supabase
           .from('maintenance_records')
@@ -620,55 +241,51 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
 
         const pendingMaintenance = overdueMaintenanceRecords?.length || 0;
 
-        // Fetch recent activity from multiple sources (trips, maintenance, tyres, adda)
-        // This avoids relying on audit_logs which may have RLS issues
+        // ============================================================
+        // Recent activity feed (non-accounting display data)
+        // ============================================================
         const [recentTrips, recentMaintenance, recentTyres, recentAddaIncome, recentAddaExpenses] = await Promise.all([
-          // Recent trips
           supabase
             .from('trips')
             .select('id, trip_date, route, bus_id, status')
-            .gte('trip_date', periodStart)
-            .lte('trip_date', periodEnd)
+            .gte('trip_date', period.start)
+            .lte('trip_date', period.end)
             .eq('status', 'active')
             .order('trip_date', { ascending: false })
             .limit(5),
 
-          // Recent maintenance
           supabase
             .from('maintenance_records')
             .select('id, maintenance_date, maintenance_type, description, bus_id, status')
-            .gte('maintenance_date', periodStart)
-            .lte('maintenance_date', periodEnd)
+            .gte('maintenance_date', period.start)
+            .lte('maintenance_date', period.end)
             .eq('status', 'active')
             .order('maintenance_date', { ascending: false })
             .limit(5),
 
-          // Recent tyres
           supabase
             .from('tyre_records')
             .select('id, purchase_date, tyre_size, notes, bus_id, status')
-            .gte('purchase_date', periodStart)
-            .lte('purchase_date', periodEnd)
+            .gte('purchase_date', period.start)
+            .lte('purchase_date', period.end)
             .eq('status', 'active')
             .order('purchase_date', { ascending: false })
             .limit(5),
 
-          // Recent Adda income
           supabase
             .from('adda_income')
             .select('id, income_date, income_type, amount, received_from, status')
-            .gte('income_date', periodStart)
-            .lte('income_date', periodEnd)
+            .gte('income_date', period.start)
+            .lte('income_date', period.end)
             .eq('status', 'active')
             .order('income_date', { ascending: false })
             .limit(5),
 
-          // Recent Adda expenses
           supabase
             .from('adda_expenses')
             .select('id, expense_date, expense_type, amount, paid_to, status')
-            .gte('expense_date', periodStart)
-            .lte('expense_date', periodEnd)
+            .gte('expense_date', period.start)
+            .lte('expense_date', period.end)
             .eq('status', 'active')
             .order('expense_date', { ascending: false })
             .limit(5)
@@ -678,9 +295,8 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
         if (recentMaintenance.error) throw recentMaintenance.error;
         if (recentTyres.error) throw recentTyres.error;
         if (recentAddaIncome.error) throw recentAddaIncome.error;
-        if (recentTyres.error) throw recentTyres.error;
+        if (recentAddaExpenses.error) throw recentAddaExpenses.error;
 
-        // Combine and normalize activities
         const allActivities: Array<{
           id: string;
           type: string;
@@ -693,7 +309,6 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
           date: string;
         }> = [];
 
-        // Add trips
         (recentTrips.data || []).forEach(trip => {
           allActivities.push({
             id: `trip-${trip.id}`,
@@ -708,7 +323,6 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
           });
         });
 
-        // Add maintenance
         (recentMaintenance.data || []).forEach(record => {
           allActivities.push({
             id: `maint-${record.id}`,
@@ -723,7 +337,6 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
           });
         });
 
-        // Add tyres
         (recentTyres.data || []).forEach(record => {
           allActivities.push({
             id: `tyre-${record.id}`,
@@ -738,7 +351,6 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
           });
         });
 
-        // Add Adda income
         (recentAddaIncome.data || []).forEach(record => {
           allActivities.push({
             id: `adda-income-${record.id}`,
@@ -753,7 +365,6 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
           });
         });
 
-        // Add Adda expenses
         (recentAddaExpenses.data || []).forEach(record => {
           allActivities.push({
             id: `adda-expense-${record.id}`,
@@ -768,23 +379,23 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
           });
         });
 
-        // Sort all activities by date descending and take top 5
         allActivities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         const recentActivity = allActivities.slice(0, 5).map(({ date, ...rest }) => rest);
 
         setMetrics({
           selectedPeriod: {
-            trips: periodTrips?.length || 0,
-            revenue: periodRevenue,
-            expenses: periodExpenses,
-            profit: periodRevenue - periodExpenses,
+            trips: periodTripsCount,
+            revenue: accounting.company.revenue,
+            expenses: accounting.company.expenses,
+            profit: accounting.company.netProfit,
           },
           previousPeriod: {
-            trips: prevPeriodTrips?.length || 0,
-            revenue: prevPeriodRevenue,
-            expenses: prevPeriodExpenses,
-            profit: prevPeriodRevenue - prevPeriodExpenses,
+            trips: prevPeriodTripsCount,
+            revenue: prevAccounting.company.revenue,
+            expenses: prevAccounting.company.expenses,
+            profit: prevAccounting.company.netProfit,
           },
+          accounting,
           buses: {
             total: totalBuses,
             active: activeBuses,

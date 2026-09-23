@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { logError } from '../utils/errors';
+import { useCompanyAccounting } from './useCompanyAccounting';
+import type { CompanyAccountingResult } from '../lib/companyAccounting';
 
 export interface OverallSummary {
   totalRevenue: number;
@@ -10,12 +12,24 @@ export interface OverallSummary {
   tripExpenses: number;
   maintenanceCost: number;
   tyreCost: number;
-  addaProfit: number;
-  cargoProfit: number;
-  fuelProfit: number;
+  addaIncome: number;
+  addaExpenses: number;
+  cargoRevenue: number;
+  cargoExpenses: number;
+  /** Gross pump revenue — ALL active fuel sales (EXTERNAL_CUSTOMER + INTERNAL_BUS). Locked rule. */
+  pumpRevenue: number;
+  pumpExternalRevenue: number;
+  pumpInternalRevenue: number;
+  /** Perpetual WAC COGS — same engine the Petrol Pump Reports reference uses. */
+  pumpCogsWac: number;
+  pumpGrossProfit: number;
   pumpOperatingExpenses: number;
+  /** Informational only: pump.revenue - cogs - opEx. NEVER added to revenue or expenses. */
   pumpNetProfit: number;
+  /** Isolated legacy treatment: full payments on installment_type='taken' loans. */
   installmentPayments: number;
+  /** Full shared-engine result for reconciliation-aware display. */
+  accounting: CompanyAccountingResult;
 }
 
 export interface BusProfitability {
@@ -35,205 +49,60 @@ export interface DateRange {
 }
 
 /**
- * Fetch overall business summary for a date range
+ * Fetch overall business summary for a date range.
+ *
+ * ALL company-wide accounting comes from the SHARED ENGINE
+ * (src/lib/companyAccounting.ts) — the exact same computation the Dashboard
+ * runs. This hook performs no accounting arithmetic of its own.
  */
 export function useOverallSummary(dateRange: DateRange) {
+  const period = { start: dateRange.startDate, end: dateRange.endDate };
+  const { result: accounting, error: acctError } = useCompanyAccounting(period);
+
   const [summary, setSummary] = useState<OverallSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchSummary() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Fetch trip revenue
-        const { data: trips, error: tripsError } = await supabase
-          .from('trips')
-          .select('id, trip_date, status')
-          .gte('trip_date', dateRange.startDate)
-          .lte('trip_date', dateRange.endDate)
-          .eq('status', 'active');
-
-        if (tripsError) throw tripsError;
-
-        let tripRevenue = 0;
-        let tripExpenses = 0;
-
-        if (trips && trips.length > 0) {
-          const tripIds = trips.map(t => t.id);
-
-          // Fetch revenue entries
-          const { data: revenueEntries, error: revenueError } = await supabase
-            .from('trip_revenue_entries')
-            .select('amount')
-            .in('trip_id', tripIds)
-            .eq('status', 'active');
-
-          if (revenueError) throw revenueError;
-          tripRevenue = revenueEntries?.reduce((sum, r) => sum + r.amount, 0) || 0;
-
-          // Fetch expense entries
-          const { data: expenseEntries, error: expenseError } = await supabase
-            .from('trip_expenses')
-            .select('amount')
-            .in('trip_id', tripIds)
-            .eq('status', 'active');
-
-          if (expenseError) throw expenseError;
-          tripExpenses = expenseEntries?.reduce((sum, e) => sum + e.amount, 0) || 0;
-        }
-
-        // Fetch maintenance costs
-        const { data: maintenanceRecords, error: maintenanceError } = await supabase
-          .from('maintenance_records')
-          .select('cost')
-          .gte('maintenance_date', dateRange.startDate)
-          .lte('maintenance_date', dateRange.endDate)
-          .eq('status', 'active');
-
-        if (maintenanceError) throw maintenanceError;
-        const maintenanceCost = maintenanceRecords?.reduce((sum, m) => sum + m.cost, 0) || 0;
-
-        // Fetch tyre costs
-        const { data: tyreRecords, error: tyreError } = await supabase
-          .from('tyre_records')
-          .select('total_cost')
-          .gte('purchase_date', dateRange.startDate)
-          .lte('purchase_date', dateRange.endDate)
-          .eq('status', 'active');
-
-        if (tyreError) throw tyreError;
-        const tyreCost = tyreRecords?.reduce((sum, t) => sum + t.total_cost, 0) || 0;
-
-        // Fetch adda income and expenses
-        const { data: addaIncome, error: addaIncomeError } = await supabase
-          .from('adda_income')
-          .select('amount')
-          .gte('income_date', dateRange.startDate)
-          .lte('income_date', dateRange.endDate)
-          .eq('status', 'active');
-
-        if (addaIncomeError) throw addaIncomeError;
-        const addaIncomeTotal = addaIncome?.reduce((sum, i) => sum + i.amount, 0) || 0;
-
-        const { data: addaExpenses, error: addaExpensesError } = await supabase
-          .from('adda_expenses')
-          .select('amount')
-          .gte('expense_date', dateRange.startDate)
-          .lte('expense_date', dateRange.endDate)
-          .eq('status', 'active');
-
-        if (addaExpensesError) throw addaExpensesError;
-        const addaExpensesTotal = addaExpenses?.reduce((sum, e) => sum + e.amount, 0) || 0;
-        const addaProfit = addaIncomeTotal - addaExpensesTotal;
-
-        // Fetch cargo revenue and expenses
-        const { data: cargoRecords, error: cargoError } = await supabase
-          .from('cargo_records')
-          .select('revenue, expenses')
-          .gte('shipment_date', dateRange.startDate)
-          .lte('shipment_date', dateRange.endDate)
-          .eq('status', 'active');
-
-        if (cargoError) throw cargoError;
-        const cargoRevenue = cargoRecords?.reduce((sum, c) => sum + c.revenue, 0) || 0;
-        const cargoExpenses = cargoRecords?.reduce((sum, c) => sum + c.expenses, 0) || 0;
-        const cargoProfit = cargoRevenue - cargoExpenses;
-
-        // Fetch ALL fuel sales (internal bus + external customer)
-        const { data: fuelSales, error: fuelError } = await supabase
-          .from('fuel_sales')
-          .select('total_amount, cost_price_per_litre, litres, sale_type, trip_id')
-          .gte('sale_date', dateRange.startDate)
-          .lte('sale_date', dateRange.endDate)
-          .eq('status', 'active');
-
-        if (fuelError) throw fuelError;
-        
-        // Calculate fuel revenue and cost from ALL sales
-        let fuelRevenue = 0;
-        let fuelCost = 0;
-        
-        for (const sale of (fuelSales || [])) {
-          const cost = (sale.cost_price_per_litre || 0) * (sale.litres || 0);
-          fuelCost += cost;
-          
-          // Both INTERNAL_BUS and EXTERNAL_CUSTOMER use sale.total_amount
-          // This now stores litres × universal selling price for both types
-          fuelRevenue += sale.total_amount || 0;
-        }
-        
-        const fuelProfit = fuelRevenue - fuelCost;
-
-        // Fetch pump operating expenses
-        const { data: pumpExpenses, error: pumpExpensesError } = await supabase
-          .from('pump_expenses')
-          .select('amount')
-          .gte('expense_date', dateRange.startDate)
-          .lte('expense_date', dateRange.endDate)
-          .eq('status', 'active');
-
-        if (pumpExpensesError) throw pumpExpensesError;
-        const pumpOperatingExpenses = pumpExpenses?.reduce((sum, e) => sum + e.amount, 0) || 0;
-        const pumpNetProfit = fuelProfit - pumpOperatingExpenses;
-
-        // Fetch installment payments (taken only - these are expenses)
-        const { data: installments, error: installmentsError } = await supabase
-          .from('installments')
-          .select('id')
-          .eq('installment_type', 'taken');
-
-        if (installmentsError) throw installmentsError;
-
-        let installmentPayments = 0;
-        if (installments && installments.length > 0) {
-          const installmentIds = installments.map(i => i.id);
-
-          const { data: payments, error: paymentsError } = await supabase
-            .from('installment_payments')
-            .select('amount, payment_date')
-            .in('installment_id', installmentIds)
-            .gte('payment_date', dateRange.startDate)
-            .lte('payment_date', dateRange.endDate)
-            .eq('status', 'active');
-
-          if (paymentsError) throw paymentsError;
-          installmentPayments = payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
-        }
-
-        // Calculate totals - Pump Net Profit is the final contribution (revenue - COGS - expenses already included)
-        const totalRevenue = tripRevenue + addaIncomeTotal + cargoRevenue + (pumpNetProfit > 0 ? pumpNetProfit : 0);
-        const totalExpenses = tripExpenses + maintenanceCost + tyreCost + installmentPayments + (pumpNetProfit < 0 ? Math.abs(pumpNetProfit) : 0);
-        const totalProfit = totalRevenue - totalExpenses;
-
-        setSummary({
-          totalRevenue,
-          totalExpenses,
-          totalProfit,
-          tripRevenue,
-          tripExpenses,
-          maintenanceCost,
-          tyreCost,
-          addaProfit,
-          cargoProfit,
-          fuelProfit,
-          pumpOperatingExpenses,
-          pumpNetProfit,
-          installmentPayments,
-        });
-
-        setLoading(false);
-      } catch (err) {
-        logError(err, 'useOverallSummary');
-        setError(err instanceof Error ? err.message : 'Failed to load summary');
-        setLoading(false);
-      }
+    if (acctError) {
+      logError(acctError, 'useOverallSummary');
+      setError(acctError);
+      setSummary(null);
+      setLoading(false);
+      return;
     }
-
-    fetchSummary();
-  }, [dateRange.startDate, dateRange.endDate]);
+    if (!accounting) {
+      setLoading(true);
+      return;
+    }
+    const r = accounting.revenue;
+    const e = accounting.expenses;
+    const p = accounting.units.pump;
+    setSummary({
+      totalRevenue: accounting.company.revenue,
+      totalExpenses: accounting.company.expenses,
+      totalProfit: accounting.company.netProfit,
+      tripRevenue: r.trips,
+      tripExpenses: e.trips,
+      maintenanceCost: e.maintenance,
+      tyreCost: e.tyres,
+      addaIncome: r.adda,
+      addaExpenses: e.adda,
+      cargoRevenue: r.cargo,
+      cargoExpenses: e.cargo,
+      pumpRevenue: p.revenue,
+      pumpExternalRevenue: p.externalRevenue,
+      pumpInternalRevenue: p.internalRevenue,
+      pumpCogsWac: p.cogs,
+      pumpGrossProfit: p.grossProfit,
+      pumpOperatingExpenses: p.operatingExpenses,
+      pumpNetProfit: p.netProfit,
+      installmentPayments: e.installmentPayments,
+      accounting,
+    });
+    setError(null);
+    setLoading(false);
+  }, [accounting, acctError]);
 
   return { summary, loading, error };
 }
