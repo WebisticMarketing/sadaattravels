@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useBuses } from '../hooks/useBuses';
 import { createCargoRecord, updateCargoRecord, useCargoRecord } from '../hooks/useCargo';
+import { getErrorMessage } from '../hooks/useDeletion';
 import { formatDate } from '../lib/utils';
 import { ArrowLeft } from 'lucide-react';
 
@@ -84,6 +85,8 @@ export default function CargoFormPage() {
 
       if (isEdit && record) {
         await updateCargoRecord(record.id, {
+          shipment_date: isoDate,
+          bus_id: formData.bus_id || null,
           sender_name: formData.sender_name.trim(),
           sender_phone: formData.sender_phone.trim(),
           receiver_name: formData.receiver_name.trim(),
@@ -91,8 +94,10 @@ export default function CargoFormPage() {
           origin: formData.origin.trim(),
           destination: formData.destination.trim(),
           description: formData.description.trim(),
-          weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : 0,
-          quantity: formData.quantity ? parseInt(formData.quantity) : 0,
+          // DB allows NULL but rejects 0 for quantity (CHECK quantity > 0),
+          // so blank fields must map to null — never a manufactured 0.
+          weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
+          quantity: formData.quantity ? parseInt(formData.quantity) : null,
           revenue: parseFloat(formData.revenue || '0'),
           expenses: parseFloat(formData.expenses || '0'),
           notes: formData.notes.trim(),
@@ -120,7 +125,12 @@ export default function CargoFormPage() {
 
       navigate('/app/cargo');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create cargo record');
+      // Supabase/PostgREST errors are plain objects, not Error instances —
+      // use the project's extraction helper so the real DB message surfaces.
+      const fallback = isEdit ? 'Failed to update cargo record' : 'Failed to create cargo record';
+      setError(getErrorMessage(err) !== 'An unexpected error occurred. Please try again.'
+        ? getErrorMessage(err)
+        : fallback);
       setLoading(false);
     }
   };
