@@ -7,7 +7,8 @@ import {
   getErrorMessage,
 } from '../hooks/useDeletion';
 import type { DeletedRecord, DeletableTableName } from '../types/database';
-import { formatCurrency, formatDate } from '../lib/utils';
+import { formatCurrency, formatDate, getMonthStart, getMonthEnd } from '../lib/utils';
+import { MonthYearFilter } from '../components/ui/MonthYearFilter';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SearchInput } from '../components/ui/SearchInput';
 import { Card } from '../components/ui/Card';
@@ -37,8 +38,9 @@ export default function DeletedDataPage() {
 
   const [search, setSearch] = useState('');
   const [moduleFilter, setModuleFilter] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const today = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(today.getFullYear());
 
   const [restoreTarget, setRestoreTarget] = useState<DeletedRecord | null>(null);
   const [permanentTarget, setPermanentTarget] = useState<DeletedRecord | null>(null);
@@ -54,10 +56,12 @@ export default function DeletedDataPage() {
 
   const filtered = useMemo(() => {
     const searchLower = search.trim().toLowerCase();
+    // Selected calendar month range (browser-local time), same helpers as Cargo/Reports pages.
+    const startDate = getMonthStart(selectedYear, selectedMonth);
+    const endDate = getMonthEnd(selectedYear, selectedMonth);
     return records.filter(r => {
       if (moduleFilter && r.module_label !== moduleFilter) return false;
-      if (startDate && (!r.record_date || r.record_date < startDate)) return false;
-      if (endDate && (!r.record_date || r.record_date > endDate)) return false;
+      if (!r.record_date || r.record_date < startDate || r.record_date > endDate) return false;
       if (searchLower) {
         const haystack = [
           r.description,
@@ -73,7 +77,7 @@ export default function DeletedDataPage() {
       return true;
     });
     // records are already ordered newest-deleted-first by the RPC
-  }, [records, search, moduleFilter, startDate, endDate]);
+  }, [records, search, moduleFilter, selectedMonth, selectedYear]);
 
   const canPermanentDelete = (r: DeletedRecord) =>
     isOwner && r.table_name === 'personal_expenses';
@@ -152,22 +156,12 @@ export default function DeletedDataPage() {
               ))}
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">From</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={e => setStartDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">To</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={e => setEndDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          <div className="lg:col-span-2">
+            <MonthYearFilter
+              month={selectedMonth}
+              year={selectedYear}
+              onMonthChange={setSelectedMonth}
+              onYearChange={setSelectedYear}
             />
           </div>
         </div>
