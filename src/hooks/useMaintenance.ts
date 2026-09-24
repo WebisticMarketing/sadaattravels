@@ -42,7 +42,9 @@ export function useMaintenance(options?: {
           *,
           bus:buses(id, registration_number, bus_name)
         `)
-        .order('maintenance_date', { ascending: false });
+        .order('maintenance_date', { ascending: false })
+        // Soft-deleted records belong to the recycle bin, not operational lists
+        .neq('status', 'deleted');
 
       if (options?.startDate) {
         query = query.gte('maintenance_date', options.startDate);
@@ -231,23 +233,4 @@ export async function updateMaintenanceRecord(
 
   if (error) throw error;
   return record;
-}
-
-/**
- * Reverse a maintenance record (soft delete)
- */
-export async function reverseMaintenanceRecord(
-  id: string,
-  reason: string
-): Promise<void> {
-  const { error } = await supabase
-    .from('maintenance_records')
-    .update({
-      status: 'reversed',
-      reversed_at: new Date().toISOString(),
-      reversal_reason: reason,
-    })
-    .eq('id', id);
-
-  if (error) throw error;
 }

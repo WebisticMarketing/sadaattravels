@@ -142,22 +142,3 @@ export async function updatePersonalExpense(
   if (error) throw error;
   return expense;
 }
-
-/**
- * Reverse a personal expense (soft delete)
- */
-export async function reversePersonalExpense(
-  id: string,
-  reason: string
-): Promise<void> {
-  const { error } = await supabase
-    .from('personal_expenses')
-    .update({
-      status: 'reversed',
-      reversed_at: new Date().toISOString(),
-      reversal_reason: reason,
-    })
-    .eq('id', id);
-
-  if (error) throw error;
-}

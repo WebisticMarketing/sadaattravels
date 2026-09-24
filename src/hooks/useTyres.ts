@@ -41,7 +41,9 @@ export function useTyres(filters?: {
             bus_name
           )
         `)
-        .order('purchase_date', { ascending: false });
+        .order('purchase_date', { ascending: false })
+        // Soft-deleted tyres belong to the recycle bin, not operational lists
+        .neq('status', 'deleted');
 
       if (filters?.busId) {
         query = query.eq('bus_id', filters.busId);
@@ -161,17 +163,4 @@ export async function updateTyreRecord(
 
   if (error) throw error;
   return tyre;
-}
-
-export async function reverseTyreRecord(id: string, reason: string) {
-  const { error } = await supabase
-    .from('tyre_records')
-    .update({
-      status: 'reversed',
-      reversed_at: new Date().toISOString(),
-      reversal_reason: reason,
-    })
-    .eq('id', id);
-
-  if (error) throw error;
 }

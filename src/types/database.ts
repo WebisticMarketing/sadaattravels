@@ -16,7 +16,7 @@
 // ============================================================================
 
 export type UserStatus = 'active' | 'inactive' | 'suspended';
-export type RecordStatus = 'active' | 'reversed' | 'cancelled';
+export type RecordStatus = 'active' | 'reversed' | 'cancelled' | 'deleted';
 export type FuelSaleType = 'EXTERNAL_CUSTOMER' | 'INTERNAL_BUS';
 export type InstallmentType = 'given' | 'taken';
 export type InstallmentAssetType = 'bus' | 'car' | 'property' | 'other';
@@ -36,7 +36,9 @@ export type AuditAction =
   | 'financial_change'
   | 'password_change'
   | 'password_reset_requested'
-  | 'password_reset_completed';
+  | 'password_reset_completed'
+  | 'restore'
+  | 'permanent_delete';
 
 // ============================================================================
 // USERS & AUTH
@@ -130,6 +132,9 @@ export interface Trip {
   reversed_by: string | null;
   reversed_at: string | null;
   reversal_reason: string | null;
+  /** Soft-delete (recycle bin) metadata — set by soft_delete_record RPC */
+  deleted_by?: string | null;
+  deleted_at?: string | null;
 }
 
 /**
@@ -154,6 +159,9 @@ export interface TripRevenueEntry {
   reversed_by: string | null;
   reversed_at: string | null;
   reversal_reason: string | null;
+  /** Soft-delete (recycle bin) metadata — set by soft_delete_record RPC */
+  deleted_by?: string | null;
+  deleted_at?: string | null;
 }
 
 export type TripExpenseType =
@@ -213,6 +221,9 @@ export interface MaintenanceRecord {
   reversed_by: string | null;
   reversed_at: string | null;
   reversal_reason: string | null;
+  /** Soft-delete (recycle bin) metadata — set by soft_delete_record RPC */
+  deleted_by?: string | null;
+  deleted_at?: string | null;
 }
 
 export interface TyreRecord {
@@ -235,6 +246,9 @@ export interface TyreRecord {
   reversed_by: string | null;
   reversed_at: string | null;
   reversal_reason: string | null;
+  /** Soft-delete (recycle bin) metadata — set by soft_delete_record RPC */
+  deleted_by?: string | null;
+  deleted_at?: string | null;
 }
 
 // ============================================================================
@@ -258,6 +272,9 @@ export interface FuelPurchase {
   reversed_by: string | null;
   reversed_at: string | null;
   reversal_reason: string | null;
+  /** Soft-delete (recycle bin) metadata — set by soft_delete_record RPC */
+  deleted_by?: string | null;
+  deleted_at?: string | null;
 }
 
 /**
@@ -304,6 +321,9 @@ export interface FuelSale {
   reversed_by: string | null;
   reversed_at: string | null;
   reversal_reason: string | null;
+  /** Soft-delete (recycle bin) metadata — set by soft_delete_record RPC */
+  deleted_by?: string | null;
+  deleted_at?: string | null;
 }
 
 /**
@@ -355,6 +375,9 @@ export interface FuelStockAdjustment {
   reversed_by: string | null;
   reversed_at: string | null;
   reversal_reason: string | null;
+  /** Soft-delete (recycle bin) metadata — set by soft_delete_record RPC */
+  deleted_by?: string | null;
+  deleted_at?: string | null;
 }
 
 /**
@@ -411,6 +434,9 @@ export interface AddaIncome {
   reversed_by: string | null;
   reversed_at: string | null;
   reversal_reason: string | null;
+  /** Soft-delete (recycle bin) metadata — set by soft_delete_record RPC */
+  deleted_by?: string | null;
+  deleted_at?: string | null;
 }
 
 export interface AddaExpense {
@@ -429,6 +455,9 @@ export interface AddaExpense {
   reversed_by: string | null;
   reversed_at: string | null;
   reversal_reason: string | null;
+  /** Soft-delete (recycle bin) metadata — set by soft_delete_record RPC */
+  deleted_by?: string | null;
+  deleted_at?: string | null;
 }
 
 // ============================================================================
@@ -467,6 +496,9 @@ export interface PumpExpense {
   reversed_by: string | null;
   reversed_at: string | null;
   reversal_reason: string | null;
+  /** Soft-delete (recycle bin) metadata — set by soft_delete_record RPC */
+  deleted_by?: string | null;
+  deleted_at?: string | null;
 }
 
 // ============================================================================
@@ -503,6 +535,9 @@ export interface CargoRecord {
   reversed_by: string | null;
   reversed_at: string | null;
   reversal_reason: string | null;
+  /** Soft-delete (recycle bin) metadata — set by soft_delete_record RPC */
+  deleted_by?: string | null;
+  deleted_at?: string | null;
 }
 
 // ============================================================================
@@ -541,6 +576,9 @@ export interface Installment {
   reversed_by: string | null;
   reversed_at: string | null;
   reversal_reason: string | null;
+  /** Soft-delete (recycle bin) metadata — set by soft_delete_record RPC */
+  deleted_by?: string | null;
+  deleted_at?: string | null;
 }
 
 export interface InstallmentPayment {
@@ -559,6 +597,9 @@ export interface InstallmentPayment {
   reversed_by: string | null;
   reversed_at: string | null;
   reversal_reason: string | null;
+  /** Soft-delete (recycle bin) metadata — set by soft_delete_record RPC */
+  deleted_by?: string | null;
+  deleted_at?: string | null;
 }
 
 // ============================================================================
@@ -586,6 +627,9 @@ export interface PersonalExpense {
   reversed_by: string | null;
   reversed_at: string | null;
   reversal_reason: string | null;
+  /** Soft-delete (recycle bin) metadata — set by soft_delete_record RPC */
+  deleted_by?: string | null;
+  deleted_at?: string | null;
 }
 
 // ============================================================================
@@ -605,6 +649,43 @@ export interface AuditLog {
   meta: Record<string, any> | null;
   created_at: string;
 }
+
+// ============================================================================
+// DELETED DATA (RECYCLE BIN)
+// ============================================================================
+
+/**
+ * Row returned by the unified `list_deleted_records()` RPC.
+ * Represents one soft-deleted record in the recycle bin, regardless of module.
+ */
+export interface DeletedRecord {
+  table_name: string;
+  module_label: string;
+  record_id: string;
+  description: string | null;
+  amount: number | null;
+  record_date: string | null;
+  deleted_by_name: string | null;
+  deleted_at: string | null;
+}
+
+/** Tables accepted by the soft-delete / restore RPC whitelist. */
+export type DeletableTableName =
+  | 'trips'
+  | 'trip_revenue_entries'
+  | 'trip_expenses'
+  | 'maintenance_records'
+  | 'tyre_records'
+  | 'fuel_purchases'
+  | 'fuel_sales'
+  | 'fuel_stock_adjustments'
+  | 'adda_income'
+  | 'adda_expenses'
+  | 'cargo_records'
+  | 'installments'
+  | 'installment_payments'
+  | 'personal_expenses'
+  | 'pump_expenses';
 
 // ============================================================================
 // DATABASE SCHEMA TYPE (for Supabase client)

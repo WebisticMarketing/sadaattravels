@@ -1,31 +1,36 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useTyre, reverseTyreRecord } from '../hooks/useTyres';
+import { useTyre } from '../hooks/useTyres';
+import { softDeleteRecord, getErrorMessage } from '../hooks/useDeletion';
 import { formatCurrency, formatDate } from '../lib/utils';
 import { ArrowLeft, Edit2, XCircle, CircleDot } from 'lucide-react';
 
 export default function TyreDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const { tyre, loading, error, refetch } = useTyre(id || null);
+  const { tyre, loading, error } = useTyre(id || null);
 
-  const [showReverseModal, setShowReverseModal] = useState(false);
-  const [reversalReason, setReversalReason] = useState('');
-  const [reversing, setReversing] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletionReason, setDeletionReason] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const handleReverse = async () => {
-    if (!id || !reversalReason.trim()) return;
+  const handleDelete = async () => {
+    if (!id || !deletionReason.trim()) return;
 
-    setReversing(true);
+    setDeleting(true);
+    setDeleteError(null);
     try {
-      await reverseTyreRecord(id, reversalReason);
-      setShowReverseModal(false);
-      setReversalReason('');
-      refetch();
+      // Soft delete via secure RPC — record moves to the Deleted Data
+      // (recycle bin) and can be restored later with its previous status.
+      await softDeleteRecord('tyre_records', id, deletionReason);
+      setShowDeleteModal(false);
+      setDeletionReason('');
+      navigate('/app/tyres');
     } catch (err) {
-      console.error('Failed to reverse tyre record:', err);
+      setDeleteError(getErrorMessage(err));
     } finally {
-      setReversing(false);
+      setDeleting(false);
     }
   };
 
@@ -88,11 +93,11 @@ export default function TyreDetailPage() {
               Edit
             </button>
             <button
-              onClick={() => setShowReverseModal(true)}
+              onClick={() => setShowDeleteModal(true)}
               className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
             >
               <XCircle className="h-4 w-4" />
-              Reverse
+              Delete
             </button>
           </div>
         )}
@@ -226,45 +231,53 @@ export default function TyreDetailPage() {
         </div>
       </div>
 
-      {/* Reverse Modal */}
-      {showReverseModal && (
+      {/* Delete Modal (soft delete -> recycle bin) */}
+      {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md rounded-lg bg-white p-6">
-            <h2 className="text-xl font-bold text-gray-900">Reverse Tyre Record</h2>
+            <h2 className="text-xl font-bold text-gray-900">Delete Tyre Record</h2>
             <p className="mt-2 text-sm text-gray-600">
-              This will mark the record as reversed and exclude it from calculations.
-              This action cannot be undone.
+              This will move the tyre record to Deleted Data (the recycle bin).
+              It will stop appearing in lists and calculations, but it is NOT destroyed —
+              an OWNER or MANAGER can restore it later from Account → Deleted Data.
             </p>
 
             <div className="mt-4">
               <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                Reason for Reversal *
+                Reason for Deletion *
               </label>
               <textarea
-                value={reversalReason}
-                onChange={(e) => setReversalReason(e.target.value)}
-                placeholder="Enter reason for reversing this record"
+                value={deletionReason}
+                onChange={(e) => setDeletionReason(e.target.value)}
+                placeholder="Enter reason for deleting this record"
                 rows={4}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
 
+            {deleteError && (
+              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3">
+                <p className="text-sm text-red-800">{deleteError}</p>
+              </div>
+            )}
+
             <div className="mt-6 flex gap-3">
               <button
                 onClick={() => {
-                  setShowReverseModal(false);
-                  setReversalReason('');
+                  setShowDeleteModal(false);
+                  setDeletionReason('');
+                  setDeleteError(null);
                 }}
                 className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
-                onClick={handleReverse}
-                disabled={!reversalReason.trim() || reversing}
+                onClick={handleDelete}
+                disabled={!deletionReason.trim() || deleting}
                 className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
               >
-                {reversing ? 'Reversing...' : 'Reverse Record'}
+                {deleting ? 'Deleting...' : 'Delete Record'}
               </button>
             </div>
           </div>

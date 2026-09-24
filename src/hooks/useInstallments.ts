@@ -28,7 +28,9 @@ export function useInstallments(options?: {
       let query = supabase
         .from('installments')
         .select('*')
-        .order('start_date', { ascending: false });
+        .order('start_date', { ascending: false })
+        // Soft-deleted installments belong to the recycle bin, not operational lists
+        .neq('status', 'deleted');
 
       if (options?.type) {
         query = query.eq('installment_type', options.type);
