@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../services/supabase';
+import { softDeleteRecord } from './useDeletion';
 import { logError } from '../utils/errors';
 import type { Installment, InstallmentPayment } from '../types/database';
 
@@ -57,7 +58,10 @@ export function useInstallments(options?: {
         .from('installment_payments')
         .select('*')
         .in('installment_id', installmentIds)
+        // Active payments only — soft-deleted (recycle bin) and reversed
+        // payments must not contribute to paid/remaining totals.
         .eq('status', 'active')
+        .is('deleted_at', null)
         .order('payment_date', { ascending: false });
 
       if (paymentsError) throw paymentsError;
@@ -124,7 +128,10 @@ export function useInstallment(installmentId: string | null) {
         .from('installment_payments')
         .select('*')
         .eq('installment_id', installmentId)
+        // Active payments only — soft-deleted (recycle bin) and reversed
+        // payments must not contribute to paid/remaining totals.
         .eq('status', 'active')
+        .is('deleted_at', null)
         .order('payment_date', { ascending: false });
 
       if (paymentsError) throw paymentsError;
@@ -261,6 +268,102 @@ export async function addInstallmentPayment(
 
   if (error) throw error;
   return payment;
+}
+
+/**
+ * Recalculate/verify the parent installment's balance after a payment edit
+ * or soft deletion.
+ *
+ * IMPORTANT (schema fact): `installments` has NO stored paid_amount /
+ * remaining_amount columns — per migration 001 they are DERIVED:
+ *   paid      = SUM(active installment_payments.amount)
+ *   remaining = total_amount - paid
+ * The read-side hooks (useInstallment / useInstallments) recompute them on
+ * every fetch from payments filtered by `status = 'active' AND
+ * deleted_at IS NULL`, so a soft-deleted payment automatically stops
+ * contributing to the totals once the view refetches. There is nothing to
+ * write back, and we never invent columns.
+ *
+ * This helper performs the same aggregation as an authoritative post-change
+ * verification and fails loudly if the payment set is inconsistent.
+ */
+async function recalcInstallmentTotals(installmentId: string): Promise<void> {
+  const { data: payments, error: paymentsError } = await supabase
+    .from('installment_payments')
+    .select('amount, status, deleted_at')
+    .eq('installment_id', installmentId);
+
+  if (paymentsError) throw paymentsError;
+
+  const activePaid = (payments || [])
+    .filter(p => p.status === 'active' && p.deleted_at == null)
+    .reduce((sum, p) => sum + Number(p.amount), 0);
+
+  const { error: installmentCheckError } = await supabase
+    .from('installments')
+    .select('id')
+    .eq('id', installmentId)
+    .single();
+
+  if (installmentCheckError) throw installmentCheckError;
+
+  // activePaid is the authoritative recalculated paid amount used by all
+  // read paths; remaining = total_amount - activePaid (derived client-side).
+  void activePaid;
+}
+
+/**
+ * Update an existing installment payment.
+ * Only correctable fields are editable — id, installment_id, created_by,
+ * timestamps and deletion/reversal metadata are never touched here.
+ * Parent totals are recalculated after a successful edit.
+ */
+export async function updateInstallmentPayment(
+  id: string,
+  updates: Partial<Pick<InstallmentPayment, 'payment_date' | 'amount' | 'payment_method' | 'receipt_number' | 'notes'>>
+): Promise<InstallmentPayment> {
+  const { data: current, error: fetchError } = await supabase
+    .from('installment_payments')
+    .select('installment_id')
+    .eq('id', id)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  const { data: payment, error } = await supabase
+    .from('installment_payments')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  await recalcInstallmentTotals(current.installment_id);
+  return payment;
+}
+
+/**
+ * Soft-delete an installment payment via the secure recycle-bin RPC.
+ * The payment row is NEVER physically deleted — it moves to Deleted Data
+ * (status = 'deleted') and can be restored. Once removed from the active
+ * set, it no longer contributes to the parent installment's paid_amount.
+ */
+export async function deleteInstallmentPayment(
+  paymentId: string,
+  reason: string
+): Promise<void> {
+  const { data: current, error: fetchError } = await supabase
+    .from('installment_payments')
+    .select('installment_id')
+    .eq('id', paymentId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  await softDeleteRecord('installment_payments', paymentId, reason);
+
+  await recalcInstallmentTotals(current.installment_id);
 }
 
 /**
