@@ -126,7 +126,7 @@ export default function AccountPage() {
               </p>
             </div>
             <button
-              onClick={() => window.location.href = '/account/security'}
+              onClick={() => window.location.href = '/app/account/security'}
               className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
             >
               Manage →

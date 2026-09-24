@@ -70,7 +70,7 @@ export default function AccountSecurityPage() {
       <div className="space-y-6">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate('/account')}
+            onClick={() => navigate('/app/account')}
             className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -90,7 +90,7 @@ export default function AccountSecurityPage() {
               Your password has been updated. You can now use your new password to log in.
             </p>
             <button
-              onClick={() => navigate('/account')}
+              onClick={() => navigate('/app/account')}
               className="px-6 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
             >
               Return to Account
@@ -106,7 +106,7 @@ export default function AccountSecurityPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
-          onClick={() => navigate('/account')}
+          onClick={() => navigate('/app/account')}
           className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -224,7 +224,7 @@ export default function AccountSecurityPage() {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => navigate('/account')}
+              onClick={() => navigate('/app/account')}
               className="flex-1"
             >
               Cancel
