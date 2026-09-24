@@ -11,6 +11,7 @@
 
 import { supabase } from './supabase';
 import { logError } from '../utils/errors';
+import { getCurrentUser as getRestoredUser } from './authService';
 
 // ============================================================================
 // Types
@@ -139,13 +140,35 @@ export async function changePassword(
   currentPassword: string,
   newPassword: string
 ): Promise<void> {
-  if (!_currentUser) {
+  // Resolve the acting user from the SINGLE source of truth used by the rest
+  // of the app. auth.ts keeps its own module-level _currentUser which is only
+  // populated by a fresh signIn() in this browser tab; after a page refresh /
+  // deep link / new tab, authService restores the Supabase session into ITS
+  // own state (what useAuth/ProtectedRoute/AccountPage read) while this copy
+  // stays null — previously causing the false "No authenticated user" error.
+  // Fall back to authService's restored user first, then to the live Supabase
+  // session as a last resort. No new auth system is introduced here.
+  let actor = _currentUser ?? getRestoredUser();
+
+  if (!actor) {
+    // Last resort: verify the live Supabase session directly.
+    const { data } = await supabase.auth.getUser();
+    if (data.user?.email) {
+      actor = await resolveAuthUser(data.user.id, data.user.email);
+    }
+  }
+
+  if (!actor) {
     throw new Error('No authenticated user');
   }
 
+  // Keep the local copy in sync so subsequent calls (and audit logging below)
+  // reuse the resolved user instead of re-querying.
+  _currentUser = actor;
+
   // Verify current password by attempting to sign in
   const { error: verifyError } = await supabase.auth.signInWithPassword({
-    email: _currentUser.email,
+    email: actor.email,
     password: currentPassword,
   });
 
@@ -164,8 +187,8 @@ export async function changePassword(
 
   // Log password change audit event
   await logAuditEvent('password_change', {
-    user_id: _currentUser.id,
-    email: _currentUser.email,
+    user_id: actor.id,
+    email: actor.email,
   });
 }
 
