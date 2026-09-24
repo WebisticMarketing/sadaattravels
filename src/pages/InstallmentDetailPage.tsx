@@ -201,31 +201,33 @@ export default function InstallmentDetailPage() {
             </p>
           </div>
         </div>
-        {installment.status === 'active' && (
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowAddPaymentModal(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
-            >
-              <Plus className="h-4 w-4" />
-              Add Payment
-            </button>
-            <button
-              onClick={openEditModal}
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              <Edit2 className="h-4 w-4" />
-              Edit
-            </button>
-            <button
-              onClick={() => setShowDeleteModal(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete
-            </button>
-          </div>
-        )}
+        <div className="flex gap-2">
+          {installment.status === 'active' && (
+            <>
+              <button
+                onClick={() => setShowAddPaymentModal(true)}
+                className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+              >
+                <Plus className="h-4 w-4" />
+                Add Payment
+              </button>
+              <button
+                onClick={openEditModal}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <Edit2 className="h-4 w-4" />
+                Edit
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </button>
+        </div>
       </div>
 
       {/* Summary Cards */}
