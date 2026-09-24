@@ -230,7 +230,7 @@ export default function CargoPage() {
           {filteredCargo.map((record) => (
             <div
               key={record.id}
-              onClick={() => navigate(`/app/cargo/${record.id}`)}
+              onClick={() => navigate(`/app/cargo/${record.id}/edit`)}
               className="cursor-pointer rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md"
             >
               <div className="flex items-start justify-between">
