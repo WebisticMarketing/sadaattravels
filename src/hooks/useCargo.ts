@@ -152,6 +152,8 @@ export async function createCargoRecord(data: {
 export async function updateCargoRecord(
   id: string,
   data: Partial<{
+    shipment_date: string;
+    bus_id: string | null;
     sender_name: string;
     sender_phone: string;
     receiver_name: string;
@@ -159,8 +161,8 @@ export async function updateCargoRecord(
     origin: string;
     destination: string;
     description: string;
-    weight_kg: number;
-    quantity: number;
+    weight_kg: number | null;
+    quantity: number | null;
     revenue: number;
     expenses: number;
     notes: string;
