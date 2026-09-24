@@ -9,7 +9,7 @@
 -- - Secure SECURITY DEFINER RPCs:
 --     soft_delete_record(p_table, p_id, p_reason)
 --     restore_record(p_table, p_id)
---     permanent_delete_record(p_table, p_id, p_confirmation)   -- OWNER only, personal_expenses ONLY
+--     permanent_delete_record(p_table, p_id, p_confirmation)   -- OWNER only, recycle-bin whitelist tables
 --     list_deleted_records()                                    -- unified Deleted Data feed
 -- - Configure pump_expenses (created outside this migration history):
 --     extend TEXT status CHECK to allow 'deleted', add deletion metadata,
@@ -20,9 +20,12 @@
 --   fixed search_path = public, pg_temp, auth.uid() validated, explicit table whitelist).
 -- - No new client-side INSERT policy is added for audit_logs.
 --   Audit rows are written by these SECURITY DEFINER functions (which run as owner).
--- - Permanent delete is server-restricted to personal_expenses and requires
---   exact confirmation text 'PERMANENTLY DELETE'. The full row snapshot is
+-- - Permanent delete is server-restricted to the explicit recycle-bin whitelist
+--   (same tables as _deletion_is_whitelisted_table) and requires exact
+--   confirmation text 'PERMANENTLY DELETE'. The full row snapshot is
 --   audited BEFORE the physical DELETE. Audit logs are never deleted.
+--   Child-safety guards run BEFORE audit+delete: a parent with ANY remaining
+--   child rows cannot be permanently deleted until its children are handled.
 -- - Parent/child safety: trips with active revenue/expense children and
 --   installments with active payments cannot be soft-deleted; trip expenses
 --   linked via fuel_sale_expense_links (restrictive FK) cannot be soft-deleted.
@@ -470,8 +473,28 @@ END;
 $$;
 
 -- ============================================================================
--- 7. PERMANENT DELETE RPC (OWNER only, personal_expenses ONLY)
+-- 7. PERMANENT DELETE RPC (OWNER only, recycle-bin whitelist tables)
 -- ============================================================================
+-- Permitted tables = EXACTLY the recycle-bin whitelist defined by
+-- _deletion_is_whitelisted_table() (trips, trip_revenue_entries, trip_expenses,
+-- maintenance_records, tyre_records, fuel_purchases, fuel_sales,
+-- fuel_stock_adjustments, adda_income, adda_expenses, cargo_records,
+-- installments, installment_payments, personal_expenses, pump_expenses).
+-- Protected/system tables are never permitted because they are absent from
+-- that whitelist. No second permanent-delete RPC exists.
+--
+-- Child-record safety (verified against the ACTUAL FK definitions):
+--   * trips                  -> trip_revenue_entries / trip_expenses  (CASCADE)
+--   * fuel_sales             -> fuel_sale_expense_links               (CASCADE)
+--   * installments           -> installment_payments                  (RESTRICT)
+--   * trip_expenses          -> fuel_sale_expense_links               (RESTRICT)
+-- The function NEVER relies on cascade destruction of financial children:
+-- if ANY child rows still reference the parent, the permanent delete aborts
+-- with an explicit error BEFORE any audit write or physical delete. The owner
+-- must permanently delete the children first (each through this same RPC).
+-- For RESTRICTed children Postgres would abort the transaction anyway; the
+-- guard turns that into a clear message. For CASCADE relationships (trips,
+-- fuel_sales) the guard prevents silent multi-row destruction.
 
 CREATE OR REPLACE FUNCTION public.permanent_delete_record(
     p_table        TEXT,
@@ -484,8 +507,9 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-    v_uid  UUID := auth.uid();
-    v_row  JSONB;
+    v_uid         UUID := auth.uid();
+    v_row         JSONB;
+    v_child_count BIGINT;
 BEGIN
     IF v_uid IS NULL THEN
         RAISE EXCEPTION 'Authentication required to permanently delete records';
@@ -501,25 +525,65 @@ BEGIN
         RAISE EXCEPTION 'Permanent deletion requires the exact confirmation text: PERMANENTLY DELETE';
     END IF;
 
-    -- Server-side table restriction: ONLY personal_expenses can ever be
-    -- permanently deleted. Every other table returns an error.
-    IF p_table <> 'personal_expenses' THEN
-        RAISE EXCEPTION 'Permanent deletion is not permitted for table "%". Only personal_expenses may be permanently deleted.', p_table;
+    -- Server-side table restriction: EXACTLY the recycle-bin whitelist ----------
+    IF NOT public._deletion_is_whitelisted_table(p_table) THEN
+        RAISE EXCEPTION 'Permanent deletion is not permitted for table "%"', p_table;
     END IF;
 
     -- Record must exist and already be soft-deleted -----------------------------
-    SELECT to_jsonb(t) INTO v_row
-    FROM public.personal_expenses t
-    WHERE t.id = p_id;
+    EXECUTE format('SELECT to_jsonb(t) FROM public.%I t WHERE t.id = $1', p_table)
+        INTO v_row USING p_id;
 
     IF v_row IS NULL THEN
-        RAISE EXCEPTION 'Personal expense record not found: %', p_id;
+        RAISE EXCEPTION 'Record not found in "%": %', p_table, p_id;
     END IF;
 
     -- Compare via the JSONB snapshot text to avoid a direct TEXT-vs-enum
     -- comparison on the bound value.
     IF v_row ->> 'status' IS DISTINCT FROM 'deleted' THEN
         RAISE EXCEPTION 'Only deleted (recycle-bin) records can be permanently deleted';
+    END IF;
+
+    -- Child-safety guards BEFORE audit+delete (never silently destroy children) -
+    IF p_table = 'trips' THEN
+        EXECUTE 'SELECT count(*) FROM public.trip_revenue_entries WHERE trip_id = $1'
+            INTO v_child_count USING p_id;
+        IF v_child_count > 0 THEN
+            RAISE EXCEPTION 'Cannot permanently delete trip: % revenue entr%(y|ies) still exist. Permanently delete them first.',
+                v_child_count, CASE WHEN v_child_count = 1 THEN 'y' ELSE 'ies' END;
+        END IF;
+
+        EXECUTE 'SELECT count(*) FROM public.trip_expenses WHERE trip_id = $1'
+            INTO v_child_count USING p_id;
+        IF v_child_count > 0 THEN
+            RAISE EXCEPTION 'Cannot permanently delete trip: % expense(s) still exist. Permanently delete them first.',
+                v_child_count;
+        END IF;
+    END IF;
+
+    IF p_table = 'installments' THEN
+        EXECUTE 'SELECT count(*) FROM public.installment_payments WHERE installment_id = $1'
+            INTO v_child_count USING p_id;
+        IF v_child_count > 0 THEN
+            RAISE EXCEPTION 'Cannot permanently delete installment: % payment record(s) still exist. Permanently delete the payments first.',
+                v_child_count;
+        END IF;
+    END IF;
+
+    IF p_table = 'fuel_sales' THEN
+        EXECUTE 'SELECT count(*) FROM public.fuel_sale_expense_links WHERE fuel_sale_id = $1'
+            INTO v_child_count USING p_id;
+        IF v_child_count > 0 THEN
+            RAISE EXCEPTION 'Cannot permanently delete fuel sale: it is linked to a trip expense. Permanently delete the linked trip expense first.';
+        END IF;
+    END IF;
+
+    IF p_table = 'trip_expenses' THEN
+        EXECUTE 'SELECT count(*) FROM public.fuel_sale_expense_links WHERE trip_expense_id = $1'
+            INTO v_child_count USING p_id;
+        IF v_child_count > 0 THEN
+            RAISE EXCEPTION 'Cannot permanently delete trip expense: it is linked to an internal fuel sale. Permanently delete the linked fuel sale first.';
+        END IF;
     END IF;
 
     -- AUDIT FIRST: full final row snapshot is written BEFORE physical deletion.
@@ -541,8 +605,8 @@ BEGIN
             'type', 'permanent_delete'
         );
 
-    -- Physical deletion second ---------------------------------------------------
-    DELETE FROM public.personal_expenses WHERE id = p_id;
+    -- Physical deletion second (single requested row only) -----------------------
+    EXECUTE format('DELETE FROM public.%I WHERE id = $1', p_table) USING p_id;
 
     RETURN TRUE;
 END;
