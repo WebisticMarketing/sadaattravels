@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useMaintenance, reverseMaintenanceRecord } from '../hooks/useMaintenance';
+import { useMaintenance } from '../hooks/useMaintenance';
+import { softDeleteRecord, getErrorMessage } from '../hooks/useDeletion';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
@@ -13,9 +14,11 @@ import { ArrowLeft, Edit2, XCircle, Calendar, Bus, Wrench } from 'lucide-react';
 export default function MaintenanceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { records, loading, error, refetch } = useMaintenance();
+  const { records, loading, error } = useMaintenance();
 
-  const [showReverseModal, setShowReverseModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   if (loading) {
     return (
@@ -55,13 +58,19 @@ export default function MaintenanceDetailPage() {
     );
   }
 
-  const handleReverse = async (reason: string) => {
+  const handleDelete = async (reason: string) => {
+    setDeleting(true);
+    setDeleteError(null);
     try {
-      await reverseMaintenanceRecord(record.id, reason);
-      refetch();
-      setShowReverseModal(false);
+      // Soft delete via secure RPC — record moves to the Deleted Data
+      // (recycle bin) and can be restored later with its previous status.
+      await softDeleteRecord('maintenance_records', record.id, reason);
+      setShowDeleteModal(false);
+      navigate('/app/maintenance');
     } catch (err) {
-      console.error('Failed to reverse record:', err);
+      setDeleteError(getErrorMessage(err));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -107,10 +116,10 @@ export default function MaintenanceDetailPage() {
               </Button>
               <Button
                 variant="danger"
-                onClick={() => setShowReverseModal(true)}
+                onClick={() => setShowDeleteModal(true)}
               >
                 <XCircle className="mr-2 h-4 w-4" />
-                Reverse
+                Delete
               </Button>
             </>
           )}
@@ -222,23 +231,30 @@ export default function MaintenanceDetailPage() {
         </div>
       </Card>
 
-      {/* Reverse Modal */}
-      {showReverseModal && (
-        <ReverseModal
-          onConfirm={handleReverse}
-          onClose={() => setShowReverseModal(false)}
+      {/* Delete Modal (soft delete -> recycle bin) */}
+      {showDeleteModal && (
+        <DeleteModal
+          onConfirm={handleDelete}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setDeleteError(null);
+          }}
+          submitting={deleting}
+          error={deleteError}
         />
       )}
     </div>
   );
 }
 
-interface ReverseModalProps {
+interface DeleteModalProps {
   onConfirm: (reason: string) => void;
   onClose: () => void;
+  submitting: boolean;
+  error: string | null;
 }
 
-function ReverseModal({ onConfirm, onClose }: ReverseModalProps) {
+function DeleteModal({ onConfirm, onClose, submitting, error }: DeleteModalProps) {
   const [reason, setReason] = useState('');
 
   const handleConfirm = () => {
@@ -251,25 +267,33 @@ function ReverseModal({ onConfirm, onClose }: ReverseModalProps) {
     <Modal
       open={true}
       onClose={onClose}
-      title="Reverse Maintenance Record"
+      title="Delete Maintenance Record"
     >
       <div className="space-y-4">
-        <Alert variant="warning" title="Warning">
-          Reversing this record will exclude it from cost calculations and bus profitability reports.
+        <Alert variant="warning" title="Soft Delete">
+          This will move the maintenance record to Deleted Data (the recycle bin).
+          It will stop appearing in lists and cost reports, but it is NOT destroyed —
+          an OWNER or MANAGER can restore it later from Account → Deleted Data.
         </Alert>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Reason for Reversal *
+            Reason for Deletion *
           </label>
           <textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             rows={3}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Explain why this record is being reversed"
+            placeholder="Explain why this record is being deleted"
           />
         </div>
+
+        {error && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+            <p className="text-sm text-red-800">{error}</p>
+          </div>
+        )}
 
         <div className="flex gap-2">
           <Button
@@ -282,10 +306,10 @@ function ReverseModal({ onConfirm, onClose }: ReverseModalProps) {
           <Button
             variant="danger"
             onClick={handleConfirm}
-            disabled={!reason.trim()}
+            disabled={!reason.trim() || submitting}
             className="flex-1"
           >
-            Reverse Record
+            {submitting ? 'Deleting...' : 'Delete Record'}
           </Button>
         </div>
       </div>

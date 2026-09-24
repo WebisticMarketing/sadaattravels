@@ -50,7 +50,9 @@ export function useTrips(options?: {
           *,
           bus:buses(id, registration_number, bus_name)
         `)
-        .order('trip_date', { ascending: false });
+        .order('trip_date', { ascending: false })
+        // Soft-deleted trips belong to the recycle bin, not operational lists
+        .neq('status', 'deleted');
 
       // Apply filters
       if (options?.startDate) {

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useInstallment, addInstallmentPayment, reverseInstallment } from '../hooks/useInstallments';
+import { useInstallment, addInstallmentPayment } from '../hooks/useInstallments';
+import { softDeleteRecord, getErrorMessage } from '../hooks/useDeletion';
 import { formatCurrency, formatDate } from '../lib/utils';
-import { ArrowLeft, Plus, XCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 
 export default function InstallmentDetailPage() {
   const navigate = useNavigate();
@@ -10,7 +11,7 @@ export default function InstallmentDetailPage() {
   const { installment, loading, error, refetch } = useInstallment(id || null);
 
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
-  const [showReverseModal, setShowReverseModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [paymentData, setPaymentData] = useState({
     payment_date: formatDate(new Date()),
     amount: '',
@@ -18,7 +19,7 @@ export default function InstallmentDetailPage() {
     receipt_number: '',
     notes: '',
   });
-  const [reversalReason, setReversalReason] = useState('');
+  const [deletionReason, setDeletionReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
 
@@ -63,19 +64,22 @@ export default function InstallmentDetailPage() {
     }
   };
 
-  const handleReverse = async () => {
-    if (!installment || !reversalReason.trim()) return;
+  const handleDelete = async () => {
+    if (!installment || !deletionReason.trim()) return;
 
     setModalError(null);
     setSubmitting(true);
 
     try {
-      await reverseInstallment(installment.id, reversalReason);
-      setShowReverseModal(false);
-      setReversalReason('');
-      refetch();
+      // Soft delete via secure RPC — record moves to the Deleted Data
+      // recycle bin and can be restored. The server rejects deletion while
+      // active payments exist on this installment.
+      await softDeleteRecord('installments', installment.id, deletionReason);
+      setShowDeleteModal(false);
+      setDeletionReason('');
+      navigate('/app/installments');
     } catch (err) {
-      setModalError(err instanceof Error ? err.message : 'Failed to reverse installment');
+      setModalError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -165,11 +169,11 @@ export default function InstallmentDetailPage() {
               Add Payment
             </button>
             <button
-              onClick={() => setShowReverseModal(true)}
+              onClick={() => setShowDeleteModal(true)}
               className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
             >
-              <XCircle className="h-4 w-4" />
-              Reverse
+              <Trash2 className="h-4 w-4" />
+              Delete
             </button>
           </div>
         )}
@@ -402,24 +406,25 @@ export default function InstallmentDetailPage() {
         </div>
       )}
 
-      {/* Reverse Modal */}
-      {showReverseModal && (
+      {/* Delete Modal (soft delete -> recycle bin) */}
+      {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md rounded-lg bg-white p-6">
-            <h2 className="text-xl font-bold text-gray-900">Reverse Installment</h2>
+            <h2 className="text-xl font-bold text-gray-900">Delete Installment</h2>
             <p className="mt-2 text-sm text-gray-600">
-              This will mark the installment as reversed and exclude it from calculations.
-              This action cannot be undone.
+              This will move the installment to the Deleted Data (recycle bin), where it can be
+              restored later. It will stop appearing in lists and reports until restored.
+              Deletion is rejected while active payments exist on this installment.
             </p>
 
             <div className="mt-4">
               <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                Reason for Reversal *
+                Reason for Deletion *
               </label>
               <textarea
-                value={reversalReason}
-                onChange={(e) => setReversalReason(e.target.value)}
-                placeholder="Enter reason for reversing this installment"
+                value={deletionReason}
+                onChange={(e) => setDeletionReason(e.target.value)}
+                placeholder="Enter reason for deleting this installment"
                 rows={4}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
@@ -434,8 +439,8 @@ export default function InstallmentDetailPage() {
             <div className="mt-6 flex gap-3">
               <button
                 onClick={() => {
-                  setShowReverseModal(false);
-                  setReversalReason('');
+                  setShowDeleteModal(false);
+                  setDeletionReason('');
                   setModalError(null);
                 }}
                 className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
@@ -443,11 +448,11 @@ export default function InstallmentDetailPage() {
                 Cancel
               </button>
               <button
-                onClick={handleReverse}
-                disabled={!reversalReason.trim() || submitting}
+                onClick={handleDelete}
+                disabled={!deletionReason.trim() || submitting}
                 className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
               >
-                {submitting ? 'Reversing...' : 'Reverse Installment'}
+                {submitting ? 'Deleting...' : 'Delete Installment'}
               </button>
             </div>
           </div>

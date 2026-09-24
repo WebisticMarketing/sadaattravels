@@ -39,6 +39,7 @@ import UserDetailPage from './pages/UserDetailPage';
 import AuditLogsPage from './pages/AuditLogsPage';
 import AccountPage from './pages/AccountPage';
 import AccountSecurityPage from './pages/AccountSecurityPage';
+import DeletedDataPage from './pages/DeletedDataPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -125,6 +126,7 @@ export default function App() {
             <Route path="audit" element={<AuditLogsPage />} />
             <Route path="account" element={<AccountPage />} />
             <Route path="account/security" element={<AccountSecurityPage />} />
+            <Route path="account/deleted-data" element={<DeletedDataPage />} />
 
             {/* 
               Future module routes will be added here:

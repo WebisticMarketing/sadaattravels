@@ -128,13 +128,13 @@ export function usePetrolPumpReport(year: number, month: number) {
 
         // Separate active and reversed records
         const activePurchases = (purchases || []).filter(p => p.status === 'active');
-        const reversedPurchases = (purchases || []).filter(p => p.status === 'reversed' || p.status === 'cancelled');
+        const reversedPurchases = (purchases || []).filter(p => p.status !== 'active');
         
         const activeSales = (sales || []).filter(s => s.status === 'active');
-        const reversedSales = (sales || []).filter(s => s.status === 'reversed' || s.status === 'cancelled');
+        const reversedSales = (sales || []).filter(s => s.status !== 'active');
         
         const activeAdjustments = (adjustments || []).filter(a => a.status === 'active');
-        const reversedAdjustments = (adjustments || []).filter(a => a.status === 'reversed' || a.status === 'cancelled');
+        const reversedAdjustments = (adjustments || []).filter(a => a.status !== 'active');
 
         // Filter records by period for display (all records, not just active)
         const periodPurchases = (purchases || []).filter(p => {
@@ -459,9 +459,9 @@ export function usePetrolPumpReport(year: number, month: number) {
           purchaseRecords: periodPurchases,
           saleRecords: periodSales,
           adjustmentRecords: periodAdjustments,
-          reversedPurchases: periodPurchases.filter(p => p.status === 'reversed' || p.status === 'cancelled'),
-          reversedSales: periodSales.filter(s => s.status === 'reversed' || s.status === 'cancelled'),
-          reversedAdjustments: periodAdjustments.filter(a => a.status === 'reversed' || a.status === 'cancelled'),
+          reversedPurchases: periodPurchases.filter(p => p.status !== 'active'),
+          reversedSales: periodSales.filter(s => s.status !== 'active'),
+          reversedAdjustments: periodAdjustments.filter(a => a.status !== 'active'),
           sellingPriceHistory: uniqueSellingPrices,
           wacHistory,
         });

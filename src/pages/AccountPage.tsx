@@ -1,7 +1,8 @@
+import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
-import { User, Mail, Phone, Shield, Calendar } from 'lucide-react';
+import { User, Mail, Phone, Shield, Calendar, Trash2 } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
 
 export default function AccountPage() {
@@ -131,6 +132,38 @@ export default function AccountPage() {
               Manage →
             </button>
           </div>
+        </div>
+      </Card>
+
+      {/* Deleted Data (Recycle Bin) */}
+      <Card>
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Data Management</h2>
+            <p className="text-sm text-gray-500">View and manage soft-deleted records</p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <Link
+            to="/app/account/deleted-data"
+            className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100">
+                <Trash2 className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-medium text-gray-900">Deleted Data</h3>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Recycle bin — restore deleted records or permanently remove them (Owner only)
+                </p>
+              </div>
+            </div>
+            <span className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors">
+              View →
+            </span>
+          </Link>
         </div>
       </Card>
     </div>
