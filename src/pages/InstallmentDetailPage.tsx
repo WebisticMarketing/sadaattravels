@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useInstallment, addInstallmentPayment } from '../hooks/useInstallments';
+import { useInstallment, addInstallmentPayment, updateInstallment } from '../hooks/useInstallments';
 import { softDeleteRecord, getErrorMessage } from '../hooks/useDeletion';
 import { formatCurrency, formatDate } from '../lib/utils';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Edit2, Plus, Trash2 } from 'lucide-react';
 
 export default function InstallmentDetailPage() {
   const navigate = useNavigate();
@@ -12,6 +12,8 @@ export default function InstallmentDetailPage() {
 
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editData, setEditData] = useState({ person_name: '', person_phone: '', description: '', notes: '' });
   const [paymentData, setPaymentData] = useState({
     payment_date: formatDate(new Date()),
     amount: '',
@@ -59,6 +61,46 @@ export default function InstallmentDetailPage() {
       refetch();
     } catch (err) {
       setModalError(err instanceof Error ? err.message : 'Failed to add payment');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openEditModal = () => {
+    if (!installment) return;
+    setEditData({
+      person_name: installment.person_name ?? '',
+      person_phone: installment.person_phone ?? '',
+      description: installment.description ?? '',
+      notes: installment.notes ?? '',
+    });
+    setModalError(null);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!installment) return;
+
+    setModalError(null);
+    setSubmitting(true);
+
+    try {
+      if (!editData.person_name.trim()) {
+        throw new Error('Please enter person name');
+      }
+      // Reuses the existing updateInstallment hook. Only descriptive
+      // fields are editable — amounts/payments have their own workflow.
+      await updateInstallment(installment.id, {
+        person_name: editData.person_name.trim(),
+        person_phone: editData.person_phone.trim() || undefined,
+        description: editData.description.trim() || undefined,
+        notes: editData.notes.trim() || undefined,
+      } as Parameters<typeof updateInstallment>[1]);
+      setShowEditModal(false);
+      refetch();
+    } catch (err) {
+      setModalError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -167,6 +209,13 @@ export default function InstallmentDetailPage() {
             >
               <Plus className="h-4 w-4" />
               Add Payment
+            </button>
+            <button
+              onClick={openEditModal}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <Edit2 className="h-4 w-4" />
+              Edit
             </button>
             <button
               onClick={() => setShowDeleteModal(true)}
@@ -399,6 +448,91 @@ export default function InstallmentDetailPage() {
                   className="flex-1 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
                 >
                   {submitting ? 'Adding...' : 'Add Payment'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal (reuses updateInstallment hook; descriptive fields only) */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-lg bg-white p-6">
+            <h2 className="text-xl font-bold text-gray-900">Edit Installment</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Amounts and payments are managed through the payment workflow and cannot be edited here.
+            </p>
+            <form onSubmit={handleSaveEdit} className="mt-4 space-y-4">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Person Name *
+                </label>
+                <input
+                  type="text"
+                  value={editData.person_name}
+                  onChange={(e) => setEditData({ ...editData, person_name: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Person Phone
+                </label>
+                <input
+                  type="text"
+                  value={editData.person_phone}
+                  onChange={(e) => setEditData({ ...editData, person_phone: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Description
+                </label>
+                <textarea
+                  value={editData.description}
+                  onChange={(e) => setEditData({ ...editData, description: e.target.value })}
+                  rows={2}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Notes
+                </label>
+                <textarea
+                  value={editData.notes}
+                  onChange={(e) => setEditData({ ...editData, notes: e.target.value })}
+                  rows={2}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+
+              {modalError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                  <p className="text-sm text-red-800">{modalError}</p>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setModalError(null);
+                  }}
+                  className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {submitting ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>

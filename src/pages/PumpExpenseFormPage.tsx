@@ -1,6 +1,11 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { createPumpExpense, type PumpExpenseType } from '../hooks/usePumpExpenses';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
+  createPumpExpense,
+  updatePumpExpense,
+  usePumpExpenseRecord,
+  type PumpExpenseType,
+} from '../hooks/usePumpExpenses';
 import { formatDate } from '../lib/utils';
 import { ArrowLeft } from 'lucide-react';
 
@@ -16,6 +21,10 @@ const EXPENSE_TYPES: { value: PumpExpenseType; label: string }[] = [
 
 export default function PumpExpenseFormPage() {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const isEdit = Boolean(id);
+  const { expense, loading: recordLoading } = usePumpExpenseRecord(isEdit ? id! : null);
+
   const [formData, setFormData] = useState({
     expense_date: formatDate(new Date()),
     expense_type: '' as PumpExpenseType | '',
@@ -26,11 +35,27 @@ export default function PumpExpenseFormPage() {
     notes: '',
   });
 
+  // Prefill the same form when editing an existing record.
+  useEffect(() => {
+    if (expense) {
+      setFormData({
+        expense_date: formatDate(new Date(expense.expense_date)),
+        expense_type: expense.expense_type ?? '',
+        amount: String(expense.amount ?? ''),
+        description: expense.description ?? '',
+        paid_to: expense.paid_to ?? '',
+        receipt_number: expense.receipt_number ?? '',
+        notes: expense.notes ?? '',
+      });
+    }
+  }, [expense]);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isEdit && recordLoading) return;
     setError(null);
     setLoading(true);
 
@@ -45,6 +70,19 @@ export default function PumpExpenseFormPage() {
       // Convert date from DD/MM/YYYY to YYYY-MM-DD for database
       const [day, month, year] = formData.expense_date.split('/');
       const isoDate = `${year}-${month}-${day}`;
+
+      if (isEdit && expense) {
+        await updatePumpExpense(expense.id, {
+          expense_type: formData.expense_type as PumpExpenseType,
+          amount: parseFloat(formData.amount),
+          description: formData.description.trim(),
+          paid_to: formData.paid_to.trim(),
+          receipt_number: formData.receipt_number.trim(),
+          notes: formData.notes.trim(),
+        });
+        navigate('/app/petrol');
+        return;
+      }
 
       await createPumpExpense({
         expense_date: isoDate,
@@ -75,8 +113,10 @@ export default function PumpExpenseFormPage() {
           Back
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">New Pump Expense</h1>
-          <p className="mt-1 text-sm text-gray-500">Record a new petrol pump operating expense</p>
+          <h1 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Pump Expense' : 'New Pump Expense'}</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            {isEdit ? 'Update this petrol pump operating expense record' : 'Record a new petrol pump operating expense'}
+          </p>
         </div>
       </div>
 
@@ -195,6 +235,13 @@ export default function PumpExpenseFormPage() {
           </div>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+            <p className="text-sm text-red-800">{error}</p>
+          </div>
+        )}
+
         {/* Submit Button */}
         <div className="flex justify-end gap-3">
           <button
@@ -209,7 +256,7 @@ export default function PumpExpenseFormPage() {
             disabled={loading}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            {loading ? 'Creating...' : 'Create Expense'}
+            {loading ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Expense'}
           </button>
         </div>
       </form>

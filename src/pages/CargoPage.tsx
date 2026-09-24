@@ -1,19 +1,24 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCargo } from '../hooks/useCargo';
+import { softDeleteRecord, getErrorMessage } from '../hooks/useDeletion';
 import { useBuses } from '../hooks/useBuses';
 import { formatCurrency, formatDate, getMonthStart, getMonthEnd } from '../lib/utils';
-import { Plus, Filter, Package } from 'lucide-react';
+import { Plus, Filter, Package, Pencil, Trash2 } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SearchInput } from '../components/ui/SearchInput';
 import { SummaryCard } from '../components/ui/SummaryCard';
 import { PrintButton } from '../components/ui/PrintButton';
 import { Button } from '../components/ui/Button';
 import { MonthYearFilter } from '../components/ui/MonthYearFilter';
+import { SoftDeleteModal } from '../components/ui/SoftDeleteModal';
 
 export default function CargoPage() {
   const navigate = useNavigate();
   const { buses } = useBuses();
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; summary: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1);
@@ -29,7 +34,7 @@ export default function CargoPage() {
   const monthStart = getMonthStart(selectedYear, selectedMonth);
   const monthEnd = getMonthEnd(selectedYear, selectedMonth);
 
-  const { cargo, loading, error } = useCargo({
+  const { cargo, loading, error, refetch } = useCargo({
     startDate: monthStart,
     endDate: monthEnd,
     busId: filters.busId || undefined,
@@ -51,6 +56,23 @@ export default function CargoPage() {
   const totalRevenue = filteredCargo.reduce((sum, c) => sum + c.revenue, 0);
   const totalExpenses = filteredCargo.reduce((sum, c) => sum + c.expenses, 0);
   const totalProfit = totalRevenue - totalExpenses;
+
+  const handleConfirmDelete = async (reason: string) => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      // Soft delete via secure RPC — record moves to the Deleted Data
+      // (recycle bin) and can be restored later with its previous status.
+      await softDeleteRecord('cargo_records', pendingDelete.id, reason);
+      setPendingDelete(null);
+      refetch();
+    } catch (err) {
+      setDeleteError(getErrorMessage(err));
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -230,7 +252,7 @@ export default function CargoPage() {
                     </p>
                   )}
                 </div>
-                <div className="text-right">
+                <div className="text-right" onClick={(e) => e.stopPropagation()}>
                   <div className="space-y-1">
                     <div>
                       <p className="text-xs text-gray-500">Revenue</p>
@@ -251,11 +273,49 @@ export default function CargoPage() {
                       </p>
                     </div>
                   </div>
+                  <div className="mt-2 flex justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title="Edit"
+                      onClick={() => navigate(`/app/cargo/${record.id}/edit`)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title="Delete (move to recycle bin)"
+                      onClick={() =>
+                        setPendingDelete({
+                          id: record.id,
+                          summary: `${record.description} — ${record.sender_name} → ${record.receiver_name} (${record.origin} → ${record.destination})`,
+                        })
+                      }
+                    >
+                      <Trash2 className="h-4 w-4 text-red-600" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {/* Delete Modal (soft delete -> recycle bin) */}
+      {pendingDelete && (
+        <SoftDeleteModal
+          title="Delete Cargo Record"
+          recordSummary={pendingDelete.summary}
+          submitting={deleting}
+          error={deleteError}
+          onConfirm={handleConfirmDelete}
+          onClose={() => {
+            setPendingDelete(null);
+            setDeleteError(null);
+          }}
+        />
       )}
     </div>
   );

@@ -3,16 +3,27 @@ import { useNavigate } from 'react-router-dom';
 import { useAddaIncome } from '../hooks/useAddaIncome';
 import { useAddaExpenses } from '../hooks/useAddaExpenses';
 import { formatCurrency, formatDate, getMonthStart, getMonthEnd } from '../lib/utils';
-import { Plus, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { softDeleteRecord, getErrorMessage } from '../hooks/useDeletion';
+import { Plus, TrendingUp, TrendingDown, DollarSign, Pencil, Trash2 } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SummaryCard } from '../components/ui/SummaryCard';
 import { PrintButton } from '../components/ui/PrintButton';
 import { Button } from '../components/ui/Button';
 import { MonthYearFilter } from '../components/ui/MonthYearFilter';
+import { SoftDeleteModal } from '../components/ui/SoftDeleteModal';
+
+interface PendingDelete {
+  table: 'adda_income' | 'adda_expenses';
+  id: string;
+  summary: string;
+}
 
 export default function AddaPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'income' | 'expenses'>('income');
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
@@ -21,12 +32,12 @@ export default function AddaPage() {
   const monthStart = getMonthStart(selectedYear, selectedMonth);
   const monthEnd = getMonthEnd(selectedYear, selectedMonth);
 
-  const { incomes, loading: loadingIncome } = useAddaIncome({
+  const { incomes, loading: loadingIncome, refetch: refetchIncome } = useAddaIncome({
     startDate: monthStart,
     endDate: monthEnd,
   });
 
-  const { expenses, loading: loadingExpenses } = useAddaExpenses({
+  const { expenses, loading: loadingExpenses, refetch: refetchExpenses } = useAddaExpenses({
     startDate: monthStart,
     endDate: monthEnd,
   });
@@ -34,6 +45,24 @@ export default function AddaPage() {
   const totalIncome = incomes.reduce((sum, i) => sum + i.amount, 0);
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
   const profit = totalIncome - totalExpenses;
+
+  const handleConfirmDelete = async (reason: string) => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      // Soft delete via secure RPC — record moves to the Deleted Data
+      // (recycle bin) and can be restored later with its previous status.
+      await softDeleteRecord(pendingDelete.table, pendingDelete.id, reason);
+      setPendingDelete(null);
+      if (pendingDelete.table === 'adda_income') refetchIncome();
+      else refetchExpenses();
+    } catch (err) {
+      setDeleteError(getErrorMessage(err));
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -154,11 +183,37 @@ export default function AddaPage() {
                       <p className="mt-1 text-sm text-gray-600">{income.description}</p>
                     )}
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-500">Amount</p>
-                    <p className="text-lg font-bold text-green-600">
-                      {formatCurrency(income.amount)}
-                    </p>
+                  <div className="flex items-start gap-4">
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500">Amount</p>
+                      <p className="text-lg font-bold text-green-600">
+                        {formatCurrency(income.amount)}
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        title="Edit"
+                        onClick={() => navigate(`/app/adda/income/${income.id}/edit`)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        title="Delete (move to recycle bin)"
+                        onClick={() =>
+                          setPendingDelete({
+                            table: 'adda_income',
+                            id: income.id,
+                            summary: `${income.income_type} — ${formatDate(new Date(income.income_date))} — ${formatCurrency(income.amount)}`,
+                          })
+                        }
+                      >
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -209,17 +264,58 @@ export default function AddaPage() {
                       <p className="mt-1 text-sm text-gray-600">{expense.description}</p>
                     )}
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-500">Amount</p>
-                    <p className="text-lg font-bold text-red-600">
-                      {formatCurrency(expense.amount)}
-                    </p>
+                  <div className="flex items-start gap-4">
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500">Amount</p>
+                      <p className="text-lg font-bold text-red-600">
+                        {formatCurrency(expense.amount)}
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        title="Edit"
+                        onClick={() => navigate(`/app/adda/expenses/${expense.id}/edit`)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        title="Delete (move to recycle bin)"
+                        onClick={() =>
+                          setPendingDelete({
+                            table: 'adda_expenses',
+                            id: expense.id,
+                            summary: `${expense.expense_type} — ${formatDate(new Date(expense.expense_date))} — ${formatCurrency(expense.amount)}`,
+                          })
+                        }
+                      >
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
           </div>
         )
+      )}
+
+      {/* Delete Modal (soft delete -> recycle bin) */}
+      {pendingDelete && (
+        <SoftDeleteModal
+          title={pendingDelete.table === 'adda_income' ? 'Delete Adda Income' : 'Delete Adda Expense'}
+          recordSummary={pendingDelete.summary}
+          submitting={deleting}
+          error={deleteError}
+          onConfirm={handleConfirmDelete}
+          onClose={() => {
+            setPendingDelete(null);
+            setDeleteError(null);
+          }}
+        />
       )}
     </div>
   );

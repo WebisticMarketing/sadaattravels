@@ -1,11 +1,14 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { createAddaExpense } from '../hooks/useAddaExpenses';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { createAddaExpense, updateAddaExpense, useAddaExpenseRecord } from '../hooks/useAddaExpenses';
 import { formatDate } from '../lib/utils';
 import { ArrowLeft } from 'lucide-react';
 
 export default function AddaExpenseFormPage() {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const isEdit = Boolean(id);
+  const { expense, loading: recordLoading } = useAddaExpenseRecord(isEdit ? id! : null);
   const [formData, setFormData] = useState({
     expense_date: formatDate(new Date()),
     expense_type: '',
@@ -13,14 +16,28 @@ export default function AddaExpenseFormPage() {
     description: '',
     paid_to: '',
     receipt_number: '',
-    notes: '',
   });
+
+  // Prefill the same form when editing an existing record.
+  useEffect(() => {
+    if (expense) {
+      setFormData({
+        expense_date: formatDate(new Date(expense.expense_date)),
+        expense_type: expense.expense_type ?? '',
+        amount: String(expense.amount ?? ''),
+        description: expense.description ?? '',
+        paid_to: expense.paid_to ?? '',
+        receipt_number: expense.receipt_number ?? '',
+      });
+    }
+  }, [expense]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isEdit && recordLoading) return;
     setError(null);
     setLoading(true);
 
@@ -35,6 +52,18 @@ export default function AddaExpenseFormPage() {
       // Convert date from DD/MM/YYYY to YYYY-MM-DD for database
       const [day, month, year] = formData.expense_date.split('/');
       const isoDate = `${year}-${month}-${day}`;
+
+      if (isEdit && expense) {
+        await updateAddaExpense(expense.id, {
+          expense_type: formData.expense_type.trim(),
+          amount: parseFloat(formData.amount),
+          description: formData.description.trim(),
+          paid_to: formData.paid_to.trim(),
+          receipt_number: formData.receipt_number.trim(),
+        });
+        navigate('/app/adda');
+        return;
+      }
 
       await createAddaExpense({
         expense_date: isoDate,
@@ -64,7 +93,7 @@ export default function AddaExpenseFormPage() {
           Back
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">New Adda Expense</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Adda Expense' : 'New Adda Expense'}</h1>
           <p className="mt-1 text-sm text-gray-500">Record a new adda expense</p>
         </div>
       </div>
@@ -163,20 +192,6 @@ export default function AddaExpenseFormPage() {
               />
             </div>
 
-            {/* Notes */}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                Notes
-              </label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Additional notes"
-                rows={2}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-
             {/* Error Message */}
             {error && (
               <div className="rounded-lg border border-red-200 bg-red-50 p-4">
@@ -198,7 +213,7 @@ export default function AddaExpenseFormPage() {
                 disabled={loading}
                 className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
               >
-                {loading ? 'Saving...' : 'Create Expense'}
+                {loading ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Expense'}
               </button>
             </div>
           </div>
