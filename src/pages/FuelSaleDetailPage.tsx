@@ -1,12 +1,55 @@
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useFuelSale } from '../hooks/useFuelSales';
+import { useFuelSale, updateFuelSaleMetadata } from '../hooks/useFuelSales';
+import { getErrorMessage } from '../hooks/useDeletion';
 import { formatCurrency, formatDate } from '../lib/utils';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Edit2 } from 'lucide-react';
 
 export default function FuelSaleDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const { sale, loading, error } = useFuelSale(id || null);
+  const { sale, loading, error, refetch } = useFuelSale(id || null);
+
+  // NOTE: only non-financial metadata (customer name/phone, receipt, notes)
+  // is editable here. Litres, prices and totals drive WAC/stock/COGS and can
+  // only be corrected through the existing reversal workflow — never here.
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editData, setEditData] = useState({ customer_name: '', customer_phone: '', receipt_number: '', notes: '' });
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  const openEditModal = () => {
+    if (!sale) return;
+    setEditData({
+      customer_name: sale.customer_name ?? '',
+      customer_phone: sale.customer_phone ?? '',
+      receipt_number: sale.receipt_number ?? '',
+      notes: sale.notes ?? '',
+    });
+    setEditError(null);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sale) return;
+    setSaving(true);
+    setEditError(null);
+    try {
+      await updateFuelSaleMetadata(sale.id, {
+        customer_name: editData.customer_name.trim() || undefined,
+        customer_phone: editData.customer_phone.trim() || undefined,
+        receipt_number: editData.receipt_number.trim() || undefined,
+        notes: editData.notes.trim() || undefined,
+      } as Parameters<typeof updateFuelSaleMetadata>[1]);
+      setShowEditModal(false);
+      refetch();
+    } catch (err) {
+      setEditError(getErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -83,6 +126,15 @@ export default function FuelSaleDetailPage() {
             </p>
           </div>
         </div>
+        {sale.status === 'active' && (
+          <button
+            onClick={openEditModal}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <Edit2 className="h-4 w-4" />
+            Edit
+          </button>
+        )}
       </div>
 
       {/* Summary Cards */}
@@ -190,6 +242,80 @@ export default function FuelSaleDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Edit Modal — metadata only; financial fields are corrected via reversal */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-lg bg-white p-6">
+            <h2 className="text-xl font-bold text-gray-900">Edit Fuel Sale Details</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Only customer, receipt and note details can be edited here. Litres, prices and totals
+              affect stock and cost calculations and must be corrected by reversing the sale.
+            </p>
+            <form onSubmit={handleSaveEdit} className="mt-4 space-y-4">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">Customer Name</label>
+                <input
+                  type="text"
+                  value={editData.customer_name}
+                  onChange={(e) => setEditData({ ...editData, customer_name: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">Customer Phone</label>
+                <input
+                  type="text"
+                  value={editData.customer_phone}
+                  onChange={(e) => setEditData({ ...editData, customer_phone: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">Receipt Number</label>
+                <input
+                  type="text"
+                  value={editData.receipt_number}
+                  onChange={(e) => setEditData({ ...editData, receipt_number: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">Notes</label>
+                <textarea
+                  value={editData.notes}
+                  onChange={(e) => setEditData({ ...editData, notes: e.target.value })}
+                  rows={2}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+
+              {editError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                  <p className="text-sm text-red-800">{editError}</p>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setShowEditModal(false); setEditError(null); }}
+                  className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

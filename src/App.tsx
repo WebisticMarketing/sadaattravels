@@ -108,11 +108,15 @@ export default function App() {
             <Route path="petrol/sales/new" element={<FuelSaleFormPage />} />
             <Route path="petrol/sales/:id" element={<FuelSaleDetailPage />} />
             <Route path="petrol/expenses/new" element={<PumpExpenseFormPage />} />
+            <Route path="petrol/expenses/:id/edit" element={<PumpExpenseFormPage />} />
             <Route path="adda" element={<AddaPage />} />
             <Route path="adda/income/new" element={<AddaIncomeFormPage />} />
+            <Route path="adda/income/:id/edit" element={<AddaIncomeFormPage />} />
             <Route path="adda/expenses/new" element={<AddaExpenseFormPage />} />
+            <Route path="adda/expenses/:id/edit" element={<AddaExpenseFormPage />} />
             <Route path="cargo" element={<CargoPage />} />
             <Route path="cargo/new" element={<CargoFormPage />} />
+            <Route path="cargo/:id/edit" element={<CargoFormPage />} />
             <Route path="installments" element={<InstallmentsPage />} />
             <Route path="installments/new" element={<InstallmentFormPage />} />
             <Route path="installments/:id" element={<InstallmentDetailPage />} />

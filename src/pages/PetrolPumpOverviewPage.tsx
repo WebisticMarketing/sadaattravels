@@ -3,11 +3,13 @@ import { useFuelSales } from '../hooks/useFuelSales';
 import { useFuelPurchases } from '../hooks/useFuelPurchases';
 import { usePetrolPumpSettings } from '../hooks/usePetrolPumpSettings';
 import { usePumpExpenses } from '../hooks/usePumpExpenses';
+import { softDeleteRecord, getErrorMessage } from '../hooks/useDeletion';
 import { formatCurrency } from '../lib/utils';
-import { Fuel, TrendingUp, Package, Truck, Users, PlusCircle, Settings } from 'lucide-react';
+import { Fuel, TrendingUp, Package, Truck, Users, PlusCircle, Settings, Pencil, Trash2 } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SummaryCard } from '../components/ui/SummaryCard';
 import { Button } from '../components/ui/Button';
+import { SoftDeleteModal } from '../components/ui/SoftDeleteModal';
 import { useState, useMemo } from 'react';
 
 // Compact Month/Year Filter Component
@@ -108,6 +110,28 @@ export default function PetrolPumpOverviewPage() {
     startDate: expensesStartDate,
     endDate: expensesEndDate,
   });
+
+  // Pump expense soft-delete (recycle bin) state
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; summary: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleConfirmDeleteExpense = async (reason: string) => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      // Soft delete via secure RPC — record moves to the Deleted Data
+      // (recycle bin) and can be restored later with its previous status.
+      await softDeleteRecord('pump_expenses', pendingDelete.id, reason);
+      setPendingDelete(null);
+      refetchExpenses();
+    } catch (err) {
+      setDeleteError(getErrorMessage(err));
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const loading = salesLoading || purchasesLoading || settingsLoading || expensesLoading;
   // Filter All Sales by date period
@@ -768,6 +792,7 @@ export default function PetrolPumpOverviewPage() {
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Receipt #</th>
                         <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Amount</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Notes</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
@@ -800,6 +825,33 @@ export default function PetrolPumpOverviewPage() {
                           <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">
                             {expense.notes || '-'}
                           </td>
+                          <td className="px-4 py-3 text-sm whitespace-nowrap text-right">
+                            <div className="inline-flex items-center gap-1">
+                              <button
+                                onClick={() => navigate(`/app/petrol/expenses/${expense.id}/edit`)}
+                                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
+                                title="Edit pump expense"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                                Edit
+                              </button>
+                              <button
+                                onClick={() =>
+                                  setPendingDelete({
+                                    id: expense.id,
+                                    summary: `${expense.expense_type.replace(/_/g, ' ')} — ${formatCurrency(expense.amount)}${
+                                      expense.description ? ` (${expense.description})` : ''
+                                    }`,
+                                  })
+                                }
+                                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                                title="Move to Recycle Bin"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Delete
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -809,6 +861,7 @@ export default function PetrolPumpOverviewPage() {
                         <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">
                           {formatCurrency(allExpenses.reduce((sum, e) => sum + e.amount, 0))}
                         </td>
+                        <td></td>
                         <td></td>
                       </tr>
                     </tfoot>
@@ -820,6 +873,21 @@ export default function PetrolPumpOverviewPage() {
 
           {/* Reports Tab - navigates to dedicated reports page */}
         </>
+      )}
+
+      {/* Pump Expense Delete Modal (soft delete -> recycle bin) */}
+      {pendingDelete && (
+        <SoftDeleteModal
+          title="Delete Pump Expense"
+          recordSummary={pendingDelete.summary}
+          submitting={deleting}
+          error={deleteError}
+          onConfirm={handleConfirmDeleteExpense}
+          onClose={() => {
+            setPendingDelete(null);
+            setDeleteError(null);
+          }}
+        />
       )}
     </div>
   );

@@ -298,17 +298,23 @@ export async function createFuelSale(data: {
   return sale;
 }
 
-export async function updateFuelSale(
+/**
+ * Editable metadata fields for a fuel sale.
+ *
+ * IMPORTANT: this intentionally EXCLUDES every financially significant
+ * column (litres, sale_price_per_litre, total_amount, cost_price_per_litre,
+ * sale_date, trip_id, bus_id, status). Changing those would silently break
+ * WAC / stock / COGS calculations, so they can only be corrected through
+ * the existing reversal workflow — never through client-side edits.
+ */
+export type FuelSaleEditableFields = Pick<
+  FuelSale,
+  'customer_name' | 'customer_phone' | 'receipt_number' | 'notes'
+>;
+
+export async function updateFuelSaleMetadata(
   id: string,
-  data: Partial<{
-    litres: number;
-    sale_price_per_litre: number;
-    total_amount: number;
-    customer_name: string;
-    customer_phone: string;
-    receipt_number: string;
-    notes: string;
-  }>
+  data: Partial<FuelSaleEditableFields>
 ) {
   const { data: sale, error } = await supabase
     .from('fuel_sales')

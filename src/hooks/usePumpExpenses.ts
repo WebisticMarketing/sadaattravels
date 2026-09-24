@@ -7,6 +7,9 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import type { PumpExpense, PumpExpenseType } from '../types/database';
 
+// Re-export so form pages can import the expense-type union alongside the hook helpers.
+export type { PumpExpenseType };
+
 export function usePumpExpenses(filters?: {
   startDate?: string;
   endDate?: string;

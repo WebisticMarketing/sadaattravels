@@ -1,11 +1,15 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { createAddaIncome } from '../hooks/useAddaIncome';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { createAddaIncome, updateAddaIncome, useAddaIncomeRecord } from '../hooks/useAddaIncome';
 import { formatDate } from '../lib/utils';
 import { ArrowLeft } from 'lucide-react';
 
 export default function AddaIncomeFormPage() {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const isEdit = Boolean(id);
+  const { income, loading: recordLoading } = useAddaIncomeRecord(isEdit ? id! : null);
+
   const [formData, setFormData] = useState({
     income_date: formatDate(new Date()),
     income_type: '',
@@ -13,14 +17,28 @@ export default function AddaIncomeFormPage() {
     description: '',
     received_from: '',
     receipt_number: '',
-    notes: '',
   });
+
+  // Prefill the same form when editing an existing record.
+  useEffect(() => {
+    if (income) {
+      setFormData({
+        income_date: formatDate(new Date(income.income_date)),
+        income_type: income.income_type ?? '',
+        amount: String(income.amount ?? ''),
+        description: income.description ?? '',
+        received_from: income.received_from ?? '',
+        receipt_number: income.receipt_number ?? '',
+      });
+    }
+  }, [income]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isEdit && recordLoading) return;
     setError(null);
     setLoading(true);
 
@@ -35,6 +53,18 @@ export default function AddaIncomeFormPage() {
       // Convert date from DD/MM/YYYY to YYYY-MM-DD for database
       const [day, month, year] = formData.income_date.split('/');
       const isoDate = `${year}-${month}-${day}`;
+
+      if (isEdit && income) {
+        await updateAddaIncome(income.id, {
+          income_type: formData.income_type.trim(),
+          amount: parseFloat(formData.amount),
+          description: formData.description.trim(),
+          received_from: formData.received_from.trim(),
+          receipt_number: formData.receipt_number.trim(),
+        });
+        navigate('/app/adda');
+        return;
+      }
 
       await createAddaIncome({
         income_date: isoDate,
@@ -64,7 +94,7 @@ export default function AddaIncomeFormPage() {
           Back
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">New Adda Income</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Adda Income' : 'New Adda Income'}</h1>
           <p className="mt-1 text-sm text-gray-500">Record a new adda income</p>
         </div>
       </div>
@@ -163,20 +193,6 @@ export default function AddaIncomeFormPage() {
               />
             </div>
 
-            {/* Notes */}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                Notes
-              </label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Additional notes"
-                rows={2}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-
             {/* Error Message */}
             {error && (
               <div className="rounded-lg border border-red-200 bg-red-50 p-4">
@@ -198,7 +214,7 @@ export default function AddaIncomeFormPage() {
                 disabled={loading}
                 className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
               >
-                {loading ? 'Saving...' : 'Create Income'}
+                {loading ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Income'}
               </button>
             </div>
           </div>

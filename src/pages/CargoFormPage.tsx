@@ -1,12 +1,15 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useBuses } from '../hooks/useBuses';
-import { createCargoRecord } from '../hooks/useCargo';
+import { createCargoRecord, updateCargoRecord, useCargoRecord } from '../hooks/useCargo';
 import { formatDate } from '../lib/utils';
 import { ArrowLeft } from 'lucide-react';
 
 export default function CargoFormPage() {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const isEdit = Boolean(id);
+  const { record, loading: recordLoading } = useCargoRecord(isEdit ? id! : null);
   const { buses } = useBuses();
   const [formData, setFormData] = useState({
     shipment_date: formatDate(new Date()),
@@ -25,6 +28,28 @@ export default function CargoFormPage() {
     notes: '',
   });
 
+  // Prefill the same form when editing an existing record.
+  useEffect(() => {
+    if (record) {
+      setFormData({
+        shipment_date: formatDate(new Date(record.shipment_date)),
+        bus_id: record.bus_id ?? '',
+        sender_name: record.sender_name ?? '',
+        sender_phone: record.sender_phone ?? '',
+        receiver_name: record.receiver_name ?? '',
+        receiver_phone: record.receiver_phone ?? '',
+        origin: record.origin ?? '',
+        destination: record.destination ?? '',
+        description: record.description ?? '',
+        weight_kg: record.weight_kg != null ? String(record.weight_kg) : '',
+        quantity: record.quantity != null ? String(record.quantity) : '',
+        revenue: String(record.revenue ?? ''),
+        expenses: String(record.expenses ?? ''),
+        notes: record.notes ?? '',
+      });
+    }
+  }, [record]);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,6 +57,7 @@ export default function CargoFormPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isEdit && recordLoading) return;
     setError(null);
     setLoading(true);
 
@@ -55,6 +81,25 @@ export default function CargoFormPage() {
       // Convert date from DD/MM/YYYY to YYYY-MM-DD for database
       const [day, month, year] = formData.shipment_date.split('/');
       const isoDate = `${year}-${month}-${day}`;
+
+      if (isEdit && record) {
+        await updateCargoRecord(record.id, {
+          sender_name: formData.sender_name.trim(),
+          sender_phone: formData.sender_phone.trim(),
+          receiver_name: formData.receiver_name.trim(),
+          receiver_phone: formData.receiver_phone.trim(),
+          origin: formData.origin.trim(),
+          destination: formData.destination.trim(),
+          description: formData.description.trim(),
+          weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : 0,
+          quantity: formData.quantity ? parseInt(formData.quantity) : 0,
+          revenue: parseFloat(formData.revenue || '0'),
+          expenses: parseFloat(formData.expenses || '0'),
+          notes: formData.notes.trim(),
+        });
+        navigate('/app/cargo');
+        return;
+      }
 
       await createCargoRecord({
         shipment_date: isoDate,
@@ -92,8 +137,8 @@ export default function CargoFormPage() {
           Back
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">New Cargo Shipment</h1>
-          <p className="mt-1 text-sm text-gray-500">Record a new cargo shipment</p>
+          <h1 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Cargo Shipment' : 'New Cargo Shipment'}</h1>
+          <p className="mt-1 text-sm text-gray-500">{isEdit ? 'Update this cargo shipment' : 'Record a new cargo shipment'}</p>
         </div>
       </div>
 
@@ -355,7 +400,7 @@ export default function CargoFormPage() {
                 disabled={loading}
                 className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
               >
-                {loading ? 'Saving...' : 'Create Shipment'}
+                {loading ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Shipment'}
               </button>
             </div>
           </div>
