@@ -26,10 +26,49 @@ import { Trash2, RotateCcw, ShieldAlert } from 'lucide-react';
  *
  * Lists every record whose status is 'deleted', newest deletion first.
  * - Restore: available to OWNER and MANAGER (restores exact previous status).
- * - Permanent Delete: shown ONLY for OWNER + personal_expenses; requires
- *   typing the exact confirmation text. The RPC enforces the same rules
- *   server-side independently of this UI.
+ * - Permanent Delete: shown ONLY for OWNER, for every module backed by a
+ *   recycle-bin whitelist table; requires typing the exact confirmation text.
+ *   The RPC enforces the same rules server-side independently of this UI.
  */
+
+/**
+ * Modules exposed by list_deleted_records() that map 1:1 to a whitelisted
+ * soft-deletable table. Kept in sync with _deletion_is_whitelisted_table()
+ * in migration 016. Protected/system tables are intentionally absent.
+ */
+const PERMANENTLY_DELETABLE_TABLES = new Set<string>([
+  'trips',
+  'trip_revenue_entries',
+  'trip_expenses',
+  'maintenance_records',
+  'tyre_records',
+  'fuel_purchases',
+  'fuel_sales',
+  'fuel_stock_adjustments',
+  'adda_income',
+  'adda_expenses',
+  'cargo_records',
+  'installments',
+  'installment_payments',
+  'personal_expenses',
+  'pump_expenses',
+]);
+
+/**
+ * Parent modules whose permanent deletion is blocked while child rows still
+ * exist (server-side guard mirrors this). Keys are table_name values.
+ */
+const PARENT_CHILD_WARNINGS: Record<string, string> = {
+  installments:
+    'This installment has payment records. Permanently deleting it will fail until its payments are permanently deleted first.',
+  trips:
+    'This trip may have revenue entries or expenses. Those must be permanently deleted before the trip itself can be.',
+  fuel_sales:
+    'This fuel sale may be linked to a trip expense. The linked expense must be permanently deleted first.',
+  trip_expenses:
+    'This expense may be linked to an internal fuel sale. The linked fuel sale must be permanently deleted first.',
+};
+
 export default function DeletedDataPage() {
   const { user } = useAuth();
   const isOwner = !!user?.roles?.includes('OWNER');
@@ -80,7 +119,7 @@ export default function DeletedDataPage() {
   }, [records, search, moduleFilter, selectedMonth, selectedYear]);
 
   const canPermanentDelete = (r: DeletedRecord) =>
-    isOwner && r.table_name === 'personal_expenses';
+    isOwner && PERMANENTLY_DELETABLE_TABLES.has(r.table_name);
 
   async function handleRestore() {
     if (!restoreTarget) return;
@@ -284,7 +323,7 @@ export default function DeletedDataPage() {
         </div>
       </Modal>
 
-      {/* Permanent delete confirmation (OWNER + personal_expenses only) */}
+      {/* Permanent delete confirmation (OWNER only, recycle-bin whitelist tables) */}
       <Modal
         open={!!permanentTarget}
         onClose={() => { setPermanentTarget(null); setConfirmText(''); }}
@@ -314,6 +353,11 @@ export default function DeletedDataPage() {
               </span>
             </div>
           </Alert>
+          {permanentTarget && PARENT_CHILD_WARNINGS[permanentTarget.table_name] && (
+            <Alert variant="warning" title="Related records">
+              {PARENT_CHILD_WARNINGS[permanentTarget.table_name]}
+            </Alert>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Type exactly: <code className="px-1 py-0.5 bg-red-50 text-red-700 rounded font-mono">PERMANENTLY DELETE</code>

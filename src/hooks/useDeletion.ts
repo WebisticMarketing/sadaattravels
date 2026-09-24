@@ -72,8 +72,8 @@ export async function restoreRecord(
 }
 
 /**
- * Permanently delete a record (OWNER only; server restricts this to
- * personal_expenses). Requires the exact confirmation text.
+ * Permanently delete a record (OWNER only; server restricts this to the
+ * recycle-bin whitelist tables). Requires the exact confirmation text.
  */
 export async function permanentDeleteRecord(
   table: DeletableTableName,
