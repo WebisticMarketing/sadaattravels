@@ -482,19 +482,35 @@ async function updateLastLogin(userId: string): Promise<void> {
 }
 
 /**
- * Log an authentication audit event.
+ * Log an authentication audit event via the TRUSTED server-side RPC
+ * `log_auth_audit_event()` (migration 017_trusted_auth_audit.sql).
+ *
+ * Security model:
+ *  - The RPC is SECURITY DEFINER and derives user_id ONLY from auth.uid();
+ *    the client can never supply or forge it. It also records the actor's
+ *    email server-side (JWT claim / users table) into meta.actor_email.
+ *  - The frontend no longer inserts directly into audit_logs; clients must
+ *    not hold a table-level INSERT grant on that table.
+ *
+ * password_reset_requested note:
+ *  - This event intentionally happens while the requester may be
+ *    UNAUTHENTICATED, so user_id is NULL there — we NEVER invent a user ID.
+ *    The submitted email is recorded in meta as a CLAIMED identifier only;
+ *    it is never treated as proof of identity.
+ *
+ * Best-effort semantics (unchanged from before): a failed audit write must
+ * never break login/logout/password flows. There is NO direct-insert
+ * fallback — the frontend has ZERO writes to audit_logs. If the RPC fails
+ * (not yet deployed, role gate, etc.) the event is skipped after logError().
  */
 async function logAuditEvent(
   action: import('../types/database').AuditAction,
   metadata: Record<string, any>
 ): Promise<void> {
-  const { error } = await supabase.from('audit_logs').insert({
-    user_id: _currentUser?.id || null,
-    action,
-    meta: metadata,
-    ip_address: null, // Would need to be captured from request context
-    user_agent: navigator.userAgent,
-  } as any);
+  const { error } = await supabase.rpc('log_auth_audit_event', {
+    p_action: action,
+    p_meta: metadata ?? {},
+  });
 
   if (error) {
     logError(error, 'logAuditEvent');
