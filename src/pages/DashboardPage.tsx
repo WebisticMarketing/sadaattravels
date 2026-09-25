@@ -17,6 +17,10 @@ import {
   Package,
   DollarSign,
   ChevronRight,
+  PlusCircle,
+  MinusCircle,
+  CircleDashed,
+  Banknote,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -384,9 +388,13 @@ export default function DashboardPage() {
                   case "bus": IconComponent = Bus; break;
                   case "trip": IconComponent = Calendar; break;
                   case "wrench": IconComponent = Wrench; break;
+                  case "tyre": IconComponent = CircleDashed; break;
                   case "fuel": IconComponent = Fuel; break;
                   case "cargo": IconComponent = Package; break;
                   case "adda": IconComponent = Building2; break;
+                  case "plus-circle": IconComponent = PlusCircle; break;
+                  case "minus-circle": IconComponent = MinusCircle; break;
+                  case "loan": IconComponent = Banknote; break;
                   case "expense": IconComponent = TrendingDown; break;
                   default: IconComponent = Activity;
                 }
