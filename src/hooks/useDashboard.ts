@@ -20,6 +20,8 @@ import {
   previousMonthPeriod,
 } from '../lib/companyAccounting';
 import type { CompanyAccountingResult } from '../lib/companyAccounting';
+import { fetchDashboardActivity } from '../lib/dashboardActivity';
+import type { DashboardActivity } from '../lib/dashboardActivity';
 
 export interface DashboardMetrics {
   selectedPeriod: {
@@ -45,16 +47,7 @@ export interface DashboardMetrics {
   };
   occupancyRate: number | null;
   pendingMaintenance: number;
-  recentActivity: Array<{
-    id: string;
-    type: string;
-    title: string;
-    subtitle: string;
-    href: string;
-    time: string;
-    timeAgo: string;
-    icon: string;
-  }>;
+  recentActivity: DashboardActivity[];
 }
 
 /**
@@ -66,24 +59,6 @@ function getTodayPKT(): string {
   const localOffset = now.getTimezoneOffset();
   const karachiTime = new Date(now.getTime() + (karachiOffset + localOffset) * 60000);
   return karachiTime.toISOString().split('T')[0];
-}
-
-/**
- * Format time ago from timestamp
- */
-function formatTimeAgo(timestamp: string): string {
-  const now = new Date();
-  const time = new Date(timestamp);
-  const diffMs = now.getTime() - time.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return time.toLocaleDateString();
 }
 
 /**
@@ -243,144 +218,18 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
 
         // ============================================================
         // Recent activity feed (non-accounting display data)
+        // Built by the shared business-activity layer in
+        // src/lib/dashboardActivity.ts — 14 lean parallel queries with
+        // per-source error isolation (a failing source is logged via
+        // logError and skipped; it never breaks the Dashboard).
+        // NEVER sourced from audit_logs: admin/security/history events
+        // belong to the separate Audit Logs module.
         // ============================================================
-        const [recentTrips, recentMaintenance, recentTyres, recentAddaIncome, recentAddaExpenses] = await Promise.all([
-          supabase
-            .from('trips')
-            .select('id, trip_date, route, bus_id, status')
-            .gte('trip_date', period.start)
-            .lte('trip_date', period.end)
-            .eq('status', 'active')
-            .order('trip_date', { ascending: false })
-            .limit(5),
-
-          supabase
-            .from('maintenance_records')
-            .select('id, maintenance_date, maintenance_type, description, bus_id, status')
-            .gte('maintenance_date', period.start)
-            .lte('maintenance_date', period.end)
-            .eq('status', 'active')
-            .order('maintenance_date', { ascending: false })
-            .limit(5),
-
-          supabase
-            .from('tyre_records')
-            .select('id, purchase_date, tyre_size, notes, bus_id, status')
-            .gte('purchase_date', period.start)
-            .lte('purchase_date', period.end)
-            .eq('status', 'active')
-            .order('purchase_date', { ascending: false })
-            .limit(5),
-
-          supabase
-            .from('adda_income')
-            .select('id, income_date, income_type, amount, received_from, status')
-            .gte('income_date', period.start)
-            .lte('income_date', period.end)
-            .eq('status', 'active')
-            .order('income_date', { ascending: false })
-            .limit(5),
-
-          supabase
-            .from('adda_expenses')
-            .select('id, expense_date, expense_type, amount, paid_to, status')
-            .gte('expense_date', period.start)
-            .lte('expense_date', period.end)
-            .eq('status', 'active')
-            .order('expense_date', { ascending: false })
-            .limit(5)
-        ]);
-
-        if (recentTrips.error) throw recentTrips.error;
-        if (recentMaintenance.error) throw recentMaintenance.error;
-        if (recentTyres.error) throw recentTyres.error;
-        if (recentAddaIncome.error) throw recentAddaIncome.error;
-        if (recentAddaExpenses.error) throw recentAddaExpenses.error;
-
-        const allActivities: Array<{
-          id: string;
-          type: string;
-          title: string;
-          subtitle: string;
-          href: string;
-          time: string;
-          timeAgo: string;
-          icon: string;
-          date: string;
-        }> = [];
-
-        (recentTrips.data || []).forEach(trip => {
-          allActivities.push({
-            id: `trip-${trip.id}`,
-            type: 'trip',
-            title: 'Trip completed',
-            subtitle: trip.route || 'Trip record',
-            href: `/app/trips`,
-            time: trip.trip_date,
-            timeAgo: formatTimeAgo(trip.trip_date),
-            icon: 'trip',
-            date: trip.trip_date
-          });
+        const recentActivity = await fetchDashboardActivity(period, {
+          maxItems: 8,
+          onError: (err, sourceKey) =>
+            logError(err, `useDashboardMetrics/activity:${sourceKey}`),
         });
-
-        (recentMaintenance.data || []).forEach(record => {
-          allActivities.push({
-            id: `maint-${record.id}`,
-            type: 'maintenance',
-            title: 'Maintenance recorded',
-            subtitle: record.maintenance_type || record.description || 'Maintenance record',
-            href: `/app/buses/${record.bus_id}/maintenance`,
-            time: record.maintenance_date,
-            timeAgo: formatTimeAgo(record.maintenance_date),
-            icon: 'wrench',
-            date: record.maintenance_date
-          });
-        });
-
-        (recentTyres.data || []).forEach(record => {
-          allActivities.push({
-            id: `tyre-${record.id}`,
-            type: 'tyre',
-            title: 'Tyre record added',
-            subtitle: record.tyre_size || record.notes || 'Tyre record',
-            href: `/app/buses/${record.bus_id}/tyres`,
-            time: record.purchase_date,
-            timeAgo: formatTimeAgo(record.purchase_date),
-            icon: 'tyre',
-            date: record.purchase_date
-          });
-        });
-
-        (recentAddaIncome.data || []).forEach(record => {
-          allActivities.push({
-            id: `adda-income-${record.id}`,
-            type: 'adda-income',
-            title: 'Adda income recorded',
-            subtitle: `${record.income_type} - Rs ${record.amount}`,
-            href: `/app/adda`,
-            time: record.income_date,
-            timeAgo: formatTimeAgo(record.income_date),
-            icon: 'plus-circle',
-            date: record.income_date
-          });
-        });
-
-        (recentAddaExpenses.data || []).forEach(record => {
-          allActivities.push({
-            id: `adda-expense-${record.id}`,
-            type: 'adda-expense',
-            title: 'Adda expense recorded',
-            subtitle: `${record.expense_type} - Rs ${record.amount}`,
-            href: `/app/adda`,
-            time: record.expense_date,
-            timeAgo: formatTimeAgo(record.expense_date),
-            icon: 'minus-circle',
-            date: record.expense_date
-          });
-        });
-
-        allActivities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        const recentActivity = allActivities.slice(0, 5).map(({ date, ...rest }) => rest);
 
         setMetrics({
           selectedPeriod: {
