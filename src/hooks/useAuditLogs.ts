@@ -17,8 +17,9 @@ export function useAuditLogs(filters?: {
   action?: string;
   tableName?: string;
   userId?: string;
-  startDate?: string;
-  endDate?: string;
+  /** Inclusive calendar-month bounds (YYYY-MM-DD), same convention as Deleted Data. */
+  monthStart?: string;
+  monthEnd?: string;
 }) {
   const [logs, setLogs] = useState<AuditLogWithUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,12 +51,15 @@ export function useAuditLogs(filters?: {
         query = query.eq('user_id', filters.userId);
       }
 
-      if (filters?.startDate) {
-        query = query.gte('created_at', filters.startDate);
+      if (filters?.monthStart) {
+        // created_at is timestamptz; a bare YYYY-MM-DD bound is interpreted as
+        // UTC midnight, so include explicit day boundaries to cover the whole
+        // selected calendar month.
+        query = query.gte('created_at', `${filters.monthStart}T00:00:00.000`);
       }
 
-      if (filters?.endDate) {
-        query = query.lte('created_at', filters.endDate);
+      if (filters?.monthEnd) {
+        query = query.lte('created_at', `${filters.monthEnd}T23:59:59.999`);
       }
 
       const { data, error: fetchError } = await query;
@@ -69,7 +73,7 @@ export function useAuditLogs(filters?: {
       setError(err instanceof Error ? err.message : 'Failed to load audit logs');
       setLoading(false);
     }
-  }, [filters?.action, filters?.tableName, filters?.userId, filters?.startDate, filters?.endDate]);
+  }, [filters?.action, filters?.tableName, filters?.userId, filters?.monthStart, filters?.monthEnd]);
 
   useEffect(() => {
     fetchLogs();

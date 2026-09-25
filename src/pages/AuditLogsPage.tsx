@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuditLogs, useAuditActionTypes, useAuditTableNames } from '../hooks/useAuditLogs';
-import { formatDate, formatTime } from '../lib/utils';
+import { formatDate, formatTime, getMonthStart, getMonthEnd } from '../lib/utils';
+import { MonthYearFilter } from '../components/ui/MonthYearFilter';
 import { Badge } from '../components/ui/Badge';
 import { Filter, ScrollText } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -9,18 +10,24 @@ import { PrintButton } from '../components/ui/PrintButton';
 import { Button } from '../components/ui/Button';
 
 export default function AuditLogsPage() {
+  const today = new Date();
   const [filters, setFilters] = useState({
     action: '',
     tableName: '',
-    startDate: '',
-    endDate: '',
+    month: today.getMonth() + 1,
+    year: today.getFullYear(),
   });
+
+  // Selected calendar month range (browser-local), same helpers/convention as
+  // DeletedDataPage and the Cargo/Reports pages.
+  const monthStart = getMonthStart(filters.year, filters.month);
+  const monthEnd = getMonthEnd(filters.year, filters.month);
 
   const { logs, loading, error } = useAuditLogs({
     action: filters.action || undefined,
     tableName: filters.tableName || undefined,
-    startDate: filters.startDate || undefined,
-    endDate: filters.endDate || undefined,
+    monthStart,
+    monthEnd,
   });
 
   const { actions } = useAuditActionTypes();
@@ -125,27 +132,12 @@ export default function AuditLogsPage() {
               </select>
             </div>
 
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                Start Date
-              </label>
-              <input
-                type="date"
-                value={filters.startDate}
-                onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                End Date
-              </label>
-              <input
-                type="date"
-                value={filters.endDate}
-                onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            <div className="lg:col-span-2">
+              <MonthYearFilter
+                month={filters.month}
+                year={filters.year}
+                onMonthChange={(month) => setFilters({ ...filters, month })}
+                onYearChange={(year) => setFilters({ ...filters, year })}
               />
             </div>
           </div>
