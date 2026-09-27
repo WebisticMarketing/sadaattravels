@@ -161,19 +161,19 @@ export default function AuditLogsPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Timestamp
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     User
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Action
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Table
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Details
                   </th>
                 </tr>
@@ -181,13 +181,13 @@ export default function AuditLogsPage() {
               <tbody className="divide-y divide-gray-200 bg-white">
                 {logs.map((log) => (
                   <tr key={log.id} className="hover:bg-gray-50">
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                    <td className="whitespace-nowrap px-3 sm:px-6 py-4 text-sm text-gray-900">
                       <div>
                         <p className="font-medium">{formatDate(new Date(log.created_at))}</p>
                         <p className="text-xs text-gray-500">{formatTime(new Date(log.created_at))}</p>
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm">
+                    <td className="whitespace-nowrap px-3 sm:px-6 py-4 text-sm">
                       {log.user ? (
                         <div>
                           <p className="font-medium text-gray-900">{log.user.full_name}</p>
@@ -197,7 +197,7 @@ export default function AuditLogsPage() {
                         <span className="text-gray-400">System</span>
                       )}
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4">
+                    <td className="whitespace-nowrap px-3 sm:px-6 py-4">
                       <Badge
                         variant={
                           log.action === 'create' ? 'success' :
@@ -210,10 +210,10 @@ export default function AuditLogsPage() {
                         {log.action}
                       </Badge>
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                    <td className="whitespace-nowrap px-3 sm:px-6 py-4 text-sm text-gray-900">
                       {log.table_name || '-'}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
+                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500">
                       {log.record_id && (
                         <p className="text-xs">Record: {log.record_id.substring(0, 8)}...</p>
                       )}

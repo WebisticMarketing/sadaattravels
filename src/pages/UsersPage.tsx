@@ -109,7 +109,7 @@ export default function UsersPage() {
                     <td className="whitespace-nowrap px-6 py-4">
                       <div>
                         <p className="text-sm font-medium text-gray-900">{user.full_name}</p>
-                        <p className="text-sm text-gray-500">{user.email}</p>
+                        <p className="max-w-[180px] truncate text-sm text-gray-500 sm:max-w-xs" title={user.email}>{user.email}</p>
                         {user.phone && (
                           <p className="text-xs text-gray-400">{user.phone}</p>
                         )}

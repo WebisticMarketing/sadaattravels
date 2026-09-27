@@ -23,13 +23,13 @@ export function MonthYearFilter({
   const years = Array.from({ length: 16 }, (_, i) => 2020 + i); // 2020-2035
 
   return (
-    <div className={cn('flex items-center gap-2', className)}>
+    <div className={cn('flex flex-wrap items-end gap-2', className)}>
       <div className="flex flex-col gap-1">
         <label className="text-xs font-medium text-gray-700">Month</label>
         <select
           value={month}
           onChange={(e) => onMonthChange(Number(e.target.value))}
-          className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full min-w-[7.5rem] px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:w-auto"
         >
           {MONTHS.map((month, index) => (
             <option key={month} value={index + 1}>
@@ -43,7 +43,7 @@ export function MonthYearFilter({
         <select
           value={year}
           onChange={(e) => onYearChange(Number(e.target.value))}
-          className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full min-w-[7.5rem] px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:w-auto"
         >
           {years.map((year) => (
             <option key={year} value={year}>

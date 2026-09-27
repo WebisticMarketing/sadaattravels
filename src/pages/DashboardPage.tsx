@@ -163,7 +163,7 @@ function SkeletonLoader() {
         </div>
         <div className="bg-white border border-gray-200 rounded-2xl p-6">
           <div className="h-5 w-28 bg-gray-200 rounded-lg animate-pulse mb-4" />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="p-4 bg-gray-50 rounded-xl">
                 <div className="w-10 h-10 bg-gray-200 rounded-xl animate-pulse mx-auto mb-2" />
@@ -323,14 +323,22 @@ export default function DashboardPage() {
                   </div>
                   <span
                     className={`text-xs font-medium px-2 py-1 rounded-full flex items-center gap-1 ${
-                      kpi.trend === "up" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                      kpi.trend === "up"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : kpi.trend === "down"
+                        ? "bg-red-100 text-red-700"
+                        : "bg-gray-100 text-gray-500"
                     }`}
                   >
-                    {kpi.trend === "up" ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                    {kpi.trend === "up" ? (
+                      <TrendingUp className="w-3 h-3" />
+                    ) : kpi.trend === "down" ? (
+                      <TrendingDown className="w-3 h-3" />
+                    ) : null}
                     {kpi.change}
                   </span>
                 </div>
-                <p className="text-2xl font-bold text-gray-900">{kpi.value}</p>
+                <p className="min-w-0 break-all text-xl font-bold text-gray-900 sm:text-2xl">{kpi.value}</p>
                 <p className="text-sm text-gray-500 mt-1">{kpi.label}</p>
               </div>
             );

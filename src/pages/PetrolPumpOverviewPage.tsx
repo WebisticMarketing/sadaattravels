@@ -199,7 +199,7 @@ export default function PetrolPumpOverviewPage() {
         description="Track diesel purchases and bus fuel consumption"
       />
 
-      <div className="border-b border-gray-200">
+      <div className="overflow-x-auto border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
           <button
             onClick={() => setActiveTab('overview')}
@@ -404,7 +404,7 @@ export default function PetrolPumpOverviewPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
@@ -468,7 +468,7 @@ export default function PetrolPumpOverviewPage() {
                   <p className="mt-2 text-sm text-gray-500">Record fuel sold to buses or external customers</p>
                 </div>
               ) : (
-                <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
@@ -550,7 +550,7 @@ export default function PetrolPumpOverviewPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
@@ -622,7 +622,7 @@ export default function PetrolPumpOverviewPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
@@ -781,7 +781,7 @@ export default function PetrolPumpOverviewPage() {
 
               {/* Expenses Table */}
               {!expensesLoading && allExpenses.length > 0 && (
-                <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>

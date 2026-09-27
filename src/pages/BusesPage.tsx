@@ -78,7 +78,7 @@ export default function BusesPage() {
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Number Plate
                   </th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="hidden py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:table-cell">
                     Name
                   </th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -109,7 +109,7 @@ export default function BusesPage() {
                         {bus.registration_number}
                       </span>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="hidden py-3 px-4 md:table-cell">
                       <span className="text-gray-900">
                         {bus.bus_name || '-'}
                       </span>
