@@ -81,7 +81,7 @@ export default function InstallmentFormPage() {
               <label className="mb-1.5 block text-sm font-medium text-gray-700">
                 Type *
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, installment_type: 'taken' })}

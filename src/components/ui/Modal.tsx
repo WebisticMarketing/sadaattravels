@@ -62,6 +62,7 @@ export function Modal({
       <div
         className={cn(
           'relative w-full rounded-xl bg-white shadow-xl',
+          'max-h-[calc(100vh-2rem)] overflow-y-auto',
           'animate-in fade-in zoom-in-95 duration-200',
           sizeStyles[size],
           className

@@ -113,7 +113,7 @@ export default function AddaPage() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
+      <div className="overflow-x-auto border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
           <button
             onClick={() => setActiveTab('income')}
@@ -167,10 +167,10 @@ export default function AddaPage() {
                 key={income.id}
                 className="rounded-lg border border-gray-200 bg-white p-4"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1">
                     <h3 className="font-semibold text-gray-900">{income.income_type}</h3>
-                    <div className="mt-2 flex items-center gap-3 text-sm text-gray-500">
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
                       <span>{formatDate(new Date(income.income_date))}</span>
                       {income.received_from && (
                         <>
@@ -183,7 +183,7 @@ export default function AddaPage() {
                       <p className="mt-1 text-sm text-gray-600">{income.description}</p>
                     )}
                   </div>
-                  <div className="flex items-start gap-4">
+                  <div className="mt-3 flex items-start justify-between gap-4 border-t border-gray-100 pt-3 sm:mt-0 sm:block sm:border-0 sm:pt-0">
                     <div className="text-right">
                       <p className="text-xs text-gray-500">Amount</p>
                       <p className="text-lg font-bold text-green-600">
@@ -248,10 +248,10 @@ export default function AddaPage() {
                 key={expense.id}
                 className="rounded-lg border border-gray-200 bg-white p-4"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1">
                     <h3 className="font-semibold text-gray-900">{expense.expense_type}</h3>
-                    <div className="mt-2 flex items-center gap-3 text-sm text-gray-500">
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
                       <span>{formatDate(new Date(expense.expense_date))}</span>
                       {expense.paid_to && (
                         <>
@@ -264,7 +264,7 @@ export default function AddaPage() {
                       <p className="mt-1 text-sm text-gray-600">{expense.description}</p>
                     )}
                   </div>
-                  <div className="flex items-start gap-4">
+                  <div className="mt-3 flex items-start justify-between gap-4 border-t border-gray-100 pt-3 sm:mt-0 sm:block sm:border-0 sm:pt-0">
                     <div className="text-right">
                       <p className="text-xs text-gray-500">Amount</p>
                       <p className="text-lg font-bold text-red-600">

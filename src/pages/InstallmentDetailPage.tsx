@@ -395,9 +395,9 @@ export default function InstallmentDetailPage() {
                 key={payment.id}
                 className="rounded-lg border border-gray-200 bg-gray-50 p-4"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
                       <p className="font-semibold text-gray-900">
                         {formatCurrency(payment.amount)}
                       </p>
@@ -430,7 +430,7 @@ export default function InstallmentDetailPage() {
                   </div>
                   {/* Active payments can be corrected or moved to the recycle bin */}
                   {payment.status === 'active' && !payment.deleted_at && (
-                    <div className="ml-2 flex shrink-0 items-center gap-1">
+                    <div className="mt-2 flex shrink-0 items-center gap-1 sm:ml-2 sm:mt-0">
                       <button
                         onClick={() => openEditPaymentModal(payment)}
                         className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"

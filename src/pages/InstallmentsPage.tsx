@@ -235,9 +235,9 @@ export default function InstallmentsPage() {
               onClick={() => navigate(`/app/installments/${installment.id}`)}
               className="cursor-pointer rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md"
             >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold text-gray-900">{installment.person_name}</h3>
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -260,7 +260,7 @@ export default function InstallmentsPage() {
                       {installment.status}
                     </span>
                   </div>
-                  <div className="mt-2 flex items-center gap-3 text-sm text-gray-500">
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
                     <span>Started: {formatDate(new Date(installment.start_date))}</span>
                     {installment.person_phone && (
                       <>
@@ -273,7 +273,7 @@ export default function InstallmentsPage() {
                     <p className="mt-1 text-sm text-gray-600">{installment.description}</p>
                   )}
                 </div>
-                <div className="text-right">
+                <div className="mt-3 border-t border-gray-100 pt-3 text-left sm:mt-0 sm:border-0 sm:pt-0 sm:text-right">
                   <div className="space-y-1">
                     <div>
                       <p className="text-xs text-gray-500">Total</p>

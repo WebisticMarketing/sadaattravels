@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import {
@@ -61,6 +61,16 @@ const iconMap: Record<string, React.ReactNode> = {
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
+
+  // Prevent background scrolling while the mobile drawer is open.
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [sidebarOpen]);
 
   return (
     <div className="flex h-screen bg-gray-50">

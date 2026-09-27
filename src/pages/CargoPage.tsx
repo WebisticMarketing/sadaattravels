@@ -233,15 +233,15 @@ export default function CargoPage() {
               onClick={() => navigate(`/app/cargo/${record.id}/edit`)}
               className="cursor-pointer rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md"
             >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 flex-1">
                   <h3 className="font-semibold text-gray-900">{record.description}</h3>
-                  <div className="mt-2 flex items-center gap-3 text-sm text-gray-500">
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
                     <span>{formatDate(new Date(record.shipment_date))}</span>
                     <span>•</span>
                     <span>{record.origin} → {record.destination}</span>
                   </div>
-                  <div className="mt-1 flex items-center gap-3 text-sm text-gray-500">
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
                     <span>From: {record.sender_name}</span>
                     <span>•</span>
                     <span>To: {record.receiver_name}</span>
@@ -252,7 +252,7 @@ export default function CargoPage() {
                     </p>
                   )}
                 </div>
-                <div className="text-right" onClick={(e) => e.stopPropagation()}>
+                <div className="mt-3 border-t border-gray-100 pt-3 text-left sm:mt-0 sm:border-0 sm:pt-0 sm:text-right" onClick={(e) => e.stopPropagation()}>
                   <div className="space-y-1">
                     <div>
                       <p className="text-xs text-gray-500">Revenue</p>
