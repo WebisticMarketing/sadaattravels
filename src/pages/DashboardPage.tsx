@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useDashboardMetrics } from '../hooks/useDashboard';
 import { 
   Bus, 
@@ -181,7 +181,26 @@ function SkeletonLoader() {
 // MAIN COMPONENT
 // ============================================================
 export default function DashboardPage() {
-  // Dashboard automatically uses the CURRENT MONTH - no manual picker
+  // Dashboard automatically uses the CURRENT MONTH - no manual picker.
+  // Uses the user's own device/browser local date (no global timezone is
+  // hardcoded). A lightweight tick re-renders periodically and when the tab
+  // regains focus so the month/year follows the device clock when the month
+  // rolls over or the device date/timezone changes — no hard refresh needed.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setTick((t) => t + 1), 60_000);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        setTick((t) => t + 1);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, []);
+
   const today = new Date();
   const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
   const currentYear = String(today.getFullYear());
