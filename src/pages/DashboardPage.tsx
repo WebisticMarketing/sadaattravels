@@ -357,7 +357,7 @@ export default function DashboardPage() {
                     {kpi.change}
                   </span>
                 </div>
-                <p className="min-w-0 break-all text-xl font-bold text-gray-900 sm:text-2xl">{kpi.value}</p>
+                <p className="min-w-0 whitespace-nowrap text-xl font-bold text-gray-900 sm:text-2xl">{kpi.value}</p>
                 <p className="text-sm text-gray-500 mt-1">{kpi.label}</p>
               </div>
             );
