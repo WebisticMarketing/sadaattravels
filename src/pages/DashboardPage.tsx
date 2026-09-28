@@ -221,7 +221,7 @@ export default function DashboardPage() {
     totalExpenses: metrics.selectedPeriod.expenses,
     netProfit: metrics.selectedPeriod.profit,
     occupancyRate: metrics.occupancyRate,
-    pendingMaintenance: metrics.pendingMaintenance,
+    busesUnderMaintenance: metrics.busesUnderMaintenance,
     recentActivity: metrics.recentActivity,
   };
 
@@ -284,7 +284,7 @@ export default function DashboardPage() {
 
   const secondaryKPIs = [
     { label: "Active Buses", value: `${displayStats.activeBuses} / ${displayStats.totalBuses}`, icon: Bus, color: "text-green-600" },
-    { label: "Pending Maintenance", value: displayStats.pendingMaintenance, icon: AlertCircle, color: "text-red-600" },
+    { label: "Buses Under Maintenance", value: displayStats.busesUnderMaintenance, icon: AlertCircle, color: "text-red-600" },
     { label: "Total Expenses", value: `Rs ${displayStats.totalExpenses.toLocaleString()}`, icon: TrendingDown, color: "text-orange-600" },
   ];
 
