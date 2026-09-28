@@ -200,7 +200,7 @@ export default function PetrolPumpOverviewPage() {
       />
 
       <div className="overflow-x-auto border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
+        <nav className="-mb-px flex gap-6 sm:gap-8">
           <button
             onClick={() => setActiveTab('overview')}
             className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium ${
@@ -318,7 +318,7 @@ export default function PetrolPumpOverviewPage() {
 
               {/* Quick Actions */}
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="rounded-lg border border-gray-200 bg-white p-6">
+                <div className="rounded-lg border border-gray-200 bg-white p-4 sm:p-6">
                   <h3 className="mb-4 text-lg font-semibold text-gray-900">Purchases</h3>
                   <p className="mb-4 text-2xl font-bold text-gray-900">{purchases.length}</p>
                   <p className="text-sm text-gray-500">Total purchase records</p>
@@ -331,7 +331,7 @@ export default function PetrolPumpOverviewPage() {
                   </Button>
                 </div>
                 
-                <div className="rounded-lg border border-gray-200 bg-white p-6">
+                <div className="rounded-lg border border-gray-200 bg-white p-4 sm:p-6">
                   <h3 className="mb-4 text-lg font-semibold text-gray-900">Bus Fuel Records</h3>
                   <p className="mb-4 text-2xl font-bold text-gray-900">{filteredBusFuelRecords.length}</p>
                   <p className="text-sm text-gray-500">Total fuel records</p>
@@ -344,7 +344,7 @@ export default function PetrolPumpOverviewPage() {
                   </Button>
                 </div>
 
-                <div className="rounded-lg border border-gray-200 bg-white p-6">
+                <div className="rounded-lg border border-gray-200 bg-white p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-gray-900">Diesel Selling Price</h3>
                     <Settings className="h-5 w-5 text-gray-400" />
@@ -408,29 +408,29 @@ export default function PetrolPumpOverviewPage() {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Bus</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Litres</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Voucher Diesel</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Date</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Bus</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Litres</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Voucher Diesel</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
                       {filteredBusFuelRecords.map((sale) => (
                         <tr key={sale.id} className="hover:bg-gray-50">
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                          <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-900">
                             {new Date(sale.created_at).toLocaleDateString()}
                           </td>
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                          <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-900">
                             {sale.buses?.registration_number || 'Unknown'}
                           </td>
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                          <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-900">
                             {sale.litres.toFixed(0)} L
                           </td>
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                          <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-900">
                             PKR {formatCurrency(sale.total_amount).replace('PKR ', '')}
                           </td>
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                          <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-500">
                             <Button variant="ghost" size="sm">View</Button>
                           </td>
                         </tr>
@@ -472,21 +472,21 @@ export default function PetrolPumpOverviewPage() {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Type</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Customer/Bus</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Litres</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Total Amount</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Date</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Type</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Customer/Bus</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Litres</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Total Amount</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
                       {filteredAllSales.map((sale) => (
                         <tr key={sale.id} className="hover:bg-gray-50">
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                          <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-900">
                             {new Date(sale.created_at).toLocaleDateString()}
                           </td>
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                          <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-900">
                             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                               sale.sale_type === 'INTERNAL_BUS' 
                                 ? 'bg-blue-100 text-blue-800' 
@@ -495,18 +495,18 @@ export default function PetrolPumpOverviewPage() {
                               {sale.sale_type === 'INTERNAL_BUS' ? 'Internal Bus' : 'External Customer'}
                             </span>
                           </td>
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                          <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-900">
                             {sale.sale_type === 'INTERNAL_BUS' 
                               ? sale.buses?.registration_number || 'Unknown'
                               : sale.customer_name || 'N/A'}
                           </td>
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                          <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-900">
                             {sale.litres.toFixed(0)} L
                           </td>
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                          <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-900">
                             PKR {formatCurrency(sale.total_amount).replace('PKR ', '')}
                           </td>
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                          <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-500">
                             <Button variant="ghost" size="sm" onClick={() => navigate(`/app/petrol/sales/${sale.id}`)}>
                               View
                             </Button>
@@ -554,33 +554,33 @@ export default function PetrolPumpOverviewPage() {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Supplier</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Litres</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Cost/Litre</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Total Cost</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Date</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Supplier</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Litres</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Cost/Litre</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Total Cost</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
                       {filteredPurchases.map((purchase) => (
                         <tr key={purchase.id} className="hover:bg-gray-50">
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                          <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-900">
                             {new Date(purchase.purchase_date).toLocaleDateString()}
                           </td>
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                          <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-900">
                             {purchase.supplier || 'N/A'}
                           </td>
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                          <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-900">
                             {purchase.litres.toFixed(0)} L
                           </td>
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                          <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-900">
                             PKR {purchase.cost_per_litre.toFixed(2)}
                           </td>
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                          <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-900">
                             {formatCurrency(purchase.total_cost)}
                           </td>
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                          <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-500">
                             <Button variant="ghost" size="sm">View</Button>
                           </td>
                         </tr>
@@ -626,13 +626,13 @@ export default function PetrolPumpOverviewPage() {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Customer</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Litres</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Price/Litre</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Total Sale</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Profit</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Date</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Customer</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Litres</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Price/Litre</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Total Sale</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Profit</th>
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
@@ -640,25 +640,25 @@ export default function PetrolPumpOverviewPage() {
                         const profit = sale.total_amount - (sale.litres * sale.cost_price_per_litre);
                         return (
                           <tr key={sale.id} className="hover:bg-gray-50">
-                            <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                            <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-900">
                               {new Date(sale.created_at).toLocaleDateString()}
                             </td>
-                            <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                            <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-900">
                               {sale.customer_name || 'N/A'}
                             </td>
-                            <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                            <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-900">
                               {sale.litres.toFixed(0)} L
                             </td>
-                            <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                            <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-900">
                               PKR {sale.sale_price_per_litre.toFixed(2)}
                             </td>
-                            <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                            <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-900">
                               {formatCurrency(sale.total_amount)}
                             </td>
-                            <td className={`whitespace-nowrap px-6 py-4 text-sm ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            <td className={`whitespace-nowrap px-3 sm:px-4 py-4 text-sm ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                               {formatCurrency(profit)}
                             </td>
-                            <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                            <td className="whitespace-nowrap px-3 sm:px-4 py-4 text-sm text-gray-500">
                               <Button variant="ghost" size="sm">View</Button>
                             </td>
                           </tr>
