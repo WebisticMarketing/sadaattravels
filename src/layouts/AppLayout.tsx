@@ -154,7 +154,7 @@ export function AppLayout() {
       </aside>
 
       {/* Main content area */}
-      <div className="flex flex-1 flex-col min-h-0">
+      <div className="flex min-w-0 flex-1 flex-col min-h-0">
         {/* Top bar */}
         <header className="flex h-16 flex-shrink-0 items-center gap-4 border-b border-gray-200 bg-white px-4 lg:px-6">
           <button
@@ -173,7 +173,7 @@ export function AppLayout() {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+        <main className="min-w-0 flex-1 overflow-y-auto p-4 lg:p-6">
           <Outlet />
         </main>
       </div>
