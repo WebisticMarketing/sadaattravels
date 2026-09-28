@@ -46,19 +46,8 @@ export interface DashboardMetrics {
     currentStock: number;
   };
   occupancyRate: number | null;
-  pendingMaintenance: number;
+  busesUnderMaintenance: number;
   recentActivity: DashboardActivity[];
-}
-
-/**
- * Get today's date in Asia/Karachi timezone
- */
-function getTodayPKT(): string {
-  const now = new Date();
-  const karachiOffset = 5 * 60; // UTC+5 in minutes
-  const localOffset = now.getTimezoneOffset();
-  const karachiTime = new Date(now.getTime() + (karachiOffset + localOffset) * 60000);
-  return karachiTime.toISOString().split('T')[0];
 }
 
 /**
@@ -172,6 +161,7 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
 
         const totalBuses = buses?.length || 0;
         const activeBuses = buses?.filter(b => b.status === 'active').length || 0;
+        const busesUnderMaintenance = buses?.filter(b => b.status === 'maintenance').length || 0;
 
         // Current fuel stock (litres) — operational, purchases - sales + adjustments
         const { data: fuelPurchases, error: purchasesError } = await supabase
@@ -202,19 +192,6 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
 
         // Occupancy rate
         const occupancyRate = totalCapacity > 0 ? Math.min(100, Math.round((totalSeatsBooked / totalCapacity) * 100)) : null;
-
-        // Pending maintenance (overdue)
-        const today = getTodayPKT();
-        const { data: overdueMaintenanceRecords, error: overdueMaintenanceError } = await supabase
-          .from('maintenance_records')
-          .select('id, next_maintenance_date')
-          .eq('status', 'active')
-          .not('next_maintenance_date', 'is', null)
-          .lte('next_maintenance_date', today);
-
-        if (overdueMaintenanceError) throw overdueMaintenanceError;
-
-        const pendingMaintenance = overdueMaintenanceRecords?.length || 0;
 
         // ============================================================
         // Recent activity feed (non-accounting display data)
@@ -253,7 +230,7 @@ export function useDashboardMetrics(selectedMonth?: string, selectedYear?: strin
             currentStock,
           },
           occupancyRate,
-          pendingMaintenance,
+          busesUnderMaintenance,
           recentActivity,
         });
 
