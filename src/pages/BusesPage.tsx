@@ -75,7 +75,7 @@ export default function BusesPage() {
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Bus
                   </th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="hidden py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:table-cell">
                     Number Plate
                   </th>
                   <th className="hidden py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:table-cell">
@@ -104,7 +104,7 @@ export default function BusesPage() {
                         {bus.bus_name || `BUS-${bus.id.slice(0, 4)}`}
                       </span>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="hidden py-3 px-4 sm:table-cell">
                       <span className="font-medium text-blue-600 hover:underline">
                         {bus.registration_number}
                       </span>
