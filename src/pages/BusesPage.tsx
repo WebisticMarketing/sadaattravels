@@ -67,9 +67,52 @@ export default function BusesPage() {
           }
         />
       ) : (
-        <Card className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
+        <>
+          {/* Mobile: card list (below sm) */}
+          <div className="space-y-3 sm:hidden">
+            {buses.map((bus) => (
+              <Card key={bus.id} className="p-4" onClick={() => navigate(`/app/buses/${bus.id}`)}>
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-gray-900">
+                    {bus.bus_name || `BUS-${bus.id.slice(0, 4)}`}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-500">{bus.capacity} seats</p>
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
+                  <Badge
+                    variant={bus.status === 'active' ? 'success' : bus.status === 'maintenance' ? 'warning' : 'secondary'}
+                    size="sm"
+                  >
+                    {bus.status}
+                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate(`/app/buses/${bus.id}`)}
+                    >
+                      View
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedBus(bus);
+                        setShowEditModal(true);
+                      }}
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Desktop/table (sm and above) */}
+          <Card className="hidden p-0 sm:block">
+            <div className="overflow-x-auto">
+              <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -152,8 +195,9 @@ export default function BusesPage() {
                 ))}
               </tbody>
             </table>
-          </div>
-        </Card>
+            </div>
+          </Card>
+        </>
       )}
 
       {/* Add Bus Modal */}
